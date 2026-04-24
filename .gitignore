@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment
+.env
+.env.local
+.env.production
+
+# WhatsApp session (no versionar la sesión)
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/
+
+# Uploads
+backend/public/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build
+build/
+dist/
+.next/
+out/
+
+# Claude
+.claude/
