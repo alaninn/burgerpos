@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import ModalFacturaDesdePedido from './ModalFacturaDesdePedido'
+import ComprobanteElectronicoModal from './ComprobanteElectronicoModal'
 
 // ─── Utilidades ───────────────────────────────────────────
 const ESTADO_LABEL = {
@@ -77,6 +79,9 @@ export default function ModalDetallePedido({ pedido: pedidoInicial, repartidores
   const [pedido, setPedido] = useState(pedidoInicial)
   const [loading, setLoading] = useState(false)
   const [repId, setRepId] = useState(pedidoInicial.repartidorId || '')
+  const [mostrarModalFactura, setMostrarModalFactura] = useState(false)
+  const [mostrarComprobante, setMostrarComprobante] = useState(false)
+  const [comprobante, setComprobante] = useState(pedidoInicial.comprobante || null)
 
   const cambiarEstado = async (nuevoEstado) => {
     setLoading(true)
@@ -99,8 +104,47 @@ export default function ModalDetallePedido({ pedido: pedidoInicial, repartidores
       const { data } = await api.put(`/negocios/${pedido.negocioId}/pedidos/${pedido.id}`, { repartidorId: id })
       setPedido(data.pedido)
       onUpdate()
-      toast.success('Repartidor asignado')
+
+      // Enviar WhatsApp al repartidor
+      const repartidor = repartidores.find(r => r.id === parseInt(id))
+      if (repartidor?.telefono) {
+        // Construir mensaje con comanda
+        const items = pedido.items.map(item => {
+          let linea = `${item.cantidad}x ${item.nombre}`
+          if (item.varianteNombre) linea += ` (${item.varianteNombre})`
+          if (item.adicionales?.length > 0) {
+            linea += ` + ${item.adicionales.map(a => a.nombre).join(', ')}`
+          }
+          if (item.notas) linea += ` - Nota: ${item.notas}`
+          return linea
+        }).join('\n')
+
+        const mensaje = `🍔 *PEDIDO #${pedido.numero}* - ${MODALIDAD_LABEL[pedido.modalidad]}\n\n` +
+          `👤 Cliente: ${pedido.clienteNombre || 'Sin nombre'}\n` +
+          `📍 Dirección: ${pedido.clienteDireccion || 'Sin dirección'}\n` +
+          `📞 Teléfono: ${pedido.clienteTelefono || 'Sin teléfono'}\n\n` +
+          `📦 *ITEMS:*\n${items}\n\n` +
+          `💰 Total: $${fmt(pedido.total)}\n` +
+          `💳 Pago: ${pedido.metodoPago}\n` +
+          (pedido.notas ? `\n📝 Notas: ${pedido.notas}` : '')
+
+        api.post(`/negocios/${pedido.negocioId}/whatsapp/enviar`, {
+          telefono: repartidor.telefono,
+          mensaje
+        }).catch(err => {
+          console.error('Error enviando WhatsApp:', err)
+          toast('⚠️ Repartidor asignado, pero no se pudo enviar WhatsApp', { duration: 4000 })
+        })
+      }
+
+      toast.success('Repartidor asignado y notificado')
     } catch { toast.error('Error') }
+  }
+
+  const handleFacturaSuccess = (comprobanteEmitido) => {
+    setComprobante(comprobanteEmitido)
+    toast.success(`Factura emitida - CAE: ${comprobanteEmitido.cae}`)
+    onUpdate() // Actualizar lista de pedidos
   }
 
   const cancelarPedido = async () => {
@@ -262,12 +306,22 @@ export default function ModalDetallePedido({ pedido: pedidoInicial, repartidores
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                 Comanda cocina
               </button>
-              <button disabled
-                title="Próximamente"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 cursor-not-allowed">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                Factura electrónica
-              </button>
+              {comprobante ? (
+                <button
+                  onClick={() => setMostrarComprobante(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-green-500 bg-green-50 dark:bg-green-900/20 text-sm text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Ver Factura ({comprobante.letraComprobante})
+                </button>
+              ) : (
+                <button
+                  onClick={() => setMostrarModalFactura(true)}
+                  disabled={pedido.estado === 'cancelado'}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-sm text-violet-700 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  Factura electrónica
+                </button>
+              )}
             </div>
           </div>
 
@@ -378,6 +432,22 @@ export default function ModalDetallePedido({ pedido: pedidoInicial, repartidores
           </div>
         </div>
       </div>
+
+      {/* Modales de facturación */}
+      {mostrarModalFactura && (
+        <ModalFacturaDesdePedido
+          pedido={pedido}
+          onClose={() => setMostrarModalFactura(false)}
+          onSuccess={handleFacturaSuccess}
+        />
+      )}
+
+      {mostrarComprobante && comprobante && (
+        <ComprobanteElectronicoModal
+          comprobante={comprobante}
+          onClose={() => setMostrarComprobante(false)}
+        />
+      )}
     </div>
   )
 }

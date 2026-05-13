@@ -67,3 +67,54 @@ exports.cambiarPassword = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error del servidor' });
   }
 };
+
+exports.impersonate = async (req, res) => {
+  try {
+    console.log('🔍 Impersonate request:', {
+      usuarioActual: req.usuario?.email,
+      rolActual: req.usuario?.rol,
+      targetUsuarioId: req.body.usuarioId
+    });
+
+    // Solo superadmin puede impersonar
+    if (!req.usuario || req.usuario.rol !== 'superadmin') {
+      console.log('❌ Acceso denegado - Rol:', req.usuario?.rol);
+      return res.status(403).json({
+        success: false,
+        message: 'Solo superadmin puede acceder a esta función',
+        rol: req.usuario?.rol
+      });
+    }
+
+    const { usuarioId } = req.body;
+    if (!usuarioId) {
+      return res.status(400).json({ success: false, message: 'usuarioId requerido' });
+    }
+
+    const targetUsuario = await Usuario.findByPk(usuarioId, {
+      include: [{ model: Negocio, as: 'negocio', attributes: ['id','nombre','slug','logo','configuracion','plan'] }]
+    });
+
+    if (!targetUsuario || !targetUsuario.activo) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado o inactivo' });
+    }
+
+    console.log('✅ Impersonation exitosa:', targetUsuario.email);
+
+    res.json({
+      success: true,
+      token: generarToken(targetUsuario.id),
+      usuario: {
+        id: targetUsuario.id,
+        nombre: targetUsuario.nombre,
+        email: targetUsuario.email,
+        rol: targetUsuario.rol,
+        negocioId: targetUsuario.negocioId,
+        negocio: targetUsuario.negocio
+      }
+    });
+  } catch (err) {
+    console.error('❌ Error en impersonate:', err);
+    res.status(500).json({ success: false, message: 'Error del servidor', error: err.message });
+  }
+};

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
@@ -380,8 +381,9 @@ function HistorialModal({ negocioId, onClose }) {
 
 // ─── Página principal ─────────────────────────────────────
 export default function PanelPedidos() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const navigate = useNavigate()
+  const negocioId = getNegocioId()
   const [pedidos, setPedidos] = useState([])
   const [filtroModalidad, setFiltroModalidad] = useState('todos')
   const [tabEstado, setTabEstado] = useState('nuevo')
@@ -393,16 +395,20 @@ export default function PanelPedidos() {
   const [pedidoDetalle, setPedidoDetalle] = useState(null)
   const [pedidoEditar, setPedidoEditar] = useState(null)
   const [showConfig, setShowConfig] = useState(false)
+  const [showConfigMapa, setShowConfigMapa] = useState(false)
+  const [mapaConfigTemp, setMapaConfigTemp] = useState(null)
+  const [mapaConfigOriginal, setMapaConfigOriginal] = useState(null)
+  const [guardandoMapa, setGuardandoMapa] = useState(false)
   const intervaloAlertaRef = useRef(null)
 
   // Lista de sonidos disponibles
   const SONIDOS_DISPONIBLES = [
-    { id: 'default', nombre: '🔔 Defecto', archivo: '/sounds/alert1.mp3' },
-    { id: 'chime', nombre: '✨ Campana', archivo: '/sounds/alert2.mp3' },
-    { id: 'ding', nombre: '📢 Ding', archivo: '/sounds/alert3.mp3' },
-    { id: 'pop', nombre: '💥 Pop', archivo: '/sounds/alert4.mp3' },
-    { id: 'notify', nombre: '📱 Notificacion', archivo: '/sounds/alert5.mp3' },
-    { id: 'bell', nombre: '🛎️ Timbre', archivo: '/sounds/alert6.mp3' },
+    { id: 'default', nombre: 'Sonido 1', archivo: '/sounds/alert1.mp3' },
+    { id: 'chime', nombre: 'Sonido 2', archivo: '/sounds/alert2.mp3' },
+    { id: 'ding', nombre: 'Sonido 3', archivo: '/sounds/alert3.mp3' },
+    { id: 'pop', nombre: 'Sonido 4', archivo: '/sounds/alert4.mp3' },
+    { id: 'notify', nombre: 'Sonido 5', archivo: '/sounds/alert5.mp3' },
+    { id: 'bell', nombre: 'Sonido 6', archivo: '/sounds/alert6.mp3' },
   ]
 
   // ✅ CONFIGURACIONES DEL PANEL DE PEDIDOS
@@ -443,38 +449,21 @@ export default function PanelPedidos() {
   // Funcion para reproducir sonido con diferentes tonos
   const reproducirSonido = (sonidoId = configPanel.sonidoSeleccionado) => {
     try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      const vol = configPanel.volumen * 0.25
-
+      // Alertas sonoras fuertes para notificaciones de pedidos
       const sonidos = {
-        default:    [[1200,80], [800,80], [1200,80], [800,80], [1200,80]],
-        chime:      [[900,150], [1400,150], [900,150], [1400,150]],
-        ding:       [[1500,100], [1500,100,50], [1500,100], [1500,100,50], [1500,200]],
-        pop:        [[700,70], [1100,70], [700,70], [1100,70], [700,70], [1100,70]],
-        notify:     [[1300,60], [0,30], [1300,60], [0,30], [1300,60], [0,30], [1300,120]],
-        bell:       [[1000,100], [1200,100], [1000,100], [1200,100], [1000,100], [1200,200]]
+        default:  'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',  // Alerta urgente
+        chime:    'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3',  // Alerta fuerte 1
+        ding:     'https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3',  // Alerta fuerte 2
+        pop:      'https://assets.mixkit.co/active_storage/sfx/2858/2858-preview.mp3',  // Alerta triple
+        notify:   'https://assets.mixkit.co/active_storage/sfx/2866/2866-preview.mp3',  // Alerta digital
+        bell:     'https://assets.mixkit.co/active_storage/sfx/2868/2868-preview.mp3',  // Timbre fuerte
       }
 
-      const secuencia = sonidos[sonidoId] || sonidos.default
-      let tiempo = 0
-
-      secuencia.forEach(([freq, duracion, espera = 0]) => {
-        setTimeout(() => {
-          const osc = audioContext.createOscillator()
-          const gain = audioContext.createGain()
-          osc.connect(gain)
-          gain.connect(audioContext.destination)
-          osc.frequency.value = freq
-          osc.type = 'sine'
-          gain.gain.value = vol
-          osc.start()
-          setTimeout(() => osc.stop(), duracion)
-        }, tiempo)
-        tiempo += duracion + espera
-      })
-      
+      const audio = new Audio(sonidos[sonidoId] || sonidos.default)
+      audio.volume = Math.max(configPanel.volumen, 0.7)  // Mínimo 70% de volumen
+      audio.play().catch(err => console.warn('Error reproduciendo sonido:', err))
     } catch (e) {
-      // Fallback silencioso
+      console.warn('Error inicializando audio:', e)
     }
   }
 
@@ -507,15 +496,22 @@ export default function PanelPedidos() {
     return () => clearInterval(interval)
   }, [cargarPedidos])
 
-  const onNuevoPedido = useCallback(() => {
+  const onNuevoPedido = useCallback(async (data) => {
     cargarPedidos()
     toast('🔔 Nuevo pedido recibido', { duration: 4000, position: 'top-right', icon: '🍔' })
-    
+
     // Reproducir sonido automaticamente
     if (configPanel.sonidoNuevoPedido) {
       reproducirSonido()
     }
-  }, [cargarPedidos, configPanel.sonidoNuevoPedido, configPanel.sonidoSeleccionado, configPanel.volumen])
+
+    // 4B. Impresión automática al recibir pedido
+    if (configPanel.imprimirAutomatico && data?.pedido) {
+      for (let i = 0; i < configPanel.cantidadCopias; i++) {
+        await generarComanda(data.pedido)
+      }
+    }
+  }, [cargarPedidos, configPanel.sonidoNuevoPedido, configPanel.sonidoSeleccionado, configPanel.volumen, configPanel.imprimirAutomatico, configPanel.cantidadCopias])
   useSocket(negocioId, onNuevoPedido, cargarPedidos)
 
   const porModalidad = pedidos.filter(p => filtroModalidad === 'todos' || p.modalidad === filtroModalidad)
@@ -563,6 +559,29 @@ export default function PanelPedidos() {
     }
   }, [cuentas.nuevo, configPanel.sonidoNuevoPedido, configPanel.intervaloAlertaSegundos, configPanel.sonidoSeleccionado, configPanel.volumen])
 
+  // 4A. Alerta por tiempo límite - Revisar pedidos antiguos cada minuto
+  useEffect(() => {
+    if (!configPanel.sonidoAlertaTiempo) return
+
+    const checkPedidosAntiguos = () => {
+      const ahora = Date.now()
+      pedidos.forEach(ped => {
+        if (['nuevo', 'en_preparacion'].includes(ped.estado)) {
+          const minutos = (ahora - new Date(ped.createdAt).getTime()) / 60000
+          if (minutos >= configPanel.tiempoAlertaMinutos) {
+            reproducirSonido(configPanel.sonidoSeleccionado)
+          }
+        }
+      })
+    }
+
+    // Ejecutar inmediatamente y luego cada minuto
+    checkPedidosAntiguos()
+    const interval = setInterval(checkPedidosAntiguos, 60000)
+
+    return () => clearInterval(interval)
+  }, [pedidos, configPanel.sonidoAlertaTiempo, configPanel.tiempoAlertaMinutos, configPanel.sonidoSeleccionado])
+
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--bg-main)' }}>
 
@@ -606,6 +625,38 @@ export default function PanelPedidos() {
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                </svg>
                Mapa
+             </button>
+             <button
+               onClick={() => {
+                 const configDefecto = {
+                   tema: 'standard',
+                   colorPinPagado: '#22c55e',
+                   colorPinPendiente: '#ef4444',
+                   colorFondo: '#f5f5f5',
+                   colorHeader: '#ffffff',
+                   colorTexto: '#1f2937',
+                   colorTextoSecundario: '#6b7280',
+                   colorNegocio: '#1f2937',
+                   tamanioPins: 'mediano',
+                   opacidadMapa: 1,
+                   tileLayer: 'standard',
+                   brillo: 0,
+                   contraste: 0,
+                   saturacion: 0,
+                   matiz: 0
+                 }
+                 const config = { ...configDefecto, ...(negocio?.configuracion?.mapaConfiguracion || {}) }
+                 // Guardar copia profunda de los valores originales
+                 setMapaConfigOriginal(JSON.parse(JSON.stringify(config)))
+                 setMapaConfigTemp(JSON.parse(JSON.stringify(config)))
+                 setShowConfigMapa(true)
+               }}
+               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
+               style={{ background: 'transparent', color: '#6b7280', border: '1.5px solid #e5e7eb' }}
+               title="Personalizar colores y estilo del mapa"
+             >
+               <span>🎨</span>
+               <span className="hidden lg:inline">Config. Mapa</span>
              </button>
              <button onClick={() => setShowOtros(true)}
                className="px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
@@ -704,7 +755,15 @@ export default function PanelPedidos() {
         {/* Mapa */}
         {showMapa && (
           <div className="flex-shrink-0 overflow-hidden" style={{ width: '48%', minWidth: 320, maxWidth: 680, borderLeft: '1px solid var(--border)' }}>
-            <MapaPedidos pedidos={todosParaMapa} negocio={negocio} />
+            <MapaPedidos
+              key={showConfigMapa && mapaConfigTemp ? JSON.stringify(mapaConfigTemp) : 'mapa-default'}
+              pedidos={todosParaMapa}
+              negocio={
+                showConfigMapa && mapaConfigTemp
+                  ? { ...negocio, configuracion: { ...negocio?.configuracion, mapaConfiguracion: mapaConfigTemp } }
+                  : negocio
+              }
+            />
           </div>
         )}
       </div>
@@ -855,6 +914,349 @@ export default function PanelPedidos() {
             <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
               <button onClick={() => setShowConfig(false)} className="w-full py-3 rounded-xl font-black text-white" style={{ background: '#7c3aed' }}>
                 Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Configuración del Mapa */}
+      {showConfigMapa && mapaConfigTemp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowConfigMapa(false)}>
+          <div className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>🗺️ Personalizar Mapa de Pedidos</h3>
+              <button onClick={() => setShowConfigMapa(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors" style={{ background: 'var(--bg-hover)' }}>
+                <svg className="w-4 h-4" style={{ color: 'var(--text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-6 max-h-[70vh] overflow-y-auto space-y-6">
+
+              {/* Tema */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Modo del Mapa
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setMapaConfigTemp({
+                      ...mapaConfigTemp,
+                      tema: 'standard',
+                      colorFondo: '#f5f5f5',
+                      colorHeader: '#ffffff',
+                      colorTexto: '#1f2937',
+                      colorTextoSecundario: '#6b7280',
+                      brillo: 0,
+                      contraste: 0,
+                      saturacion: 0,
+                      matiz: 0
+                    })}
+                    className={`py-3 px-4 rounded-lg border-2 font-medium transition ${
+                      mapaConfigTemp.tema === 'standard' ? 'border-violet-600 bg-violet-50' : 'border-gray-300'
+                    }`}
+                  >
+                    ☀️ Standard
+                  </button>
+                  <button
+                    onClick={() => setMapaConfigTemp({
+                      ...mapaConfigTemp,
+                      tema: 'oscuro',
+                      colorFondo: '#1a1a2e',
+                      colorHeader: '#16213e',
+                      colorTexto: '#ffffff',
+                      colorTextoSecundario: '#9ca3af',
+                      brillo: 0,
+                      contraste: 0,
+                      saturacion: 0,
+                      matiz: 0
+                    })}
+                    className={`py-3 px-4 rounded-lg border-2 font-medium transition ${
+                      mapaConfigTemp.tema === 'oscuro' ? 'border-violet-600 bg-violet-50' : 'border-gray-300'
+                    }`}
+                  >
+                    🌙 Modo Noche
+                  </button>
+                </div>
+              </div>
+
+              {/* Colores de Pins */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Colores de Pins de Pedidos
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Pin Pagado
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorPinPagado}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorPinPagado: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Pin Pendiente
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorPinPendiente}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorPinPendiente: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Colores de UI */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Colores de Interfaz
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Fondo del Contenedor
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorFondo}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorFondo: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Header/Toolbar
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorHeader}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorHeader: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Texto Principal (Header)
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorTexto}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorTexto: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Texto Secundario (Leyenda)
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorTextoSecundario}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorTextoSecundario: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                      Pin de Negocio
+                    </label>
+                    <input
+                      type="color"
+                      value={mapaConfigTemp.colorNegocio}
+                      onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, colorNegocio: e.target.value })}
+                      className="w-full h-10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Nota informativa */}
+              <div className="text-xs p-3 rounded-lg" style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+                <strong>💡 Nota:</strong> El tema del mapa (claro/oscuro) cambia las calles y el fondo base. Los colores personalizables son solo para los pines, header y textos de la interfaz.
+              </div>
+
+              {/* Tamaño de Pins */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Tamaño de Pins
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['pequeño', 'mediano', 'grande'].map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => setMapaConfigTemp({ ...mapaConfigTemp, tamanioPins: size })}
+                      className={`py-2 px-4 rounded-lg border-2 font-medium capitalize transition ${
+                        mapaConfigTemp.tamanioPins === size ? 'border-violet-600 bg-violet-50' : 'border-gray-300'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Opacidad del Mapa */}
+              <div>
+                <label className="block text-sm font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  Opacidad del Mapa Base: {Math.round(mapaConfigTemp.opacidadMapa * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0.3"
+                  max="1"
+                  step="0.1"
+                  value={mapaConfigTemp.opacidadMapa}
+                  onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, opacidadMapa: parseFloat(e.target.value) })}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Filtros del Mapa Base */}
+              <div className="border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                <h4 className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+                  🎨 Ajustes del Mapa Base (Calles y Fondo)
+                </h4>
+
+                {/* Brillo */}
+                <div className="mb-4">
+                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Brillo: {mapaConfigTemp.brillo > 0 ? '+' : ''}{Math.round((mapaConfigTemp.brillo || 0) * 100)}%
+                    {mapaConfigTemp.brillo === 0 && ' (Balance)'}
+                  </label>
+                  <input
+                    type="range"
+                    min="-0.5"
+                    max="0.5"
+                    step="0.05"
+                    value={mapaConfigTemp.brillo || 0}
+                    onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, brillo: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    <span>← Más oscuro</span>
+                    <span className="font-bold">Balance</span>
+                    <span>Más claro →</span>
+                  </div>
+                </div>
+
+                {/* Contraste */}
+                <div className="mb-4">
+                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Contraste: {mapaConfigTemp.contraste > 0 ? '+' : ''}{Math.round((mapaConfigTemp.contraste || 0) * 100)}%
+                    {mapaConfigTemp.contraste === 0 && ' (Balance)'}
+                  </label>
+                  <input
+                    type="range"
+                    min="-0.5"
+                    max="0.5"
+                    step="0.05"
+                    value={mapaConfigTemp.contraste || 0}
+                    onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, contraste: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    <span>← Menos</span>
+                    <span className="font-bold">Balance</span>
+                    <span>Más →</span>
+                  </div>
+                </div>
+
+                {/* Saturación */}
+                <div className="mb-4">
+                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Saturación: {mapaConfigTemp.saturacion > 0 ? '+' : ''}{Math.round((mapaConfigTemp.saturacion || 0) * 100)}%
+                    {mapaConfigTemp.saturacion === 0 && ' (Balance)'}
+                  </label>
+                  <input
+                    type="range"
+                    min="-1"
+                    max="1"
+                    step="0.1"
+                    value={mapaConfigTemp.saturacion || 0}
+                    onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, saturacion: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    <span>← B&N</span>
+                    <span className="font-bold">Balance</span>
+                    <span>Intenso →</span>
+                  </div>
+                </div>
+
+                {/* Matiz */}
+                <div className="mb-4">
+                  <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
+                    Matiz: {mapaConfigTemp.matiz > 0 ? '+' : ''}{Math.round(mapaConfigTemp.matiz || 0)}°
+                    {mapaConfigTemp.matiz === 0 && ' (Original)'}
+                  </label>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="10"
+                    value={mapaConfigTemp.matiz || 0}
+                    onChange={(e) => setMapaConfigTemp({ ...mapaConfigTemp, matiz: parseFloat(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                    <span>← Cambiar</span>
+                    <span className="font-bold">Original</span>
+                    <span>Cambiar →</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div className="px-6 py-4 flex gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+              <button
+                onClick={async () => {
+                  try {
+                    setGuardandoMapa(true)
+                    const updatedConfig = {
+                      ...negocio.configuracion,
+                      mapaConfiguracion: mapaConfigTemp
+                    }
+                    await api.put(`/negocios/${negocio.id}`, { configuracion: updatedConfig })
+                    setNegocio({ ...negocio, configuracion: updatedConfig })
+                    toast.success('Configuración del mapa guardada')
+                    setShowConfigMapa(false)
+                  } catch (err) {
+                    toast.error('Error al guardar configuración')
+                  } finally {
+                    setGuardandoMapa(false)
+                  }
+                }}
+                disabled={guardandoMapa}
+                className="flex-1 py-3 rounded-xl font-black text-white transition"
+                style={{ background: guardandoMapa ? '#9ca3af' : '#7c3aed' }}
+              >
+                {guardandoMapa ? 'Guardando...' : '💾 Guardar'}
+              </button>
+              <button
+                onClick={() => {
+                  if (mapaConfigOriginal) {
+                    setMapaConfigTemp(JSON.parse(JSON.stringify(mapaConfigOriginal)))
+                  }
+                }}
+                className="px-6 py-3 rounded-xl font-bold transition"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
+              >
+                🔄 Restablecer
+              </button>
+              <button
+                onClick={() => setShowConfigMapa(false)}
+                className="px-6 py-3 rounded-xl font-bold transition"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)' }}
+              >
+                Cancelar
               </button>
             </div>
           </div>

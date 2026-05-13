@@ -15,53 +15,63 @@ const ESTADO_LABEL = {
   listo: 'Listo', en_camino: 'En camino',
 }
 
-// Colores por estado de pago (rojo = efectivo / impago, verde = pagado)
-const COLOR_PAGO = {
-  pagado: '#22c55e',
-  pendiente: '#ef4444',
-}
-
 // ─── Ícono pedido (color según pago) ─────────────────────
-function crearIconoPedido(numero, metodoPago) {
+function crearIconoPedido(numero, metodoPago, config) {
+  const tamanos = {
+    pequeño: { width: 28, height: 38, fontSize: 10 },
+    mediano: { width: 36, height: 48, fontSize: 11 },
+    grande: { width: 44, height: 58, fontSize: 12 }
+  }
+
+  const { width, height, fontSize } = tamanos[config.tamanioPins] || tamanos.mediano
   const isPagado = !['efectivo', 'efectivo_sin_descuento'].includes(metodoPago)
-  const color = isPagado ? COLOR_PAGO.pagado : COLOR_PAGO.pendiente
+  const color = isPagado ? config.colorPinPagado : config.colorPinPendiente
+
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
-      <filter id="sh" x="-30%" y="-20%" width="160%" height="150%">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 36 48">
+      <filter id="sh-${numero}" x="-30%" y="-20%" width="160%" height="150%">
         <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.4"/>
       </filter>
       <path d="M18 0C8.059 0 0 8.059 0 18c0 12 18 30 18 30S36 30 36 18C36 8.059 27.941 0 18 0z"
-        fill="${color}" filter="url(#sh)"/>
+        fill="${color}" filter="url(#sh-${numero})"/>
       <circle cx="18" cy="18" r="12" fill="white"/>
-      <text x="18" y="23" font-family="system-ui,sans-serif" font-size="11" font-weight="700"
+      <text x="18" y="23" font-family="system-ui,sans-serif" font-size="${fontSize}" font-weight="700"
         text-anchor="middle" fill="${color}">#${numero}</text>
     </svg>`
   return L.divIcon({
     html: svg,
-    iconSize: [36, 48],
-    iconAnchor: [18, 48],
-    popupAnchor: [0, -50],
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
+    popupAnchor: [0, -height - 2],
     className: ''
   })
 }
 
 // ─── Ícono del negocio (casa) ─────────────────────────────
-function crearIconoNegocio() {
+function crearIconoNegocio(config) {
+  const tamanos = {
+    pequeño: { width: 32, height: 42 },
+    mediano: { width: 40, height: 52 },
+    grande: { width: 48, height: 62 }
+  }
+
+  const { width, height } = tamanos[config.tamanioPins] || tamanos.mediano
+
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 40 52">
       <filter id="sh2" x="-30%" y="-20%" width="160%" height="150%">
         <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.5"/>
       </filter>
       <path d="M20 0C8.954 0 0 8.954 0 20c0 13.333 20 32 20 32S40 33.333 40 20C40 8.954 31.046 0 20 0z"
-        fill="#1f2937" filter="url(#sh2)"/>
+        fill="${config.colorNegocio}" filter="url(#sh2)"/>
       <circle cx="20" cy="20" r="14" fill="white"/>
-      <path d="M20 11l-9 8h3v8h5v-5h2v5h5v-8h3z" fill="#1f2937"/>
+      <path d="M20 11l-9 8h3v8h5v-5h2v5h5v-8h3z" fill="${config.colorNegocio}"/>
     </svg>`
   return L.divIcon({
     html: svg,
-    iconSize: [40, 52],
-    iconAnchor: [20, 52],
-    popupAnchor: [0, -54],
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height],
+    popupAnchor: [0, -height - 2],
     className: ''
   })
 }
@@ -105,6 +115,34 @@ function FitBounds({ coords }) {
 
 // ─── Componente principal ─────────────────────────────────
 export default function MapaPedidos({ pedidos, negocio = null }) {
+  // Extraer configuración del mapa con valores por defecto
+  const mapaConfig = negocio?.configuracion?.mapaConfiguracion || {
+    tema: 'standard',
+    colorPinPagado: '#22c55e',
+    colorPinPendiente: '#ef4444',
+    colorFondo: '#f5f5f5',
+    colorHeader: '#ffffff',
+    colorTexto: '#1f2937',
+    colorTextoSecundario: '#6b7280',
+    colorNegocio: '#1f2937',
+    tamanioPins: 'mediano',
+    opacidadMapa: 1,
+    tileLayer: 'standard',
+    // Filtros CSS para personalizar el mapa base (valores relativos)
+    brillo: 0,
+    contraste: 0,
+    saturacion: 0,
+    matiz: 0
+  }
+
+  // Convertir valores relativos a valores CSS absolutos
+  // Si está en modo oscuro, aplicar filtros base + ajustes del usuario
+  const modoOscuro = mapaConfig.tema === 'oscuro'
+  const brilloCSS = modoOscuro ? 0.6 + (mapaConfig.brillo || 0) : 1 + (mapaConfig.brillo || 0)
+  const contrasteCSS = modoOscuro ? 1.1 + (mapaConfig.contraste || 0) : 1 + (mapaConfig.contraste || 0)
+  const saturacionCSS = modoOscuro ? 0.7 + (mapaConfig.saturacion || 0) : 1 + (mapaConfig.saturacion || 0)
+  const matizCSS = modoOscuro ? 200 + (mapaConfig.matiz || 0) : (mapaConfig.matiz || 0)
+
   const [pinsData, setPinsData] = useState([])
   const [geocodificando, setGeocodificando] = useState(false)
   const [progreso, setProgreso] = useState(0)
@@ -171,24 +209,30 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
     ? [negocioCoords.lat, negocioCoords.lng]
     : [-34.6037, -58.3816]
 
-  const iconoNegocio = crearIconoNegocio()
+  const iconoNegocio = crearIconoNegocio(mapaConfig)
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a2e]">
+    <div className="flex flex-col h-full" style={{ backgroundColor: mapaConfig.colorFondo }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#16213e] border-b border-[#0f3460] flex-shrink-0">
+      <div
+        className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        style={{
+          backgroundColor: mapaConfig.colorHeader,
+          borderBottom: `1px solid ${mapaConfig.colorTextoSecundario}40`
+        }}
+      >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" style={{ color: mapaConfig.colorTexto }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span className="text-sm font-semibold text-white">Mapa en vivo</span>
+            <span className="text-sm font-semibold" style={{ color: mapaConfig.colorTexto }}>Mapa en vivo</span>
           </div>
           {geocodificando && (
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">Localizando... {progreso}%</span>
+              <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Localizando... {progreso}%</span>
             </div>
           )}
         </div>
@@ -196,16 +240,16 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
         {/* Leyenda */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_PAGO.pendiente }} />
-            <span className="text-xs text-gray-600 dark:text-gray-400">Efectivo (pendiente)</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: mapaConfig.colorPinPendiente }} />
+            <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Efectivo (pendiente)</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_PAGO.pagado }} />
-            <span className="text-xs text-gray-600 dark:text-gray-400">Pagado</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: mapaConfig.colorPinPagado }} />
+            <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Pagado</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-gray-800 border border-white/30" />
-            <span className="text-xs text-gray-600 dark:text-gray-400">Negocio</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: mapaConfig.colorNegocio, border: '1px solid rgba(255,255,255,0.3)' }} />
+            <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Negocio</span>
           </div>
         </div>
       </div>
@@ -215,14 +259,19 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
         <MapContainer
           center={centroDefault}
           zoom={12}
-          style={{ height: '100%', width: '100%' }}
+          style={{
+            height: '100%',
+            width: '100%',
+            filter: `brightness(${brilloCSS}) contrast(${contrasteCSS}) saturate(${saturacionCSS}) hue-rotate(${matizCSS}deg)`
+          }}
           zoomControl={false}
         >
           <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
-            maxZoom={20}
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+            subdomains="abc"
+            maxZoom={19}
+            opacity={mapaConfig.opacidadMapa}
           />
 
           {coordsParaFit.length > 0 && <FitBounds coords={coordsParaFit} />}
@@ -231,8 +280,8 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
           {negocioCoords && (
             <Marker position={[negocioCoords.lat, negocioCoords.lng]} icon={iconoNegocio}>
               <Popup minWidth={180} autoClose={true} closeOnClick={true}>
-                <div style={{ fontFamily: 'system-ui,sans-serif', padding: '2px' }}>
-                  <p style={{ fontWeight: 700, fontSize: 14, color: '#111', marginBottom: 4 }}>
+                <div style={{ fontFamily: 'system-ui,sans-serif', padding: '2px', color: '#111' }}>
+                  <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
                     📍 Tu negocio
                   </p>
                   {negocio?.direccion && (
@@ -253,7 +302,7 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
               <Marker
                 key={pedido.id}
                 position={[lat, lng]}
-                icon={crearIconoPedido(pedido.numero, pedido.metodoPago)}
+                icon={crearIconoPedido(pedido.numero, pedido.metodoPago, mapaConfig)}
               >
                 <Popup minWidth={220} className="pedido-popup">
                   <div style={{ fontFamily: 'system-ui,sans-serif', padding: '2px' }}>
@@ -298,12 +347,12 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
 
         {pedidosDelivery.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-8 py-6 text-center text-white">
+            <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-8 py-6 text-center" style={{ color: mapaConfig.colorTexto }}>
               <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
               <p className="font-semibold text-sm">Sin pedidos delivery activos</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Los pines aparecen al recibir pedidos</p>
+              <p className="text-xs mt-1" style={{ color: mapaConfig.colorTextoSecundario }}>Los pines aparecen al recibir pedidos</p>
             </div>
           </div>
         )}
@@ -311,21 +360,33 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
 
       {/* Lista debajo del mapa */}
       {pedidosDelivery.length > 0 && (
-        <div className="flex-shrink-0 max-h-36 overflow-y-auto bg-[#16213e] border-t border-[#0f3460]">
+        <div
+          className="flex-shrink-0 max-h-36 overflow-y-auto"
+          style={{
+            backgroundColor: mapaConfig.colorHeader,
+            borderTop: `1px solid ${mapaConfig.colorTextoSecundario}40`
+          }}
+        >
           {pedidosDelivery.map(p => {
             const pinEncontrado = pinsData.find(d => d.pedido.id === p.id)
             const isPagado = p.metodoPago !== 'efectivo'
             return (
-              <div key={p.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#0f3460]/50 hover:bg-[#0f3460]/30 transition-colors">
+              <div
+                key={p.id}
+                className="flex items-center gap-3 px-4 py-2.5 transition-colors"
+                style={{
+                  borderBottom: `1px solid ${mapaConfig.colorTextoSecundario}30`
+                }}
+              >
                 <div className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: isPagado ? COLOR_PAGO.pagado : COLOR_PAGO.pendiente }} />
-                <span className="text-xs font-bold text-gray-600 dark:text-gray-400 w-8">#{p.numero}</span>
-                <span className="text-sm text-gray-200 flex-1 truncate">{p.clienteNombre}</span>
-                <span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-32 hidden md:block">{p.clienteDireccion}</span>
+                  style={{ background: isPagado ? mapaConfig.colorPinPagado : mapaConfig.colorPinPendiente }} />
+                <span className="text-xs font-bold w-8" style={{ color: mapaConfig.colorTextoSecundario }}>#{p.numero}</span>
+                <span className="text-sm flex-1 truncate" style={{ color: mapaConfig.colorTexto }}>{p.clienteNombre}</span>
+                <span className="text-xs truncate max-w-32 hidden md:block" style={{ color: mapaConfig.colorTextoSecundario }}>{p.clienteDireccion}</span>
                 {pinEncontrado ? (
                   <span className="text-xs text-green-400">📍 localizado</span>
                 ) : geocodificando ? (
-                  <span className="text-xs text-gray-700 dark:text-gray-300">buscando...</span>
+                  <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>buscando...</span>
                 ) : (
                   <span className="text-xs text-yellow-500">sin coords</span>
                 )}

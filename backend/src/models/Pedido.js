@@ -18,14 +18,18 @@ module.exports = (sequelize, DataTypes) => {
     subtotal: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     costoEnvio: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     descuento: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+    descuentosDetalles: { type: DataTypes.JSONB, allowNull: true, defaultValue: null, field: 'descuentos_detalles' },
     propina: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     total: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     metodoPago: {
-      type: DataTypes.ENUM('efectivo', 'transferencia', 'tarjeta', 'efectivo_sin_descuento'),
+      type: DataTypes.ENUM('efectivo', 'transferencia', 'tarjeta', 'efectivo_sin_descuento', 'mercado_pago'),
       defaultValue: 'efectivo'
     },
     notas: { type: DataTypes.TEXT, defaultValue: '' },
     cobrado: { type: DataTypes.BOOLEAN, defaultValue: false },
+    transaccionMPId: { type: DataTypes.STRING, allowNull: true },
+    transaccionMPEstado: { type: DataTypes.STRING, allowNull: true },
+    transaccionMPData: { type: DataTypes.JSONB, allowNull: true, defaultValue: {} },
     tiempoEstimado: { type: DataTypes.INTEGER, defaultValue: 30 },
     requiereFactura: { type: DataTypes.BOOLEAN, defaultValue: false },
     cuitFacturacion: { type: DataTypes.STRING, allowNull: true }

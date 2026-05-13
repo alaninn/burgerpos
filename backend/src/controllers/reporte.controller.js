@@ -9,8 +9,8 @@ exports.resumen = async (req, res) => {
 
     const iniStr = fechaDesde || new Date().toISOString().split('T')[0];
     const finStr = fechaHasta || new Date().toISOString().split('T')[0];
-    const ini = new Date(iniStr + 'T03:00:00.000Z');
-    const fin = new Date(finStr + 'T26:59:59.999Z');
+    const ini = new Date(iniStr + 'T00:00:00.000Z');
+    const fin = new Date(finStr + 'T23:59:59.999Z');
 
     const where = {
       negocioId,
@@ -123,8 +123,8 @@ exports.exportar = async (req, res) => {
 
     const iniStr = fechaDesde || new Date().toISOString().split('T')[0];
     const finStr = fechaHasta || new Date().toISOString().split('T')[0];
-    const ini = new Date(iniStr + 'T03:00:00.000Z');
-    const fin = new Date(finStr + 'T26:59:59.999Z');
+    const ini = new Date(iniStr + 'T00:00:00.000Z');
+    const fin = new Date(finStr + 'T23:59:59.999Z');
 
     const pedidos = await Pedido.findAll({
       where: { negocioId, createdAt: { [Op.between]: [ini, fin] } },
@@ -178,6 +178,143 @@ exports.exportar = async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buf);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Endpoint de tendencia para Dashboard (facturación por día)
+exports.tendencia = async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const { desde } = req.query;
+
+    const { fn, col } = require('sequelize');
+
+    const pedidos = await Pedido.findAll({
+      where: {
+        negocioId,
+        estado: { [Op.ne]: 'cancelado' },
+        createdAt: { [Op.gte]: new Date(desde) }
+      },
+      attributes: [
+        [fn('DATE', col('createdAt')), 'fecha'],
+        [fn('SUM', col('total')), 'total'],
+        [fn('COUNT', col('id')), 'cantidad']
+      ],
+      group: [fn('DATE', col('createdAt'))],
+      order: [[fn('DATE', col('createdAt')), 'ASC']],
+      raw: true
+    });
+
+    res.json(pedidos);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Reporte de Productos más vendidos
+exports.productos = async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const { fechaDesde, fechaHasta } = req.query;
+
+    const { fn, col, literal } = require('sequelize');
+
+    const items = await ItemPedido.findAll({
+      include: [{
+        model: Pedido,
+        where: {
+          negocioId,
+          estado: { [Op.ne]: 'cancelado' },
+          createdAt: { [Op.between]: [fechaDesde, fechaHasta] }
+        },
+        attributes: []
+      }],
+      attributes: [
+        'productoNombre',
+        [fn('SUM', col('cantidad')), 'totalVendido'],
+        [fn('SUM', literal('cantidad * "precioVenta"')), 'totalFacturado'],
+        [fn('AVG', col('precioVenta')), 'precioPromedio']
+      ],
+      group: ['productoNombre'],
+      order: [[fn('SUM', col('cantidad')), 'DESC']],
+      limit: 50,
+      raw: true
+    });
+
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Reporte de Clientes
+exports.clientes = async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const { fechaDesde, fechaHasta } = req.query;
+
+    const { fn, col } = require('sequelize');
+
+    const clientes = await Pedido.findAll({
+      where: {
+        negocioId,
+        estado: { [Op.ne]: 'cancelado' },
+        createdAt: { [Op.between]: [fechaDesde, fechaHasta] }
+      },
+      attributes: [
+        'clienteNombre',
+        'clienteTelefono',
+        [fn('COUNT', col('id')), 'totalPedidos'],
+        [fn('SUM', col('total')), 'totalGastado'],
+        [fn('AVG', col('total')), 'ticketPromedio']
+      ],
+      group: ['clienteNombre', 'clienteTelefono'],
+      order: [[fn('SUM', col('total')), 'DESC']],
+      limit: 100,
+      raw: true
+    });
+
+    res.json(clientes);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Reporte de Repartidores
+exports.repartidores = async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const { fechaDesde, fechaHasta } = req.query;
+
+    const { fn, col } = require('sequelize');
+
+    const repartidores = await Pedido.findAll({
+      where: {
+        negocioId,
+        modalidad: 'delivery',
+        estado: { [Op.ne]: 'cancelado' },
+        createdAt: { [Op.between]: [fechaDesde, fechaHasta] },
+        repartidorId: { [Op.ne]: null }
+      },
+      include: [{
+        model: Repartidor,
+        attributes: ['nombre']
+      }],
+      attributes: [
+        'repartidorId',
+        [fn('COUNT', col('Pedido.id')), 'totalEntregas'],
+        [fn('SUM', col('total')), 'totalMonto'],
+        [fn('SUM', col('propina')), 'totalPropinas'],
+        [fn('AVG', col('total')), 'ticketPromedio']
+      ],
+      group: ['repartidorId', 'Repartidor.id', 'Repartidor.nombre'],
+      order: [[fn('COUNT', col('Pedido.id')), 'DESC']],
+      raw: true
+    });
+
+    res.json(repartidores);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

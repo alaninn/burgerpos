@@ -635,11 +635,13 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
     nombre: '', descripcion: '', precioVenta: '', precioCosto: '',
     activo: true, sugerido: false, categoriaId: categorias[0]?.id || '',
     stock: null,
+    descuentoId: null,
     ...producto
   })
   const [variantes, setVariantes] = useState([])
   const [gruposDisponibles, setGruposDisponibles] = useState([])
   const [gruposAsignados, setGruposAsignados] = useState([])
+  const [descuentosDisponibles, setDescuentosDisponibles] = useState([])
   const [adicionalesAbierto, setAdicionalesAbierto] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadingExtra, setLoadingExtra] = useState(false)
@@ -648,6 +650,15 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
     // Cargar grupos disponibles siempre
     api.get(`/negocios/${negocioId}/adicionales`)
       .then(({ data }) => setGruposDisponibles(data.grupos || []))
+      .catch(() => {})
+
+    // Cargar descuentos de categoría 'producto'
+    api.get(`/negocios/${negocioId}/descuentos`)
+      .then(({ data }) => {
+        const descProductos = (data.descuentos || [])
+          .filter(d => d.categoria === 'producto' && d.activo)
+        setDescuentosDisponibles(descProductos)
+      })
       .catch(() => {})
 
     if (!producto?.id) {
@@ -923,6 +934,53 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
             </div>
           )}
 
+          {/* ──────────────────────────────────────────────────── */}
+          {/* Descuento del producto */}
+          {/* ──────────────────────────────────────────────────── */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-2">
+              Descuento del producto
+            </label>
+
+            {esNuevo ? (
+              <p className="text-xs text-gray-600 dark:text-gray-400 italic">
+                Primero creá el producto, luego podés asignar un descuento.
+              </p>
+            ) : (
+              <div>
+                <select
+                  value={form.descuentoId || ''}
+                  onChange={e => setForm(f => ({ ...f, descuentoId: e.target.value || null }))}
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                  <option value="">Sin descuento</option>
+                  {descuentosDisponibles.map(d => (
+                    <option key={d.id} value={d.id}>
+                      {d.codigo} — {d.tipo === 'porcentaje' ? `${d.valor}%` : `$${Number(d.valor).toLocaleString('es-AR')}`} OFF
+                      {d.descripcion && ` — ${d.descripcion}`}
+                    </option>
+                  ))}
+                </select>
+
+                {descuentosDisponibles.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                    No hay descuentos de producto activos. Creá uno desde la sección Descuentos.
+                  </p>
+                )}
+
+                {form.descuentoId && (
+                  <div className="mt-2 p-2.5 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800">
+                    <p className="text-xs text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Este descuento se mostrará en el menú público y se aplicará automáticamente al precio
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Activo + Sugerido */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -962,8 +1020,8 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
 
 // ─── Página principal ─────────────────────────────────────
 export default function Menu() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const negocioId = getNegocioId()
   const [modalidad, setModalidad] = useState('delivery')
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState([])

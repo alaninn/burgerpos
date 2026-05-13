@@ -5,6 +5,7 @@ const { checkAcceso } = require('../middleware/checkPlan');
 
 router.use(protect, perteneceAlNegocio);
 router.post('/validar', ctrl.validar);
+router.get('/automaticos', ctrl.obtenerAutomaticos);
 router.get('/', ctrl.listar);
 router.post('/', checkAcceso('descuentos'), ctrl.crear);
 router.put('/:id', checkAcceso('descuentos'), ctrl.actualizar);

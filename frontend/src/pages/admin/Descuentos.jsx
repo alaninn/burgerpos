@@ -8,6 +8,7 @@ const CATEGORIAS = [
   { id: 'modalidad', label: 'Por modalidad', icon: '🛵', desc: 'Descuento automático en Delivery, Take Away o Salón' },
   { id: 'metodo_pago', label: 'Por método de pago', icon: '💳', desc: 'Descuento al pagar con efectivo, tarjeta o transferencia' },
   { id: 'global', label: 'Global', icon: '🌐', desc: 'Aplica a todos los pedidos automáticamente' },
+  { id: 'producto', label: 'Por producto', icon: '🍔', desc: 'Descuento manual asignable a productos específicos' },
 ]
 
 function ModalDescuento({ negocioId, descuento, categoria: catInicial, onClose, onSaved }) {
@@ -23,10 +24,12 @@ function ModalDescuento({ negocioId, descuento, categoria: catInicial, onClose, 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const esCupon = form.categoria === 'cupon'
+  const esProducto = form.categoria === 'producto'
   const esAuto = ['modalidad', 'metodo_pago', 'global'].includes(form.categoria)
 
   const guardar = async () => {
     if (esCupon && !form.codigo.trim()) return toast.error('El código es obligatorio')
+    if (esProducto && !form.codigo.trim()) return toast.error('El nombre es obligatorio')
     if (!form.valor) return toast.error('El valor es obligatorio')
     if (form.categoria === 'modalidad' && !form.modalidad) return toast.error('Seleccioná una modalidad')
     if (form.categoria === 'metodo_pago' && !form.metodoPagoDesc) return toast.error('Seleccioná un método de pago')
@@ -34,7 +37,7 @@ function ModalDescuento({ negocioId, descuento, categoria: catInicial, onClose, 
     try {
       const payload = {
         ...form,
-        codigo: esCupon ? form.codigo.toUpperCase().trim() : (form.categoria.toUpperCase() + '_AUTO'),
+        codigo: (esCupon || esProducto) ? form.codigo.toUpperCase().trim() : (form.categoria.toUpperCase() + '_AUTO'),
         valor: Number(form.valor),
         usosMax: form.usosMax ? Number(form.usosMax) : null,
         minimoCompra: form.minimoCompra ? Number(form.minimoCompra) : 0,
@@ -81,12 +84,14 @@ function ModalDescuento({ negocioId, descuento, categoria: catInicial, onClose, 
             </div>
           )}
 
-          {/* Código (solo cupones) */}
-          {esCupon && (
+          {/* Código (cupones y productos) */}
+          {(esCupon || esProducto) && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código del cupón *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {esCupon ? 'Código del cupón *' : 'Nombre del descuento *'}
+              </label>
               <input value={form.codigo} onChange={e => set('codigo', e.target.value.toUpperCase())}
-                placeholder="VERANO20"
+                placeholder={esCupon ? "VERANO20" : "PROMO_HAMBURGUESA"}
                 className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-violet-500"
               />
             </div>
@@ -243,6 +248,11 @@ function DescuentoCard({ d, onToggle, onEdit, onEliminar }) {
           {d.descripcion && <p className="text-xs text-gray-600 dark:text-gray-400">{d.descripcion}</p>}
           {d.modalidad && <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">📍 {d.modalidad}</p>}
           {d.metodoPagoDesc && <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">💳 {d.metodoPagoDesc}</p>}
+          {d.categoria === 'producto' && d.productos?.length > 0 && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              🍔 Asignado a {d.productos.length} producto{d.productos.length !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
         <div className="text-right flex-shrink-0 ml-3">
           <p className="text-2xl font-black text-violet-700 dark:text-violet-400">

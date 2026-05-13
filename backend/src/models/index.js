@@ -14,6 +14,11 @@ const Pedido         = require('./Pedido')(sequelize, DataTypes);
 const ItemPedido     = require('./ItemPedido')(sequelize, DataTypes);
 const Caja           = require('./Caja')(sequelize, DataTypes);
 const Descuento      = require('./Descuento')(sequelize, DataTypes);
+const PlatformConfig = require('./PlatformConfig')(sequelize, DataTypes);
+const MercadoPagoCredential = require('./MercadoPagoCredential')(sequelize, DataTypes);
+const ARCACredential = require('./ARCACredential')(sequelize, DataTypes);
+const ComprobanteElectronico = require('./ComprobanteElectronico')(sequelize, DataTypes);
+const TicketAccesoWSAA = require('./TicketAccesoWSAA')(sequelize, DataTypes);
 
 // ── Negocio → Usuario ─────────────────────────────────────
 Negocio.hasMany(Usuario,      { foreignKey: 'negocioId', as: 'usuarios' });
@@ -29,6 +34,10 @@ Producto.belongsTo(Negocio,   { foreignKey: 'negocioId', as: 'negocio' });
 
 Categoria.hasMany(Producto,   { foreignKey: 'categoriaId', as: 'productos' });
 Producto.belongsTo(Categoria, { foreignKey: 'categoriaId', as: 'categoria' });
+
+// ── Producto → Descuento (opcional) ───────────────────────
+Producto.belongsTo(Descuento, { foreignKey: 'descuentoId', as: 'descuento' });
+Descuento.hasMany(Producto, { foreignKey: 'descuentoId', as: 'productos' });
 
 // ── Producto → Variantes ──────────────────────────────────
 Producto.hasMany(ProductoVariante,      { foreignKey: 'productoId', as: 'variantes', onDelete: 'CASCADE' });
@@ -88,6 +97,23 @@ Caja.belongsTo(Usuario,       { foreignKey: 'usuarioId', as: 'usuario' });
 Negocio.hasMany(Descuento,    { foreignKey: 'negocioId', as: 'descuentos' });
 Descuento.belongsTo(Negocio,  { foreignKey: 'negocioId', as: 'negocio' });
 
+// ── Negocio → MercadoPago OAuth ───────────────────────────
+Negocio.hasOne(MercadoPagoCredential, { foreignKey: 'negocioId', as: 'mercadoPagoCredential' });
+MercadoPagoCredential.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
+// ── Negocio → ARCA Facturación ────────────────────────────
+Negocio.hasOne(ARCACredential, { foreignKey: 'negocioId', as: 'arcaCredential' });
+ARCACredential.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
+Negocio.hasMany(ComprobanteElectronico, { foreignKey: 'negocioId', as: 'comprobantes' });
+ComprobanteElectronico.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
+Pedido.hasOne(ComprobanteElectronico, { foreignKey: 'pedidoId', as: 'comprobante' });
+ComprobanteElectronico.belongsTo(Pedido, { foreignKey: 'pedidoId', as: 'pedido' });
+
+Negocio.hasMany(TicketAccesoWSAA, { foreignKey: 'negocioId', as: 'ticketsWSAA' });
+TicketAccesoWSAA.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
 // ── Exportar ──────────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -103,5 +129,10 @@ module.exports = {
   Pedido,
   ItemPedido,
   Caja,
-  Descuento
+  Descuento,
+  PlatformConfig,
+  MercadoPagoCredential,
+  ARCACredential,
+  ComprobanteElectronico,
+  TicketAccesoWSAA
 };

@@ -16,78 +16,240 @@ const ESTADO_LABEL = {
   en_camino: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado',
 }
 
-// ─── Modal pedidos de un repartidor ──────────────────────
-function ModalPedidosRepartidor({ negocioId, repartidor, fechaDesde, onClose }) {
+// ─── Modal detalles repartidor con estadísticas ──────────
+function ModalDetallesRepartidor({ negocioId, repartidor, onClose, onUpdate }) {
+  const [periodo, setPeriodo] = useState('hoy')
+  const [stats, setStats] = useState(null)
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [editando, setEditando] = useState(false)
+  const [form, setForm] = useState({ nombre: repartidor.nombre, telefono: repartidor.telefono || '', activo: repartidor.activo })
+
+  const calcularFechas = (per) => {
+    const hoy = new Date()
+    let desde = new Date()
+
+    switch(per) {
+      case 'hoy':
+        desde = new Date(hoy.setHours(0,0,0,0))
+        break
+      case 'semana':
+        desde = new Date(hoy.setDate(hoy.getDate() - 7))
+        break
+      case 'mes':
+        desde = new Date(hoy.setMonth(hoy.getMonth() - 1))
+        break
+      case 'trimestre':
+        desde = new Date(hoy.setMonth(hoy.getMonth() - 3))
+        break
+    }
+
+    return desde.toISOString().split('T')[0]
+  }
 
   useEffect(() => {
-    const params = new URLSearchParams({ fechaDesde, repartidorId: repartidor.id })
+    setLoading(true)
+    const fechaDesde = calcularFechas(periodo)
+    const params = new URLSearchParams({
+      fechaDesde,
+      repartidorId: repartidor.id,
+      modalidad: 'delivery'
+    })
+
     api.get(`/negocios/${negocioId}/pedidos?${params}`)
-      .then(({ data }) => setPedidos(data.pedidos || []))
-      .catch(() => setPedidos([]))
+      .then(({ data }) => {
+        const pedidosFiltrados = (data.pedidos || []).filter(p => p.repartidorId === repartidor.id)
+        setPedidos(pedidosFiltrados)
+
+        // Calcular estadísticas
+        const totalPedidos = pedidosFiltrados.length
+        const totalMonto = pedidosFiltrados.reduce((s, p) => s + Number(p.total || 0), 0)
+        const totalPropinas = pedidosFiltrados.reduce((s, p) => s + Number(p.propina || 0), 0)
+        const totalEnvios = pedidosFiltrados.reduce((s, p) => s + Number(p.costoEnvio || 0), 0)
+        const efectivo = pedidosFiltrados.filter(p => ['efectivo','efectivo_sin_descuento'].includes(p.metodoPago)).reduce((s, p) => s + Number(p.total || 0), 0)
+        const online = totalMonto - efectivo
+        const entregados = pedidosFiltrados.filter(p => p.estado === 'entregado').length
+        const enCamino = pedidosFiltrados.filter(p => p.estado === 'en_camino').length
+        const ticketPromedio = totalPedidos > 0 ? totalMonto / totalPedidos : 0
+
+        setStats({
+          totalPedidos,
+          totalMonto,
+          totalPropinas,
+          totalEnvios,
+          efectivo,
+          online,
+          entregados,
+          enCamino,
+          ticketPromedio
+        })
+      })
+      .catch(() => {
+        setPedidos([])
+        setStats(null)
+      })
       .finally(() => setLoading(false))
-  }, [negocioId, repartidor.id, fechaDesde])
+  }, [negocioId, repartidor.id, periodo])
+
+  const guardarCambios = async () => {
+    try {
+      await api.put(`/negocios/${negocioId}/repartidores/${repartidor.id}`, form)
+      toast.success('Repartidor actualizado')
+      setEditando(false)
+      onUpdate()
+    } catch {
+      toast.error('Error al actualizar')
+    }
+  }
 
   const totalMonto = pedidos.reduce((s, p) => s + Number(p.total || 0), 0)
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Pedidos — {repartidor.nombre}</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Desde {new Date(fechaDesde + 'T12:00:00').toLocaleDateString('es-AR')}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+              {repartidor.nombre.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              {editando ? (
+                <input
+                  value={form.nombre}
+                  onChange={e => setForm({ ...form, nombre: e.target.value })}
+                  className="font-semibold text-lg bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded"
+                />
+              ) : (
+                <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{repartidor.nombre}</h3>
+              )}
+              {editando ? (
+                <input
+                  value={form.telefono}
+                  onChange={e => setForm({ ...form, telefono: e.target.value })}
+                  placeholder="Teléfono"
+                  className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded mt-1"
+                />
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-gray-400">{repartidor.telefono || 'Sin teléfono'}</p>
+              )}
+            </div>
+            <span className={`ml-2 px-2.5 py-1 rounded-full text-xs font-semibold ${repartidor.activo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+              {repartidor.activo ? 'Activo' : 'Inactivo'}
+            </span>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-            <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {editando ? (
+              <>
+                <button onClick={() => setEditando(false)} className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+                  Cancelar
+                </button>
+                <button onClick={guardarCambios} className="px-3 py-1.5 text-sm bg-violet-600 text-white rounded-lg hover:bg-violet-700">
+                  Guardar
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setEditando(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-7 h-7 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+        {/* Filtro de período */}
+        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Período:</span>
+            {['hoy', 'semana', 'mes', 'trimestre'].map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriodo(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  periodo === p
+                    ? 'bg-violet-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}>
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Estadísticas */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-3 border-violet-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : stats && (
+          <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+              <div className="text-xs opacity-90 mb-1">Total Pedidos</div>
+              <div className="text-2xl font-bold">{stats.totalPedidos}</div>
+              <div className="text-xs opacity-75 mt-1">{stats.entregados} entregados</div>
             </div>
-          ) : pedidos.length === 0 ? (
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+              <div className="text-xs opacity-90 mb-1">Facturado</div>
+              <div className="text-2xl font-bold">${Number(stats.totalMonto).toLocaleString('es-AR')}</div>
+              <div className="text-xs opacity-75 mt-1">Promedio: ${Number(stats.ticketPromedio).toLocaleString('es-AR')}</div>
+            </div>
+            <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl p-4 text-white">
+              <div className="text-xs opacity-90 mb-1">Propinas</div>
+              <div className="text-2xl font-bold">${Number(stats.totalPropinas).toLocaleString('es-AR')}</div>
+              <div className="text-xs opacity-75 mt-1">Envíos: ${Number(stats.totalEnvios).toLocaleString('es-AR')}</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-4 text-white">
+              <div className="text-xs opacity-90 mb-1">Efectivo</div>
+              <div className="text-2xl font-bold">${Number(stats.efectivo).toLocaleString('es-AR')}</div>
+              <div className="text-xs opacity-75 mt-1">Online: ${Number(stats.online).toLocaleString('es-AR')}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de pedidos */}
+        <div className="flex-1 overflow-y-auto px-6">
+          <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3 sticky top-0 bg-white dark:bg-gray-800 py-2">
+            Detalle de pedidos ({pedidos.length})
+          </h4>
+          {pedidos.length === 0 ? (
             <div className="text-center py-12 text-gray-600 dark:text-gray-400">
               <div className="text-3xl mb-2">📦</div>
               <p className="text-sm">Sin pedidos en este período</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0">
-                <tr>
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">N°</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">Cliente</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">Estado</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">Pago</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-300">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {pedidos.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-5 py-3 font-bold text-violet-600 dark:text-violet-400">N°{p.numero}</td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{p.clienteNombre || '—'}</td>
-                    <td className="px-4 py-3">
+            <div className="space-y-2 pb-4">
+              {pedidos.map(p => (
+                <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-violet-600 dark:text-violet-400">N°{p.numero}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ESTADO_BADGE[p.estado]}`}>
                         {ESTADO_LABEL[p.estado]}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300 capitalize text-xs">{p.metodoPago?.replace('_', ' ')}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-900 dark:text-gray-100">${Number(p.total).toLocaleString('es-AR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{p.clienteNombre || 'Sin nombre'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{p.clienteDireccion || 'Sin dirección'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900 dark:text-gray-100">${Number(p.total).toLocaleString('es-AR')}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">{p.metodoPago?.replace('_', ' ')}</p>
+                    {p.propina > 0 && (
+                      <p className="text-xs text-green-600 dark:text-green-400">+${Number(p.propina).toLocaleString('es-AR')} propina</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
+        {/* Footer totales */}
         {!loading && pedidos.length > 0 && (
-          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between text-sm flex-shrink-0">
-            <span className="text-gray-700 dark:text-gray-300">{pedidos.length} pedidos</span>
-            <span className="font-semibold text-gray-900 dark:text-gray-100">Total: ${totalMonto.toLocaleString('es-AR')}</span>
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between text-sm flex-shrink-0">
+            <span className="text-gray-700 dark:text-gray-300 font-medium">{pedidos.length} pedidos</span>
+            <span className="font-bold text-gray-900 dark:text-gray-100">Total: ${totalMonto.toLocaleString('es-AR')}</span>
           </div>
         )}
       </div>
@@ -153,14 +315,15 @@ function ModalRepartidor({ negocioId, repartidor, onClose, onSaved }) {
 
 // ─── Página principal ─────────────────────────────────────
 export default function Repartidores() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const negocioId = getNegocioId()
   const [tab, setTab] = useState('envios')
   const [repartidores, setRepartidores] = useState([])
+  const [statsHoy, setStatsHoy] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editRep, setEditRep] = useState(null)
-  const [pedidosRep, setPedidosRep] = useState(null) // repartidor para mostrar pedidos
+  const [detallesRep, setDetallesRep] = useState(null) // repartidor para mostrar detalles
   const [fechaDesde, setFechaDesde] = useState(new Date().toISOString().split('T')[0])
 
   const cargar = useCallback(() => {
@@ -172,7 +335,15 @@ export default function Repartidores() {
       .finally(() => setLoading(false))
   }, [negocioId, fechaDesde])
 
-  useEffect(() => { cargar() }, [cargar])
+  const cargarStatsHoy = useCallback(() => {
+    if (!negocioId) return
+    const hoy = new Date().toISOString().split('T')[0]
+    api.get(`/negocios/${negocioId}/reportes/repartidores?fechaDesde=${hoy}&fechaHasta=${hoy}`)
+      .then(({ data }) => setStatsHoy(data || []))
+      .catch(() => setStatsHoy([]))
+  }, [negocioId])
+
+  useEffect(() => { cargar(); cargarStatsHoy() }, [cargar, cargarStatsHoy])
 
   const eliminar = async (id) => {
     if (!confirm('¿Eliminar este repartidor?')) return
@@ -202,6 +373,62 @@ export default function Repartidores() {
         </button>
       </div>
 
+      {/* Estadísticas del día */}
+      {statsHoy.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">📊 Rendimiento de Hoy</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {statsHoy.map((stat, idx) => {
+              const gradientes = [
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+              ]
+              const gradient = gradientes[idx % gradientes.length]
+
+              return (
+                <div key={stat.repartidorId || idx}
+                  style={{ background: gradient }}
+                  className="rounded-2xl p-6 text-white shadow-lg hover:shadow-2xl transition-all">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">{stat['Repartidor.nombre'] || 'Sin nombre'}</h3>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                      <span className="font-medium">Entregas</span>
+                      <span className="font-bold text-lg">{stat.totalEntregas || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                      <span className="font-medium">Monto total</span>
+                      <span className="font-bold">${Number(stat.totalMonto || 0).toLocaleString('es-AR')}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                      <span className="font-medium">Propinas</span>
+                      <span className="font-bold text-yellow-200">${Number(stat.totalPropinas || 0).toLocaleString('es-AR')}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                      <span className="font-medium">Ticket prom.</span>
+                      <span className="font-bold">${Number(stat.ticketPromedio || 0).toLocaleString('es-AR')}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Filtro fecha */}
       <div className="flex items-center gap-3 mb-6">
         <label className="text-sm text-gray-700 dark:text-gray-300">Desde</label>
@@ -215,24 +442,23 @@ export default function Repartidores() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {activos.map(rep => (
-            <div key={rep.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div key={rep.id}
+              onClick={() => setDetallesRep(rep)}
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-violet-300 dark:hover:border-violet-600">
               <div className="flex items-center justify-between mb-4">
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200">{rep.nombre}</h3>
                   {rep.telefono && <p className="text-xs text-gray-600 dark:text-gray-400">{rep.telefono}</p>}
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPedidosRep(rep)}
-                    className="text-xs text-violet-600 dark:text-violet-400 font-medium hover:underline px-2 py-1 hover:bg-violet-50 dark:hover:bg-violet-900/30 rounded-lg transition-colors">
-                    Pedidos
-                  </button>
+                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <button onClick={() => { setEditRep(rep); setShowModal(true) }}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    title="Editar">
                     <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   </button>
                   <button onClick={() => eliminar(rep.id)}
-                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Eliminar">
                     <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
@@ -286,12 +512,12 @@ export default function Repartidores() {
         />
       )}
 
-      {pedidosRep && (
-        <ModalPedidosRepartidor
+      {detallesRep && (
+        <ModalDetallesRepartidor
           negocioId={negocioId}
-          repartidor={pedidosRep}
-          fechaDesde={fechaDesde}
-          onClose={() => setPedidosRep(null)}
+          repartidor={detallesRep}
+          onClose={() => setDetallesRep(null)}
+          onUpdate={() => { cargar(); cargarStatsHoy() }}
         />
       )}
     </div>

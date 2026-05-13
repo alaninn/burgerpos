@@ -36,6 +36,12 @@ exports.obtenerMenu = async (req, res) => {
               required: false,
               order: [['orden', 'ASC']]
             }]
+          },
+          {
+            model: Descuento,
+            as: 'descuento',
+            required: false,
+            attributes: ['id', 'codigo', 'tipo', 'valor', 'activo', 'descripcion']
           }
         ],
         order: [['orden', 'ASC'], ['nombre', 'ASC']],
@@ -75,7 +81,16 @@ exports.crearPedido = async (req, res) => {
 
     // Verificar productos y calcular precios desde DB (no confiar en el cliente)
     const productoIds = items.map(i => i.productoId).filter(Boolean);
-    const productos = await Producto.findAll({ where: { id: productoIds, negocioId, activo: true }, transaction: t });
+    const productos = await Producto.findAll({
+      where: { id: productoIds, negocioId, activo: true },
+      include: [{
+        model: Descuento,
+        as: 'descuento',
+        required: false,
+        attributes: ['id', 'tipo', 'valor', 'activo']
+      }],
+      transaction: t
+    });
     const productosMap = {};
     productos.forEach(p => { productosMap[p.id] = p; });
 
@@ -99,6 +114,14 @@ exports.crearPedido = async (req, res) => {
           precioBase = parseFloat(variante.precioVenta);
           varianteNombre = variante.nombre;
         }
+      }
+
+      // Aplicar descuento del producto si existe (validado desde BD)
+      if (prod.descuento && prod.descuento.activo) {
+        const montoDescProducto = prod.descuento.tipo === 'porcentaje'
+          ? Math.round((precioBase * parseFloat(prod.descuento.valor)) / 100)
+          : parseFloat(prod.descuento.valor);
+        precioBase = Math.max(0, precioBase - montoDescProducto);
       }
 
       // Precio de adicionales seleccionados
@@ -156,22 +179,88 @@ exports.crearPedido = async (req, res) => {
       }
     }
 
-    // Aplicar cupón si viene
+    // Aplicar descuentos automáticos (global, modalidad, método de pago)
     let descuentoVal = 0;
-    if (codigoCupon) {
+    const descuentosDetalles = []; // Array para auditoría
+
+    const descuentosAutomaticos = await Descuento.findAll({
+      where: {
+        negocioId,
+        activo: true,
+        aplicaAutomatico: true,
+        [Op.or]: [
+          { categoria: 'global' },
+          { categoria: 'modalidad', modalidad: modalidad },
+          { categoria: 'metodo_pago', metodoPagoDesc: metodoPago }
+        ]
+      },
+      transaction: t
+    });
+
+    for (const desc of descuentosAutomaticos) {
+      // Verificar compra mínima
+      if (desc.minimoCompra && subtotal < parseFloat(desc.minimoCompra)) {
+        continue;
+      }
+
+      // Calcular descuento con redondeo consistente
+      const monto = desc.tipo === 'porcentaje'
+        ? Math.round((subtotal * parseFloat(desc.valor)) / 100)
+        : parseFloat(desc.valor);
+
+      descuentoVal += monto;
+
+      // Guardar para auditoría
+      descuentosDetalles.push({
+        tipo: desc.categoria,
+        codigo: desc.codigo,
+        descripcion: desc.descripcion || `Descuento ${desc.categoria}`,
+        tipoValor: desc.tipo,
+        valor: parseFloat(desc.valor),
+        monto: monto
+      });
+
+      // Si no es acumulable, solo aplicar el primero
+      if (!desc.acumulable) break;
+    }
+
+    // Aplicar cupón si viene (adicional a descuentos automáticos)
+    if (codigoCupon && codigoCupon.trim().length > 0) {
       const cupon = await Descuento.findOne({
-        where: { negocioId, codigo: codigoCupon.toUpperCase(), activo: true },
+        where: { negocioId, codigo: codigoCupon.trim().toUpperCase(), activo: true },
         transaction: t
       });
       if (cupon && !(cupon.fechaVencimiento && new Date(cupon.fechaVencimiento) < new Date())
                 && !(cupon.usosMax && cupon.usosActuales >= cupon.usosMax)) {
-        descuentoVal = cupon.tipo === 'porcentaje'
-          ? (subtotal * parseFloat(cupon.valor)) / 100
+        const montoCupon = cupon.tipo === 'porcentaje'
+          ? Math.round((subtotal * parseFloat(cupon.valor)) / 100)
           : parseFloat(cupon.valor);
-        await cupon.update({ usosActuales: cupon.usosActuales + 1 }, { transaction: t });
+        descuentoVal += montoCupon; // Acumular con descuentos automáticos
+
+        // Guardar cupón en detalles
+        descuentosDetalles.push({
+          tipo: 'cupon',
+          codigo: cupon.codigo,
+          descripcion: cupon.descripcion || `Cupón ${cupon.codigo}`,
+          tipoValor: cupon.tipo,
+          valor: parseFloat(cupon.valor),
+          monto: montoCupon
+        });
+
+        await cupon.increment('usosActuales', { by: 1, transaction: t });
       }
     }
 
+    // Validar que el descuento no supere el subtotal
+    descuentoVal = Math.min(descuentoVal, subtotal);
+
+    // Cálculo del total del pedido
+    // ORDEN DE OPERACIONES:
+    // 1. Descuentos de producto: Ya aplicados en precioBase (línea 119-125)
+    // 2. Descuentos automáticos + cupones: Se aplican sobre el subtotal (acumulados en descuentoVal)
+    // 3. Costo de envío: Se suma después de los descuentos
+    // Formula: Total = (Subtotal - Descuentos) + Envío + Propina
+    // Nota: Matemáticamente equivalente a: Subtotal + Envío - Descuentos + Propina
     const total = Math.max(0, subtotal + costoEnvio - descuentoVal);
 
     const ultimo = await Pedido.findOne({ where: { negocioId }, order: [['numero', 'DESC']], transaction: t });
@@ -191,8 +280,12 @@ exports.crearPedido = async (req, res) => {
       clienteLng: clienteLng || null,
       metodoPago: metodoPago || 'efectivo',
       notas: notasFinales,
-      costoEnvio, descuento: descuentoVal, propina: 0,
-      subtotal, total
+      costoEnvio,
+      descuento: descuentoVal,
+      descuentosDetalles: descuentosDetalles.length > 0 ? descuentosDetalles : null,
+      propina: 0,
+      subtotal,
+      total
     }, { transaction: t });
 
     await ItemPedido.bulkCreate(itemsData.map(i => ({ ...i, pedidoId: pedido.id })), { transaction: t });
@@ -256,6 +349,91 @@ exports.buscarCliente = async (req, res) => {
     const cliente = await Cliente.findOne({ where, attributes: ['nombre', 'telefono', 'direccion', 'descuentoFijo'] });
     res.json({ success: true, cliente: cliente || null });
   } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.obtenerDescuentosAutomaticos = async (req, res) => {
+  try {
+    const negocio = await Negocio.findOne({ where: { slug: req.params.slug, activo: true } });
+    if (!negocio) return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
+
+    const { modalidad, metodoPago, subtotal } = req.query;
+    const descuentosAplicables = [];
+
+    // 1. Descuentos globales
+    const globales = await Descuento.findAll({
+      where: {
+        negocioId: negocio.id,
+        categoria: 'global',
+        activo: true,
+        aplicaAutomatico: true
+      },
+      attributes: ['id', 'codigo', 'descripcion', 'tipo', 'valor', 'minimoCompra']
+    });
+
+    // 2. Descuentos por modalidad
+    let porModalidad = [];
+    if (modalidad) {
+      porModalidad = await Descuento.findAll({
+        where: {
+          negocioId: negocio.id,
+          categoria: 'modalidad',
+          modalidad: modalidad,
+          activo: true,
+          aplicaAutomatico: true
+        },
+        attributes: ['id', 'codigo', 'descripcion', 'tipo', 'valor', 'minimoCompra']
+      });
+    }
+
+    // 3. Descuentos por método de pago
+    let porMetodoPago = [];
+    if (metodoPago) {
+      porMetodoPago = await Descuento.findAll({
+        where: {
+          negocioId: negocio.id,
+          categoria: 'metodo_pago',
+          metodoPagoDesc: metodoPago,
+          activo: true,
+          aplicaAutomatico: true
+        },
+        attributes: ['id', 'codigo', 'descripcion', 'tipo', 'valor', 'minimoCompra']
+      });
+    }
+
+    // Combinar y calcular
+    const todosDescuentos = [...globales, ...porModalidad, ...porMetodoPago];
+    const subtotalNum = parseFloat(subtotal) || 0;
+
+    for (const desc of todosDescuentos) {
+      // Verificar compra mínima
+      if (desc.minimoCompra && subtotalNum < parseFloat(desc.minimoCompra)) {
+        continue;
+      }
+
+      // Calcular monto
+      let monto = 0;
+      if (subtotalNum > 0) {
+        monto = desc.tipo === 'porcentaje'
+          ? (subtotalNum * parseFloat(desc.valor)) / 100
+          : parseFloat(desc.valor);
+        monto = Math.min(monto, subtotalNum); // No puede ser mayor al subtotal
+      }
+
+      descuentosAplicables.push({
+        id: desc.id,
+        codigo: desc.codigo,
+        descripcion: desc.descripcion || `Descuento ${desc.codigo}`,
+        tipo: desc.tipo,
+        valor: desc.valor,
+        monto: monto
+      });
+    }
+
+    res.json({ success: true, descuentos: descuentosAplicables });
+  } catch (err) {
+    console.error('Error obteniendo descuentos automáticos:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

@@ -333,9 +333,26 @@ function ProductoCustomizer({ producto, onAgregar, onCerrar }) {
   const [notas, setNotas] = useState('')
   const [cantidad, setCantidad] = useState(1)
 
-  const precioBase = varianteSeleccionada
+  // Verificar descuento
+  const tieneDescuento = producto.descuento && producto.descuento.activo
+  const descuento = tieneDescuento ? producto.descuento : null
+
+  // Precio base de la variante o producto
+  const precioBaseOriginal = varianteSeleccionada
     ? parseFloat(varianteSeleccionada.precioVenta || 0)
     : parseFloat(producto.precioVenta || 0)
+
+  // Aplicar descuento al precio base
+  let precioBase = precioBaseOriginal
+  if (descuento && descuento.valor != null && !isNaN(descuento.valor)) {
+    const valorDescuento = Number(descuento.valor)
+    const montoDescuento = descuento.tipo === 'porcentaje'
+      ? (precioBaseOriginal * valorDescuento) / 100
+      : valorDescuento
+    precioBase = Math.max(0, precioBaseOriginal - montoDescuento)
+  } else if (descuento) {
+    console.warn('⚠️ Descuento con valor inválido:', descuento)
+  }
 
   const precioExtras = Object.values(adicionalesMap).reduce(
     (s, a) => s + (parseFloat(a.precio) || 0) * a.cantidad, 0
@@ -440,7 +457,22 @@ function ProductoCustomizer({ producto, onAgregar, onCerrar }) {
           {producto.descripcion && (
             <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 line-clamp-2">{producto.descripcion}</p>
           )}
-          <p className="text-lg font-black text-violet-700 dark:text-violet-400 mt-1">${fmt(precioBase)}</p>
+          <div className="flex items-center gap-2 mt-1">
+            {descuento && descuento.valor != null && !isNaN(descuento.valor) && (
+              <>
+                <span className="text-sm line-through text-gray-500 dark:text-gray-400">${fmt(precioBaseOriginal)}</span>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-violet-600 text-white">
+                  -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${fmt(descuento.valor)}`}
+                </span>
+              </>
+            )}
+            {descuento && (!descuento.valor || isNaN(descuento.valor)) && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                ⚠️ Descuento inválido
+              </span>
+            )}
+            <p className="text-lg font-black text-violet-700 dark:text-violet-400">${fmt(precioBase)}</p>
+          </div>
         </div>
       </div>
 
@@ -449,18 +481,41 @@ function ProductoCustomizer({ producto, onAgregar, onCerrar }) {
           <div>
             <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-1.5">Elegir variante</p>
             <div className="space-y-2">
-              {producto.variantes.map(v => (
-                <button key={v.id} onClick={() => setVarianteSeleccionada(v)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all text-left ${varianteSeleccionada?.id === v.id ? 'border-violet-600 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:bg-gray-800'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${varianteSeleccionada?.id === v.id ? 'border-violet-600' : 'border-gray-300 dark:border-gray-600'}`}>
-                      {varianteSeleccionada?.id === v.id && <div className="w-2 h-2 bg-violet-600 rounded-full" />}
+              {producto.variantes.map(v => {
+                // Calcular precio con descuento para esta variante
+                const precioVarianteOriginal = parseFloat(v.precioVenta || 0)
+                let precioVariante = precioVarianteOriginal
+                if (descuento && descuento.valor != null && !isNaN(descuento.valor)) {
+                  const valorDescuento = Number(descuento.valor)
+                  const montoDescVar = descuento.tipo === 'porcentaje'
+                    ? (precioVarianteOriginal * valorDescuento) / 100
+                    : valorDescuento
+                  precioVariante = Math.max(0, precioVarianteOriginal - montoDescVar)
+                }
+
+                return (
+                  <button key={v.id} onClick={() => setVarianteSeleccionada(v)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all text-left ${varianteSeleccionada?.id === v.id ? 'border-violet-600 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:bg-gray-800'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${varianteSeleccionada?.id === v.id ? 'border-violet-600' : 'border-gray-300 dark:border-gray-600'}`}>
+                        {varianteSeleccionada?.id === v.id && <div className="w-2 h-2 bg-violet-600 rounded-full" />}
+                      </div>
+                      <span className="font-medium text-gray-800 dark:text-gray-200">{v.nombre}</span>
                     </div>
-                    <span className="font-medium text-gray-800 dark:text-gray-200">{v.nombre}</span>
-                  </div>
-                  <span className="font-bold text-violet-700 dark:text-violet-400">${fmt(v.precioVenta)}</span>
-                </button>
-              ))}
+                    <div className="flex items-center gap-2">
+                      {descuento && descuento.valor != null && !isNaN(descuento.valor) && (
+                        <>
+                          <span className="text-xs line-through text-gray-400 dark:text-gray-500">${fmt(precioVarianteOriginal)}</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-violet-600 text-white">
+                            -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${fmt(descuento.valor)}`}
+                          </span>
+                        </>
+                      )}
+                      <span className="font-bold text-violet-700 dark:text-violet-400">${fmt(precioVariante)}</span>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -671,6 +726,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
   const [productoCustom, setProductoCustom] = useState(null)
   const [loading, setLoading] = useState(false)
   const [paso, setPaso] = useState(pedidoExistente ? 2 : 1)
+  const [descuentosAutomaticos, setDescuentosAutomaticos] = useState([])
 
   // Aplicar config del negocio recibida como prop (métodos de pago habilitados + ciudad)
   useEffect(() => {
@@ -742,6 +798,29 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
     }).catch(() => { }).finally(() => setLoadingProds(false))
   }, [paso, negocioId])
 
+  // Cargar descuentos automáticos cuando cambien modalidad, método de pago o subtotal
+  useEffect(() => {
+    if (!modalidad || !metodoPago || paso !== 2) {
+      setDescuentosAutomaticos([])
+      return
+    }
+    const subtotalCalc = carrito.reduce((s, i) => s + i.precioUnitario * i.cantidad, 0)
+    if (subtotalCalc === 0) {
+      setDescuentosAutomaticos([])
+      return
+    }
+
+    api.get(`/negocios/${negocioId}/descuentos/automaticos`, {
+      params: { modalidad, metodoPago, subtotal: subtotalCalc }
+    })
+      .then(({ data }) => {
+        setDescuentosAutomaticos(data.descuentos || [])
+      })
+      .catch(() => {
+        setDescuentosAutomaticos([])
+      })
+  }, [negocioId, modalidad, metodoPago, carrito, paso])
+
   const productosFiltrados = productos.filter(p => {
     const matchCat = !busqueda && catActiva ? p.categoriaId === catActiva : true
     const matchBusq = busqueda ? p.nombre.toLowerCase().includes(busqueda.toLowerCase()) : true
@@ -768,7 +847,8 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
   const descuentoValor = descuentoTipo === 'porcentaje'
     ? Math.round(subtotal * descuento / 100)
     : descuento
-  const total = subtotal + envio - descuentoValor + propina
+  const descuentosAutomaticosValor = descuentosAutomaticos.reduce((sum, d) => sum + (d.monto || 0), 0)
+  const total = Math.max(0, subtotal + envio - descuentoValor - descuentosAutomaticosValor + propina)
 
   // Guardar dirección nueva en el cliente si corresponde
   const guardarDireccionEnCliente = async (cId, dir) => {
@@ -839,11 +919,12 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
         notas: i.notas || ''
       }))
 
+      const descuentoTotal = descuentoValor + descuentosAutomaticosValor
       const body = {
         modalidad, metodoPago,
         clienteNombre: clienteNombre || 'Cliente',
         clienteTelefono, clienteDireccion, notas,
-        descuento: descuentoValor,
+        descuento: descuentoTotal,
         costoEnvio: envio,
         propina,
         clienteId: cId || null,
@@ -976,6 +1057,18 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                   <span>Descuento</span><span className="font-mono">−${fmt(descuentoValor)}</span>
                 </div>
               )}
+              {descuentosAutomaticos.length > 0 && descuentosAutomaticos.map((desc, idx) => (
+                <div key={idx} className="flex justify-between text-xs text-violet-600 dark:text-violet-400">
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-violet-600 dark:bg-violet-400"></span>
+                    {desc.categoria === 'global' ? 'Descuento global' :
+                     desc.categoria === 'modalidad' ? 'Descuento modalidad' :
+                     desc.categoria === 'metodo_pago' ? 'Descuento método pago' : 'Descuento'}
+                    {desc.tipo === 'porcentaje' ? ` (${desc.valor}%)` : ''}
+                  </span>
+                  <span className="font-mono">−${fmt(desc.monto)}</span>
+                </div>
+              ))}
               {propina > 0 && (
                 <div className="flex justify-between text-xs text-gray-700 dark:text-gray-300">
                   <span>Propina</span><span className="font-mono">${fmt(propina)}</span>
@@ -1126,8 +1219,18 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-600 dark:text-gray-400 font-medium">
                     {descuentoTipo === 'porcentaje' ? '%' : '$'}
                   </span>
-                  <input type="number" value={descuento} onChange={e => setDescuento(Number(e.target.value))} min={0}
-                    max={descuentoTipo === 'porcentaje' ? 100 : undefined}
+                  <input type="number" value={descuento}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      // Validar máximo según tipo
+                      if (descuentoTipo === 'porcentaje') {
+                        setDescuento(Math.min(val, 100));
+                      } else {
+                        setDescuento(Math.min(val, subtotal)); // No puede superar subtotal
+                      }
+                    }}
+                    min={0}
+                    max={descuentoTipo === 'porcentaje' ? 100 : subtotal}
                     className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
                   {descuentoTipo === 'porcentaje' && subtotal > 0 && descuento > 0 && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-green-600 dark:text-green-400 font-medium">

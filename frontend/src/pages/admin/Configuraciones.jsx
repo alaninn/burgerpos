@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import EditorZonasMapa from '../../components/EditorZonasMapa'
+import MercadoPagoOAuthSection from '../../components/MercadoPagoOAuthSection'
+import ARCAConfigSection from '../../components/ARCAConfigSection'
 import ModalMapaGPS from '../../components/ModalMapaGPS'
 
 // Genera UUID compatible con HTTP (sin crypto.randomUUID que requiere HTTPS)
@@ -10,7 +13,7 @@ function generateSessionToken() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9)
 }
 
-const TABS = ['Modalidades', 'Pedidos', 'Horarios', 'Métodos de pago', 'Zonas de entrega', 'Redes sociales', 'Marketing', 'Integraciones']
+const TABS = ['Modalidades', 'Pedidos', 'Horarios', 'Métodos de pago', 'Zonas de entrega', 'Redes sociales', 'Marketing', 'Integraciones', 'Mapa de pedidos']
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 const METODOS_CONFIG = [
@@ -371,8 +374,9 @@ function defaultHorario() {
 }
 
 export default function Configuraciones() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const negocioId = getNegocioId()
+  const [searchParams] = useSearchParams()
   const [tabActiva, setTabActiva] = useState('Modalidades')
   const [negocio, setNegocio] = useState(null)
   const [config, setConfig] = useState(null)
@@ -400,6 +404,14 @@ export default function Configuraciones() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [negocioId])
+
+  // Leer parámetro tab de la URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && TABS.includes(tabParam)) {
+      setTabActiva(tabParam)
+    }
+  }, [searchParams])
 
   // Cargar estado WhatsApp SOLO cuando estamos en la pestaña Integraciones
   useEffect(() => {
@@ -758,6 +770,17 @@ export default function Configuraciones() {
                           </div>
                         )}
 
+                        {/* Campos especiales: Mercado Pago OAuth */}
+                        {(key === 'mercado_pago' || key === 'mercadopago') && (
+                          <MercadoPagoOAuthSection
+                            metodoActivo={cfg.activo}
+                            onStatusChange={(linked) => {
+                              // Callback cuando se vincula/desvincula
+                              console.log('MercadoPago vinculado:', linked)
+                            }}
+                          />
+                        )}
+
                         {/* Disponible en + Descuento/Recargo */}
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -1107,6 +1130,196 @@ export default function Configuraciones() {
                   className="w-full mt-2 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-50">
                   {savingWhatsapp ? 'Guardando...' : 'Guardar plantillas'}
                 </button>
+              </div>
+
+              {/* ARCA - Facturación Electrónica */}
+              <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">ARCA - Facturación Electrónica</h3>
+                <ARCAConfigSection negocioId={usuario?.negocioId} />
+              </div>
+            </div>
+          )}
+
+          {/* TAB MAPA DE PEDIDOS */}
+          {tabActiva === 'Mapa de pedidos' && (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">
+                  Personalización del Mapa de Pedidos
+                </h3>
+
+                {/* Tema */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    Tema del Mapa
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), tema: 'oscuro' } })}
+                      className={`py-3 px-4 rounded-lg border-2 font-medium transition ${
+                        config.mapaConfiguracion?.tema === 'oscuro'
+                          ? 'border-violet-600 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-violet-300'
+                      }`}
+                    >
+                      🌙 Oscuro
+                    </button>
+                    <button
+                      onClick={() => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), tema: 'claro' } })}
+                      className={`py-3 px-4 rounded-lg border-2 font-medium transition ${
+                        config.mapaConfiguracion?.tema === 'claro'
+                          ? 'border-violet-600 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-violet-300'
+                      }`}
+                    >
+                      ☀️ Claro
+                    </button>
+                  </div>
+                </div>
+
+                {/* Colores de Pins */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    Colores de Pins de Pedidos
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Pin Pagado
+                      </label>
+                      <input
+                        type="color"
+                        value={config.mapaConfiguracion?.colorPinPagado || '#22c55e'}
+                        onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), colorPinPagado: e.target.value } })}
+                        className="w-full h-10 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Pin Pendiente
+                      </label>
+                      <input
+                        type="color"
+                        value={config.mapaConfiguracion?.colorPinPendiente || '#ef4444'}
+                        onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), colorPinPendiente: e.target.value } })}
+                        className="w-full h-10 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Colores de UI */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    Colores de Interfaz
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Fondo del Mapa
+                      </label>
+                      <input
+                        type="color"
+                        value={config.mapaConfiguracion?.colorFondo || '#1a1a2e'}
+                        onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), colorFondo: e.target.value } })}
+                        className="w-full h-10 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Header/Toolbar
+                      </label>
+                      <input
+                        type="color"
+                        value={config.mapaConfiguracion?.colorHeader || '#16213e'}
+                        onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), colorHeader: e.target.value } })}
+                        className="w-full h-10 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Color de Texto
+                      </label>
+                      <input
+                        type="color"
+                        value={config.mapaConfiguracion?.colorTexto || '#ffffff'}
+                        onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), colorTexto: e.target.value } })}
+                        className="w-full h-10 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        Texto Secundario
+                      </label>
+                      <input
+                        type="color"
+                        value={config.mapaConfiguracion?.colorTextoSecundario || '#9ca3af'}
+                        onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), colorTextoSecundario: e.target.value } })}
+                        className="w-full h-10 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tamaño de Pins */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    Tamaño de Pins
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {['pequeño', 'mediano', 'grande'].map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), tamanioPins: size } })}
+                        className={`py-2 px-4 rounded-lg border-2 font-medium capitalize transition ${
+                          (config.mapaConfiguracion?.tamanioPins || 'mediano') === size
+                            ? 'border-violet-600 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-violet-300'
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Opacidad del Mapa */}
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
+                    Opacidad del Mapa Base: {Math.round((config.mapaConfiguracion?.opacidadMapa || 0.9) * 100)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0.3"
+                    max="1"
+                    step="0.1"
+                    value={config.mapaConfiguracion?.opacidadMapa || 0.9}
+                    onChange={(e) => setConfig({ ...config, mapaConfiguracion: { ...(config.mapaConfiguracion || {}), opacidadMapa: parseFloat(e.target.value) } })}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Botón Restaurar */}
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setConfig({ ...config, mapaConfiguracion: {
+                      tema: 'oscuro',
+                      colorPinPagado: '#22c55e',
+                      colorPinPendiente: '#ef4444',
+                      colorFondo: '#1a1a2e',
+                      colorHeader: '#16213e',
+                      colorTexto: '#ffffff',
+                      colorTextoSecundario: '#9ca3af',
+                      colorNegocio: '#1f2937',
+                      tamanioPins: 'mediano',
+                      opacidadMapa: 0.9,
+                      tileLayer: 'dark'
+                    }})}
+                    className="px-6 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                  >
+                    Restaurar Valores por Defecto
+                  </button>
+                </div>
               </div>
             </div>
           )}

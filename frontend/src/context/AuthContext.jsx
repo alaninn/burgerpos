@@ -7,6 +7,9 @@ export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(() => {
     try { return JSON.parse(localStorage.getItem('usuario')) } catch { return null }
   })
+  const [negocioGestionado, setNegocioGestionado] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('negocioGestionado')) } catch { return null }
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,8 +43,41 @@ export function AuthProvider({ children }) {
     setUsuario(null)
   }
 
+  const actualizarUsuario = (nuevoUsuario) => {
+    setUsuario(nuevoUsuario)
+    localStorage.setItem('usuario', JSON.stringify(nuevoUsuario))
+  }
+
+  const gestionarNegocio = (negocio) => {
+    setNegocioGestionado(negocio)
+    localStorage.setItem('negocioGestionado', JSON.stringify(negocio))
+  }
+
+  const salirDeGestion = () => {
+    setNegocioGestionado(null)
+    localStorage.removeItem('negocioGestionado')
+  }
+
+  // Helper para obtener el negocioId actual (gestionado o del usuario)
+  const getNegocioId = () => {
+    if (usuario?.rol === 'superadmin' && negocioGestionado) {
+      return negocioGestionado.id
+    }
+    return usuario?.negocioId
+  }
+
   return (
-    <AuthContext.Provider value={{ usuario, loading, login, logout }}>
+    <AuthContext.Provider value={{
+      usuario,
+      loading,
+      login,
+      logout,
+      actualizarUsuario,
+      negocioGestionado,
+      gestionarNegocio,
+      salirDeGestion,
+      getNegocioId
+    }}>
       {children}
     </AuthContext.Provider>
   )

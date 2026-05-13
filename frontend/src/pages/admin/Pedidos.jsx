@@ -23,8 +23,8 @@ function hoy() {
 }
 
 export default function Pedidos() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const negocioId = getNegocioId()
   const [pedidos, setPedidos] = useState([])
   const [repartidores, setRepartidores] = useState([])
   const [loading, setLoading] = useState(true)

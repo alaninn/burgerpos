@@ -288,8 +288,8 @@ function ModalPerfil({ negocioId, cliente, onClose, onEditar }) {
 
 // ─── Página principal ─────────────────────────────────────
 export default function Clientes() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const negocioId = getNegocioId()
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')

@@ -62,6 +62,7 @@ app.use('/api/menu',         require('./routes/menu.routes'));   // público, si
 app.use('/api/auth',         require('./routes/auth.routes'));
 app.use('/api/negocios',     require('./routes/negocio.routes'));
 app.use('/api/negocios/:negocioId/pedidos',      require('./routes/pedido.routes'));
+app.use('/api/negocios/:negocioId/pedidos',      require('./routes/pedidoFactura.routes'));
 app.use('/api/negocios/:negocioId/productos/:productoId/variantes', require('./routes/variante.routes'));
 app.use('/api/negocios/:negocioId/productos',    require('./routes/producto.routes'));
 app.use('/api/negocios/:negocioId/clientes',     require('./routes/cliente.routes'));
@@ -71,7 +72,11 @@ app.use('/api/negocios/:negocioId/usuarios',     require('./routes/negocio-usuar
 app.use('/api/negocios/:negocioId/cajas',        require('./routes/caja.routes'));
 app.use('/api/negocios/:negocioId/descuentos',   require('./routes/descuento.routes'));
 app.use('/api/negocios/:negocioId/adicionales',  require('./routes/adicional.routes'));
+app.use('/api/negocios/:negocioId/arca',        require('./routes/arca.routes'));
 app.use('/api/usuarios',     require('./routes/usuario.routes'));
+app.use('/api/pagos',        require('./routes/pago.routes'));
+app.use('/api/mercadopago/oauth', require('./routes/mercadoPagoOAuth.routes'));
+app.use('/api/platform-config', require('./routes/platformConfig.routes'));
 
 // WhatsApp Endpoints
 app.get('/api/whatsapp/status', (req, res) => {

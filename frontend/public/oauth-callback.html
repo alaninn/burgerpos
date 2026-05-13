@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vinculando MercadoPago...</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 400px;
+      padding: 2rem;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #ffffff;
+      border-radius: 50%;
+      width: 64px;
+      height: 64px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    p {
+      font-size: 16px;
+      opacity: 0.9;
+      line-height: 1.5;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    .error-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: shake 0.5s ease-out;
+    }
+
+    @keyframes scaleIn {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    .countdown {
+      margin-top: 16px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" style="display: none;">
+      <div class="spinner"></div>
+      <h1>Procesando vinculación...</h1>
+      <p>Espera un momento mientras completamos la vinculación con MercadoPago.</p>
+    </div>
+
+    <div id="success" style="display: none;">
+      <div class="success-icon">✅</div>
+      <h1>¡Vinculación exitosa!</h1>
+      <p>Tu cuenta de MercadoPago ha sido vinculada correctamente.</p>
+      <p class="countdown">Esta ventana se cerrará automáticamente...</p>
+    </div>
+
+    <div id="error" style="display: none;">
+      <div class="error-icon">❌</div>
+      <h1>Error en la vinculación</h1>
+      <p id="error-message">Ocurrió un error. Por favor, intentá nuevamente.</p>
+      <p class="countdown">Esta ventana se cerrará automáticamente...</p>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Mostrar loading inicialmente
+      document.getElementById('loading').style.display = 'block';
+
+      // Obtener parámetros de la URL
+      const params = new URLSearchParams(window.location.search);
+      const success = params.get('mp_success');
+      const error = params.get('mp_error');
+
+      // Función para cerrar la ventana
+      function closeWindow(delay = 2000) {
+        setTimeout(() => {
+          window.close();
+
+          // Fallback si window.close() no funciona
+          setTimeout(() => {
+            if (!window.closed) {
+              window.location.href = 'about:blank';
+            }
+          }, 500);
+        }, delay);
+      }
+
+      // Notificar al padre (ventana que abrió el popup)
+      try {
+        if (window.opener && !window.opener.closed) {
+          if (success === 'true') {
+            // Éxito
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('success').style.display = 'block';
+
+            window.opener.postMessage({
+              type: 'mp_oauth_success'
+            }, '*');
+
+            closeWindow(2000);
+          } else if (error) {
+            // Error
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = decodeURIComponent(error);
+
+            window.opener.postMessage({
+              type: 'mp_oauth_error',
+              error: decodeURIComponent(error)
+            }, '*');
+
+            closeWindow(3000);
+          } else {
+            // Sin parámetros válidos
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = 'Parámetros inválidos';
+
+            closeWindow(2000);
+          }
+        } else {
+          // No hay ventana padre, cerrar de todas formas
+          closeWindow(1000);
+        }
+      } catch (e) {
+        console.error('Error comunicando con ventana padre:', e);
+        closeWindow(2000);
+      }
+    })();
+  </script>
+</body>
+</html>

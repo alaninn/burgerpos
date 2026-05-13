@@ -240,8 +240,8 @@ function ModalCerrarCaja({ negocioId, caja, onClose, onClosed }) {
 }
 
 export default function Cajas() {
-  const { usuario } = useAuth()
-  const negocioId = usuario?.negocioId
+  const { usuario, getNegocioId } = useAuth()
+  const negocioId = getNegocioId()
   const [cajaActual, setCajaActual] = useState(null)
   const [historial, setHistorial] = useState([])
   const [loading, setLoading] = useState(true)

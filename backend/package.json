@@ -11,6 +11,7 @@
     "db:reset": "npx sequelize-cli db:migrate:undo:all && npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all"
   },
   "dependencies": {
+    "axios": "^1.15.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -18,15 +19,22 @@
     "express-validator": "^7.1.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mercadopago": "^2.12.0",
     "morgan": "^1.10.0",
     "multer": "^2.1.1",
+    "node-forge": "^1.4.0",
+    "pdfkit": "^0.15.2",
     "pg": "^8.12.0",
     "pg-hstore": "^2.3.4",
+    "puppeteer": "^24.42.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "qrcode": "^1.5.4",
     "sequelize": "^6.37.3",
     "socket.io": "^4.7.5",
     "whatsapp-web.js": "^1.26.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",

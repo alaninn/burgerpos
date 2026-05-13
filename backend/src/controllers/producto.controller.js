@@ -1,12 +1,14 @@
-const { Producto, Categoria, ProductoVariante, GrupoAdicional, Adicional } = require('../models');
+const { Producto, Categoria, ProductoVariante, GrupoAdicional, Adicional, Descuento } = require('../models');
 
 const includeCompleto = [
   { model: Categoria, as: 'categoria', attributes: ['id', 'nombre'] },
   { model: ProductoVariante, as: 'variantes', order: [['orden', 'ASC']], separate: true },
-  
+
     { model: GrupoAdicional, as: 'gruposAdicionales',
     include: [{ model: Adicional, as: 'items', order: [['orden', 'ASC']] }]
-  }
+  },
+  { model: Descuento, as: 'descuento',
+    attributes: ['id', 'codigo', 'tipo', 'valor', 'activo', 'descripcion'] }
 ];
 
 exports.listar = async (req, res) => {

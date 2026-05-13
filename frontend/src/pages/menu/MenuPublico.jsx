@@ -99,9 +99,26 @@ function SkeletonMenu() {
 // ─── Tarjeta producto (horizontal: texto izq + imagen der) ──
 function ProductoCard({ prod, color, onAbrirDetalle }) {
   const sinStock = prod.stock !== null && prod.stock !== undefined && prod.stock === 0
-  const precioMostrar = prod.variantes?.length > 0
+
+  // Verificar descuento
+  const tieneDescuento = prod.descuento && prod.descuento.activo
+  const descuento = tieneDescuento ? prod.descuento : null
+
+  // Precio base
+  const precioBase = prod.variantes?.length > 0
     ? Math.min(...prod.variantes.map(v => parseFloat(v.precioVenta)))
     : parseFloat(prod.precioVenta)
+
+  // Calcular precio con descuento
+  let precioMostrar = precioBase
+  let montoDescuento = 0
+  if (descuento) {
+    montoDescuento = descuento.tipo === 'porcentaje'
+      ? (precioBase * parseFloat(descuento.valor)) / 100
+      : parseFloat(descuento.valor)
+    precioMostrar = Math.max(0, precioBase - montoDescuento)
+  }
+
   const tieneVariantes = prod.variantes?.length > 0
 
   return (
@@ -119,6 +136,17 @@ function ProductoCard({ prod, color, onAbrirDetalle }) {
           <p className="line-clamp-3 mb-2 leading-relaxed" style={{ fontSize: 12, color: '#8e8e93' }}>{prod.descripcion}</p>
         )}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {descuento && (
+            <>
+              <span className="line-through font-medium" style={{ fontSize: 11, color: '#636366' }}>
+                $ {precioBase.toLocaleString('es-AR')}
+              </span>
+              <span className="px-1.5 py-0.5 rounded-full font-bold"
+                style={{ fontSize: 10, background: color, color: '#fff' }}>
+                -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${Number(descuento.valor).toLocaleString('es-AR')}`}
+              </span>
+            </>
+          )}
           <span className="font-black" style={{ fontSize: 13, color }}>
             $ {precioMostrar.toLocaleString('es-AR')}
           </span>
@@ -255,7 +283,20 @@ function ModalDetalle({ prod, color, onClose, onAgregar }) {
     return sel.length < (g.minSeleccion || 1)
   })
 
-  const precioBase = varianteSeleccionada ? parseFloat(varianteSeleccionada.precioVenta) : 0
+  // Verificar descuento del producto
+  const tieneDescuento = prod.descuento && prod.descuento.activo
+  const descuento = tieneDescuento ? prod.descuento : null
+
+  // Calcular precio base (con descuento si aplica)
+  const precioBaseOriginal = varianteSeleccionada ? parseFloat(varianteSeleccionada.precioVenta) : 0
+  let precioBase = precioBaseOriginal
+  let montoDescuento = 0
+  if (descuento && precioBaseOriginal > 0) {
+    montoDescuento = descuento.tipo === 'porcentaje'
+      ? (precioBaseOriginal * parseFloat(descuento.valor)) / 100
+      : parseFloat(descuento.valor)
+    precioBase = Math.max(0, precioBaseOriginal - montoDescuento)
+  }
   const precioAdicionales = grupos.reduce((total, g) => {
     const sel = adicionales[g.id] || []
     return total + sel.reduce((s, aId) => {
@@ -341,6 +382,17 @@ function ModalDetalle({ prod, color, onClose, onAgregar }) {
             {/* Variantes */}
             {tieneVariantes && prod.variantes.map(v => {
               const sel = varianteSeleccionada?.id === v.id
+
+              // Calcular precio con descuento para esta variante
+              const precioVarianteOriginal = parseFloat(v.precioVenta)
+              let precioVariante = precioVarianteOriginal
+              if (descuento) {
+                const montoDescVar = descuento.tipo === 'porcentaje'
+                  ? (precioVarianteOriginal * parseFloat(descuento.valor)) / 100
+                  : parseFloat(descuento.valor)
+                precioVariante = Math.max(0, precioVarianteOriginal - montoDescVar)
+              }
+
               return (
                 <button key={v.id} onClick={() => setVarianteSeleccionada(v)}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all text-left"
@@ -354,7 +406,22 @@ function ModalDetalle({ prod, color, onClose, onAgregar }) {
                     </div>
                     <span className="font-semibold text-white text-sm">{v.nombre}</span>
                   </div>
-                  <span className="font-bold text-sm" style={{ color }}>$ {Number(v.precioVenta).toLocaleString('es-AR')}</span>
+                  <div className="flex items-center gap-2">
+                    {descuento && (
+                      <>
+                        <span className="line-through text-xs" style={{ color: '#636366' }}>
+                          $ {precioVarianteOriginal.toLocaleString('es-AR')}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full font-bold text-white"
+                          style={{ fontSize: 9, background: color }}>
+                          -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${Number(descuento.valor).toLocaleString('es-AR')}`}
+                        </span>
+                      </>
+                    )}
+                    <span className="font-bold text-sm" style={{ color }}>
+                      $ {precioVariante.toLocaleString('es-AR')}
+                    </span>
+                  </div>
                 </button>
               )
             })}
@@ -541,6 +608,9 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
   const [carritoParaWhatsapp, setCarritoParaWhatsapp] = useState([])
   const [montosParaWhatsapp, setMontosParaWhatsapp] = useState({ subtotal: 0, descuento: 0, envio: 0, total: 0 })
 
+  // Descuentos automáticos
+  const [descuentosAutomaticos, setDescuentosAutomaticos] = useState([])
+
   const [modalMapaDir, setModalMapaDir] = useState(false)
 
   const abrirMapaDireccion = () => {
@@ -576,6 +646,29 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
       .catch(() => {})
   }, [negocio?.direccion, negocio?.ciudad, negocio?.configuracion?.provincia])
 
+  // Cargar descuentos automáticos cuando cambian modalidad, metodoPago o subtotal
+  useEffect(() => {
+    if (!negocio?.slug || !modalidad || !metodoPago || carrito.length === 0) {
+      setDescuentosAutomaticos([])
+      return
+    }
+
+    const subtotalActual = carrito.reduce((s, i) => s + i.precioVenta * i.cantidad, 0)
+
+    api.get(`/menu/${negocio.slug}/descuentos-automaticos`, {
+      params: { modalidad, metodoPago, subtotal: subtotalActual }
+    })
+      .then(({ data }) => {
+        if (data.success && data.descuentos) {
+          setDescuentosAutomaticos(data.descuentos)
+        }
+      })
+      .catch(err => {
+        console.error('Error cargando descuentos automáticos:', err)
+        setDescuentosAutomaticos([])
+      })
+  }, [negocio?.slug, modalidad, metodoPago, carrito])
+
   const buscarCliente = (campo, valor) => {
     clearTimeout(debounceClienteRef.current)
     if (valor.trim().length < 6) return
@@ -604,7 +697,8 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
       : zonaSeleccionada !== null ? (zonas[zonaSeleccionada]?.costo || 0) : (conf.costoEnvio || 0)
     : 0
   const subtotal = carrito.reduce((s, i) => s + i.precioVenta * i.cantidad, 0)
-  const descuentoMonto = cuponAplicado?.montoDescuento || 0
+  const descuentoAutomaticoMonto = descuentosAutomaticos.reduce((sum, d) => sum + (d.monto || 0), 0)
+  const descuentoMonto = (cuponAplicado?.montoDescuento || 0) + descuentoAutomaticoMonto
   const total = Math.max(0, subtotal + costoEnvio + propina - descuentoMonto)
   const montoMinimo = Number(conf.montoMinimo) || 0
   const bajoMinimo = montoMinimo > 0 && subtotal < montoMinimo
@@ -689,8 +783,18 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
           notas: i.notaProducto || ''
         }))
       })
-      setNumeroPedido(data.pedido.numero)
-      setCarrito([])
+
+      // Si el método de pago es MercadoPago, redirigir a la página de pago
+      if (metodoPago === 'mercado_pago' || metodoPago === 'mercadopago') {
+        const { data: pagoData } = await api.post('/api/pagos/iniciar-pago-mp', {
+          pedidoId: data.pedido.id
+        })
+        window.location.href = pagoData.initPoint
+      } else {
+        // Flujo normal para otros métodos de pago
+        setNumeroPedido(data.pedido.numero)
+        setCarrito([])
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Error al enviar el pedido')
     } finally { setLoading(false) }
@@ -994,6 +1098,23 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
                     />
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Descuentos automáticos */}
+          {descuentosAutomaticos.length > 0 && (
+            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #166534' }}>
+              <div className="px-4 py-3" style={{ background: '#0d2d1a', borderBottom: '1px solid #166534' }}>
+                <span className="text-sm font-bold text-green-400">✨ Descuentos aplicados</span>
+              </div>
+              <div className="p-4 space-y-2" style={{ background: '#0a1f12' }}>
+                {descuentosAutomaticos.map((desc, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <span className="text-green-300">{desc.descripcion}</span>
+                    <span className="font-bold text-green-400">-$ {desc.monto.toLocaleString('es-AR')}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

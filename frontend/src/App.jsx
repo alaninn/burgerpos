@@ -22,15 +22,20 @@ import Descuentos from './pages/admin/Descuentos'
 import Usuarios from './pages/admin/Usuarios'
 import Cajas from './pages/admin/Cajas'
 import MonitorCocina from './pages/admin/MonitorCocina'
+import FacturacionElectronica from './pages/admin/FacturacionElectronica'
 
 // Menú público
 import MenuPublico from './pages/menu/MenuPublico'
+import PagoExitoso from './pages/menu/PagoExitoso'
+import PagoFallido from './pages/menu/PagoFallido'
+import PagoPendiente from './pages/menu/PagoPendiente'
 
 // SuperAdmin
 import SuperAdminLayout from './components/layout/SuperAdminLayout'
 import SADashboard from './pages/superadmin/Dashboard'
 import SANegocios from './pages/superadmin/Negocios'
 import SAPlanes from './pages/superadmin/Planes'
+import SAConfiguracion from './pages/superadmin/ConfiguracionPlataforma'
 
 function PrivateRoute({ children, roles }) {
   const { usuario, loading } = useAuth()
@@ -59,9 +64,12 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/menu/:slug" element={<MenuPublico />} />
+      <Route path="/menu/:slug/pago-exitoso" element={<PagoExitoso />} />
+      <Route path="/menu/:slug/pago-fallido" element={<PagoFallido />} />
+      <Route path="/menu/:slug/pago-pendiente" element={<PagoPendiente />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
-      <Route path="/admin" element={<PrivateRoute roles={['admin', 'operador']}><AdminLayout /></PrivateRoute>}>
+      <Route path="/admin" element={<PrivateRoute roles={['superadmin', 'admin', 'operador']}><AdminLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="panel-pedidos" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="panel-pedidos" element={<PanelPedidos />} />
@@ -77,6 +85,7 @@ function AppRoutes() {
         <Route path="usuarios" element={<Usuarios />} />
         <Route path="cajas" element={<Cajas />} />
         <Route path="monitor-cocina" element={<MonitorCocina />} />
+        <Route path="facturacion" element={<FacturacionElectronica />} />
       </Route>
 
       <Route path="/superadmin" element={<PrivateRoute roles={['superadmin']}><SuperAdminLayout /></PrivateRoute>}>
@@ -84,6 +93,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<SADashboard />} />
         <Route path="negocios" element={<SANegocios />} />
         <Route path="planes" element={<SAPlanes />} />
+        <Route path="configuracion" element={<SAConfiguracion />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

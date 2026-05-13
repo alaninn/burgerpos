@@ -1,4 +1,4 @@
-const { Pedido, ItemPedido, Producto, Cliente, Repartidor, sequelize } = require('../models');
+const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const whatsappService = require('../services/whatsappService');
 
@@ -30,7 +30,8 @@ exports.listar = async (req, res) => {
       include: [
         { model: ItemPedido, as: 'items' },
         { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'telefono'] },
-        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] }
+        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] },
+        { model: ComprobanteElectronico, as: 'comprobante', required: false }
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -61,13 +62,32 @@ exports.crear = async (req, res) => {
     let subtotal = 0;
     const itemsData = items.map(item => {
       const producto = productosMap[item.productoId];
-      // Para pedidos admin: si viene precioUnitario explícito (con variante/adicionales), usarlo
-      // Si no, usar precio base de DB o precio enviado
-      const precio = item.precioUnitario != null
+
+      // Validar precio
+      let precio = item.precioUnitario != null
         ? parseFloat(item.precioUnitario)
         : producto
           ? parseFloat(producto.precioVenta)
           : parseFloat(item.precio ?? 0);
+
+      // Validaciones de seguridad
+      if (precio < 0) {
+        throw new Error(`Precio negativo no permitido para ${item.nombre || 'producto'}`);
+      }
+
+      // Si hay producto en BD y el precio difiere mucho, validar (permite variantes/adicionales razonables)
+      if (producto && item.precioUnitario != null) {
+        const precioBase = parseFloat(producto.precioVenta);
+        const diferencia = Math.abs(precio - precioBase);
+        const porcentajeDif = (diferencia / precioBase) * 100;
+
+        // Permitir hasta 500% de diferencia (por variantes caras y muchos adicionales)
+        // pero prevenir precios absurdamente bajos (< 10% del precio base sin justificación)
+        if (precio < precioBase * 0.1 && precio > 0) {
+          throw new Error(`Precio sospechosamente bajo para ${producto.nombre}: $${precio} vs $${precioBase} esperado`);
+        }
+      }
+
       const sub = precio * item.cantidad;
       subtotal += sub;
       return {
@@ -108,7 +128,11 @@ exports.crear = async (req, res) => {
   // Post-commit: fetch completo + socket (fuera del try para no causar rollback en transacción ya commiteada)
   try {
     const pedidoCompleto = await Pedido.findByPk(pedidoId, {
-      include: [{ model: ItemPedido, as: 'items' }, { model: Cliente, as: 'cliente' }]
+      include: [
+        { model: ItemPedido, as: 'items' },
+        { model: Cliente, as: 'cliente' },
+        { model: ComprobanteElectronico, as: 'comprobante', required: false }
+      ]
     });
     req.io.to(`negocio-${req.params.negocioId}`).emit('nuevo-pedido', pedidoCompleto);
     res.status(201).json({ success: true, pedido: pedidoCompleto });
@@ -128,7 +152,8 @@ exports.actualizar = async (req, res) => {
       include: [
         { model: ItemPedido, as: 'items' },
         { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'telefono'] },
-        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] }
+        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] },
+        { model: ComprobanteElectronico, as: 'comprobante', required: false }
       ]
     });
 
@@ -231,7 +256,8 @@ exports.actualizarCompleto = async (req, res) => {
       include: [
         { model: ItemPedido, as: 'items' },
         { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'telefono'] },
-        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] }
+        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] },
+        { model: ComprobanteElectronico, as: 'comprobante', required: false }
       ]
     });
     req.io.to(`negocio-${pedidoNegocioId}`).emit('pedido-actualizado', pedidoCompleto);
@@ -253,7 +279,8 @@ exports.actualizarEstado = async (req, res) => {
       include: [
         { model: ItemPedido, as: 'items' },
         { model: Cliente, as: 'cliente', attributes: ['id', 'nombre', 'telefono'] },
-        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] }
+        { model: Repartidor, as: 'repartidor', attributes: ['id', 'nombre'] },
+        { model: ComprobanteElectronico, as: 'comprobante', required: false }
       ]
     });
 
@@ -323,7 +350,8 @@ exports.obtener = async (req, res) => {
       include: [
         { model: ItemPedido, as: 'items' },
         { model: Cliente, as: 'cliente' },
-        { model: Repartidor, as: 'repartidor' }
+        { model: Repartidor, as: 'repartidor' },
+        { model: ComprobanteElectronico, as: 'comprobante', required: false }
       ]
     });
     if (!pedido) return res.status(404).json({ success: false, message: 'No encontrado' });

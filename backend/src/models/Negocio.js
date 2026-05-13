@@ -18,7 +18,24 @@ module.exports = (sequelize, DataTypes) => {
       aceptaPropinas: true,
       recibirPedidos: true,
       whatsapp: '',
-      colorPrimario: '#7C3AED'
+      colorPrimario: '#7C3AED',
+      mapaConfiguracion: {
+        tema: 'standard',
+        colorPinPagado: '#22c55e',
+        colorPinPendiente: '#ef4444',
+        colorFondo: '#f5f5f5',
+        colorHeader: '#ffffff',
+        colorTexto: '#1f2937',
+        colorTextoSecundario: '#6b7280',
+        colorNegocio: '#1f2937',
+        tamanioPins: 'mediano',
+        opacidadMapa: 1,
+        tileLayer: 'standard',
+        brillo: 0,
+        contraste: 0,
+        saturacion: 0,
+        matiz: 0
+      }
     }},
     vencimiento: { type: DataTypes.DATE }
   }, {

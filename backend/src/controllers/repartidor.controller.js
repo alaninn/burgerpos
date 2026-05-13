@@ -16,8 +16,8 @@ exports.listar = async (req, res) => {
       const finStr = fechaHasta || new Date().toISOString().split('T')[0];
       where.createdAt = {
         [Op.between]: [
-          new Date(fechaDesde + 'T03:00:00.000Z'),
-          new Date(finStr + 'T26:59:59.999Z')
+          new Date(fechaDesde + 'T00:00:00.000Z'),
+          new Date(finStr + 'T23:59:59.999Z')
         ]
       };
     }
@@ -95,8 +95,8 @@ exports.reportes = async (req, res) => {
       const finStr = fechaHasta || new Date().toISOString().split('T')[0];
       where.createdAt = {
         [Op.between]: [
-          new Date(fechaDesde + 'T03:00:00.000Z'),
-          new Date(finStr + 'T26:59:59.999Z')
+          new Date(fechaDesde + 'T00:00:00.000Z'),
+          new Date(finStr + 'T23:59:59.999Z')
         ]
       };
     }
