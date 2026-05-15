@@ -119,6 +119,19 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// Servir frontend en producción (debe ir después de todas las rutas API)
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(frontendPath));
+
+  // Catch-all para SPA routing
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    }
+  });
+}
+
 // WebSocket
 io.on('connection', (socket) => {
   socket.on('join-negocio', (negocioId) => socket.join(`negocio-${negocioId}`));
