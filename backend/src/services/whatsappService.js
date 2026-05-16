@@ -79,6 +79,15 @@ class WhatsAppService {
         this.status = 'pending';
         this.ready = false;
         console.log('📱 WhatsApp QR generado');
+
+        // Timeout de 2 minutos para escanear el QR
+        setTimeout(() => {
+          if (this.status === 'pending' && this.qrCode === qr) {
+            console.log('⏱️ Timeout de QR - limpiando para permitir reintento');
+            this.qrCode = null;
+            this.status = 'disconnected';
+          }
+        }, 120000);
       });
 
       this.client.on('ready', () => {
@@ -99,11 +108,22 @@ class WhatsAppService {
         this.status = 'authenticated';
       });
 
-      this.client.on('auth_failure', (msg) => {
+      this.client.on('auth_failure', async (msg) => {
+        console.log('❌ Fallo en autenticación de WhatsApp:', msg);
         this.status = 'disconnected';
         this.ready = false;
+        this.qrCode = null;
         this.isInitializing = false;
-        console.log('❌ Fallo en autenticación de WhatsApp:', msg);
+
+        // Destruir el cliente para permitir reintento
+        try {
+          if (this.client) {
+            await this.client.destroy();
+          }
+        } catch (e) {
+          console.log('⚠️ Error al destruir cliente:', e.message);
+        }
+        this.client = null;
       });
 
       this.client.on('disconnected', (reason) => {
