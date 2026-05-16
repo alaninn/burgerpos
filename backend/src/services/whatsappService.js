@@ -46,6 +46,7 @@ class WhatsAppService {
           clientId: 'burgerpos',
           dataPath: path.join(process.cwd(), '.wwebjs_auth')
         }),
+        authTimeoutMs: 90000,
         qrMaxRetries: 10,
         takeoverOnConflict: true,
         takeoverTimeoutMs: 0,
