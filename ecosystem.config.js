@@ -9,7 +9,9 @@ module.exports = {
     max_memory_restart: '1G',
     env_production: {
       NODE_ENV: 'production',
-      PORT: 3004
+      PORT: 3004,
+      LD_LIBRARY_PATH: '/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu',
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'false'
     },
     error_file: './backend/logs/err.log',
     out_file: './backend/logs/out.log',
