@@ -19,6 +19,7 @@ const MercadoPagoCredential = require('./MercadoPagoCredential')(sequelize, Data
 const ARCACredential = require('./ARCACredential')(sequelize, DataTypes);
 const ComprobanteElectronico = require('./ComprobanteElectronico')(sequelize, DataTypes);
 const TicketAccesoWSAA = require('./TicketAccesoWSAA')(sequelize, DataTypes);
+const WhatsAppConfig = require('./WhatsAppConfig')(sequelize, DataTypes);
 
 // ── Negocio → Usuario ─────────────────────────────────────
 Negocio.hasMany(Usuario,      { foreignKey: 'negocioId', as: 'usuarios' });
@@ -114,6 +115,10 @@ ComprobanteElectronico.belongsTo(Pedido, { foreignKey: 'pedidoId', as: 'pedido' 
 Negocio.hasMany(TicketAccesoWSAA, { foreignKey: 'negocioId', as: 'ticketsWSAA' });
 TicketAccesoWSAA.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
 
+// ── Negocio → WhatsAppConfig ──────────────────────────────
+Negocio.hasOne(WhatsAppConfig, { foreignKey: 'negocioId', as: 'whatsappConfig' });
+WhatsAppConfig.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
 // ── Exportar ──────────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -134,5 +139,6 @@ module.exports = {
   MercadoPagoCredential,
   ARCACredential,
   ComprobanteElectronico,
-  TicketAccesoWSAA
+  TicketAccesoWSAA,
+  WhatsAppConfig
 };

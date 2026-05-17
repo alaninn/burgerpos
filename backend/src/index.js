@@ -52,9 +52,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 // Pasar io a las rutas
 app.use((req, res, next) => { req.io = io; next(); });
 
-// WhatsApp Service
-const whatsappService = require('./services/whatsappService');
-
 // Rutas
 app.use('/api/upload',   require('./routes/upload.routes'));
 app.use('/api/maps',         require('./routes/maps.routes'));  // proxy geocodificación (Photon/OSM)
@@ -73,50 +70,13 @@ app.use('/api/negocios/:negocioId/cajas',        require('./routes/caja.routes')
 app.use('/api/negocios/:negocioId/descuentos',   require('./routes/descuento.routes'));
 app.use('/api/negocios/:negocioId/adicionales',  require('./routes/adicional.routes'));
 app.use('/api/negocios/:negocioId/arca',        require('./routes/arca.routes'));
+app.use('/api/negocios/:negocioId/whatsapp',    require('./routes/whatsapp.routes'));
 app.use('/api/usuarios',     require('./routes/usuario.routes'));
 app.use('/api/pagos',        require('./routes/pago.routes'));
 app.use('/api/mercadopago/oauth', require('./routes/mercadoPagoOAuth.routes'));
 app.use('/api/platform-config', require('./routes/platformConfig.routes'));
 
-// WhatsApp Endpoints
-app.get('/api/whatsapp/status', (req, res) => {
-  res.json(whatsappService.getStatus());
-});
-
-app.get('/api/whatsapp/qr', async (req, res) => {
-  const qr = await whatsappService.getQrCode();
-  res.json(qr);
-});
-
-app.get('/api/whatsapp/templates', (req, res) => {
-  res.json(whatsappService.templates);
-});
-
-app.post('/api/whatsapp/templates', (req, res) => {
-  whatsappService.saveTemplates(req.body);
-  res.json({ success: true });
-});
-
-// ✅ ENDPOINT TEST PARA PROBAR ENVIO DE MENSAJES
-app.post('/api/whatsapp/test', async (req, res) => {
-  const { number, message } = req.body;
-  console.log('🔍 Probando envio de mensaje a:', number);
-  const result = await whatsappService.sendMessage(number, message || '✅ Prueba de mensaje desde BurgerPOS');
-  console.log('🔍 Resultado del envio:', result);
-  res.json({ success: result });
-});
-
-app.post('/api/whatsapp/disconnect', async (req, res) => {
-  const success = await whatsappService.disconnect();
-  res.json({ success });
-});
-
-app.post('/api/whatsapp/send', async (req, res) => {
-  const { number, message } = req.body;
-  const success = await whatsappService.sendMessage(number, message);
-  res.json({ success });
-});
-
+// Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // Servir frontend en producción (debe ir después de todas las rutas API)

@@ -1,4 +1,4 @@
-const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, sequelize } = require('../models');
+const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const whatsappService = require('../services/whatsappService');
 
@@ -175,8 +175,12 @@ exports.actualizar = async (req, res) => {
 
           console.log('👉 Template key:', templateKey);
 
-          if (templateKey && whatsappService.templates[modalidad] && whatsappService.templates[modalidad][templateKey]) {
-            let mensaje = whatsappService.templates[modalidad][templateKey];
+          // Cargar templates del negocio
+          const whatsappConfig = await WhatsAppConfig.findOne({ where: { negocioId: req.params.negocioId } });
+          const templates = whatsappConfig?.config?.templates || whatsappService.getDefaultTemplates();
+
+          if (templateKey && templates[modalidad] && templates[modalidad][templateKey]) {
+            let mensaje = templates[modalidad][templateKey];
 
             // Renderizar variables en el template
             const variables = {
@@ -195,7 +199,7 @@ exports.actualizar = async (req, res) => {
             if (mensaje && mensaje.trim().length > 0) {
               console.log('✅ Enviando mensaje WhatsApp...');
               console.log('📝 Mensaje:', mensaje);
-              const resultado = await whatsappService.sendMessage(pedidoCompleto.clienteTelefono, mensaje);
+              const resultado = await whatsappService.sendMessage(req.params.negocioId, pedidoCompleto.clienteTelefono, mensaje);
               console.log('✅ Resultado envio:', resultado);
             } else {
               console.log('⚠️ Mensaje vacío, no se envía');
@@ -302,8 +306,12 @@ exports.actualizarEstado = async (req, res) => {
 
         console.log('👉 Template key:', templateKey);
 
-        if (templateKey && whatsappService.templates[modalidad] && whatsappService.templates[modalidad][templateKey]) {
-          let mensaje = whatsappService.templates[modalidad][templateKey];
+        // Cargar templates del negocio
+        const whatsappConfig = await WhatsAppConfig.findOne({ where: { negocioId: req.params.negocioId } });
+        const templates = whatsappConfig?.config?.templates || whatsappService.getDefaultTemplates();
+
+        if (templateKey && templates[modalidad] && templates[modalidad][templateKey]) {
+          let mensaje = templates[modalidad][templateKey];
 
           // Renderizar variables en el template
           const variables = {
@@ -323,7 +331,7 @@ exports.actualizarEstado = async (req, res) => {
 
           if (mensaje && mensaje.trim().length > 0) {
             console.log('✅ Enviando mensaje...');
-            const resultado = await whatsappService.sendMessage(pedidoCompleto.clienteTelefono, mensaje);
+            const resultado = await whatsappService.sendMessage(req.params.negocioId, pedidoCompleto.clienteTelefono, mensaje);
             console.log('✅ Resultado envio:', resultado);
           } else {
             console.log('⚠️ Mensaje vacio, no se envia');

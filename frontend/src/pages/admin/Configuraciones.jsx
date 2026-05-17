@@ -415,26 +415,26 @@ export default function Configuraciones() {
 
   // Cargar estado WhatsApp SOLO cuando estamos en la pestaña Integraciones
   useEffect(() => {
-    if (tabActiva !== 'Integraciones') return
+    if (tabActiva !== 'Integraciones' || !negocioId) return
 
     const cargarEstadoWhatsapp = async () => {
       try {
-        const resStatus = await api.get('/whatsapp/status')
+        const resStatus = await api.get(`/negocios/${negocioId}/whatsapp/status`)
         setWhatsappStatus(resStatus.data)
-        const resTemplates = await api.get('/whatsapp/templates')
-        setWhatsappTemplates(resTemplates.data)
+        const resTemplates = await api.get(`/negocios/${negocioId}/whatsapp/templates`)
+        setWhatsappTemplates(resTemplates.data.templates || {})
       } catch {}
     }
     cargarEstadoWhatsapp()
-  }, [tabActiva])
+  }, [tabActiva, negocioId])
 
   const generarQrWhatsapp = async () => {
     try {
       toast.loading('Generando código QR...')
-      const res = await api.get('/whatsapp/qr')
-      setWhatsappQr(res.data)
+      const res = await api.get(`/negocios/${negocioId}/whatsapp/qr`)
+      setWhatsappQr(res.data.qr)
       toast.remove()
-      
+
       // Polling temporal solo por 60 segundos cuando se solicita manualmente
       let intentos = 0
       const interval = setInterval(async () => {
@@ -445,7 +445,7 @@ export default function Configuraciones() {
           return
         }
         try {
-          const statusRes = await api.get('/whatsapp/status')
+          const statusRes = await api.get(`/negocios/${negocioId}/whatsapp/status`)
           setWhatsappStatus(statusRes.data)
           if (statusRes.data.ready) {
             clearInterval(interval)
@@ -456,7 +456,7 @@ export default function Configuraciones() {
           clearInterval(interval)
         }
       }, 5000)
-      
+
     } catch {
       toast.error('Error al generar codigo QR')
     }
@@ -464,7 +464,7 @@ export default function Configuraciones() {
 
   const desconectarWhatsapp = async () => {
     try {
-      await api.post('/whatsapp/disconnect')
+      await api.post(`/negocios/${negocioId}/whatsapp/disconnect`)
       setWhatsappStatus({ status: 'disconnected', ready: false })
       setWhatsappQr(null)
       toast.success('WhatsApp desconectado')
@@ -476,7 +476,7 @@ export default function Configuraciones() {
   const guardarPlantillasWhatsapp = async () => {
     setSavingWhatsapp(true)
     try {
-      await api.post('/whatsapp/templates', whatsappTemplates)
+      await api.put(`/negocios/${negocioId}/whatsapp/templates`, { templates: whatsappTemplates })
       toast.success('Plantillas guardadas correctamente')
     } catch {
       toast.error('Error al guardar plantillas')

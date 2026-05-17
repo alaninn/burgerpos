@@ -1,300 +1,248 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const pino = require('pino');
 const qrcode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const { WhatsAppConfig } = require('../models');
 
-class WhatsAppService {
+class WhatsAppMultiTenantService {
   constructor() {
-    this.client = null;
-    this.qrCode = null;
-    this.status = 'disconnected';
-    this.ready = false;
-    this.templates = this.loadTemplates();
-    this.isInitializing = false;
-    this.lastMessageTime = 0;
-    
-    // ✅ AUTO-INICIALIZACIÓN: Si existe sesión guardada, inicializar automáticamente
-    this.checkAndAutoInit();
+    this.instances = new Map(); // negocioId → { sock, qr, status, lastActivity }
+    this.MAX_INSTANCES = 8; // Límite por RAM (1GB server)
+    this.IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+    this.idleTimers = new Map(); // negocioId → timeout
+
+    console.log('✅ WhatsApp Multi-Tenant Service inicializado (Baileys)');
   }
 
-  checkAndAutoInit() {
-    // Verificamos si existe una sesión guardada
-    const sessionPath = path.join(process.cwd(), '.wwebjs_auth');
-    
-    // Esperamos 3 segundos después del arranque del servidor para dar tiempo a que todo se cargue
-    setTimeout(() => {
-      if (fs.existsSync(sessionPath)) {
-        console.log('🔍 Sesión de WhatsApp detectada, inicializando automáticamente...');
-        this.init();
-      } else {
-        console.log('ℹ️ No hay sesión de WhatsApp guardada. Esperando escaneo de QR desde configuración.');
-      }
-    }, 3000);
-  }
-
-  init() {
-    if (this.isInitializing || this.client) {
-      console.log('⚠️ WhatsApp ya está inicializándose o inicializado');
-      return;
+  /**
+   * Obtiene o crea una instancia de WhatsApp para un negocio específico
+   */
+  async getInstance(negocioId) {
+    // Si ya existe y está activa, resetear idle timer y retornar
+    if (this.instances.has(negocioId)) {
+      this.resetIdleTimer(negocioId);
+      return this.instances.get(negocioId);
     }
 
-    this.isInitializing = true;
+    // Si llegamos al límite de instancias, eliminar la menos usada
+    if (this.instances.size >= this.MAX_INSTANCES) {
+      await this.evictLeastRecentlyUsed();
+    }
 
+    // Crear nueva instancia
+    console.log(`🔄 Lazy-loading WhatsApp instance for negocio: ${negocioId}`);
+    return await this.initInstance(negocioId);
+  }
+
+  /**
+   * Inicializa una nueva instancia de Baileys para un negocio
+   */
+  async initInstance(negocioId) {
     try {
-      this.client = new Client({
-        authStrategy: new LocalAuth({
-          clientId: 'burgerpos',
-          dataPath: path.join(process.cwd(), '.wwebjs_auth')
-        }),
-        authTimeoutMs: 90000,
-        qrMaxRetries: 10,
-        takeoverOnConflict: true,
-        takeoverTimeoutMs: 0,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        // Actualizado a versión más reciente y estable
-        webVersion: '2.2465.1',
-        webVersionCache: {
-          type: 'remote',
-          remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2465.1.html'
-        },
-        puppeteer: {
-          headless: true,
-          executablePath: '/root/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome',
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-software-rasterizer',
-            '--disable-extensions',
-            '--disable-background-networking',
-            '--disable-sync',
-            '--metrics-recording-only',
-            '--mute-audio',
-            '--no-default-browser-check',
-            '--disable-features=VizDisplayCompositor,IsolateOrigins,site-per-process'
-          ]
-        }
+      const authPath = path.join(__dirname, `../../whatsapp-sessions/${negocioId}`);
+
+      // Crear directorio si no existe
+      if (!fs.existsSync(authPath)) {
+        fs.mkdirSync(authPath, { recursive: true });
+      }
+
+      // Cargar estado de autenticación
+      const { state, saveCreds } = await useMultiFileAuthState(authPath);
+
+      // Obtener última versión de WhatsApp Web
+      const { version } = await fetchLatestBaileysVersion();
+
+      // Crear socket
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        logger: pino({ level: 'silent' }), // Sin logs de Baileys
+        printQRInTerminal: false,
+        browser: ['BurgerPOS', 'Chrome', '120.0.0'],
+        defaultQueryTimeoutMs: undefined
       });
 
-      this.client.on('qr', (qr) => {
-        this.qrCode = qr;
-        this.status = 'pending';
-        this.ready = false;
-        console.log('📱 WhatsApp QR generado');
+      // Estado de la instancia
+      const instance = {
+        sock,
+        qr: null,
+        status: 'connecting',
+        lastActivity: Date.now()
+      };
 
-        // Timeout de 2 minutos para escanear el QR
-        setTimeout(() => {
-          if (this.status === 'pending' && this.qrCode === qr) {
-            console.log('⏱️ Timeout de QR - limpiando para permitir reintento');
-            this.qrCode = null;
-            this.status = 'disconnected';
+      this.instances.set(negocioId, instance);
+
+      // ── Eventos ──────────────────────────────────────────
+
+      // Guardar credenciales cuando cambien
+      sock.ev.on('creds.update', saveCreds);
+
+      // Manejar cambios de conexión
+      sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        // QR Code generado
+        if (qr) {
+          console.log(`📱 QR generado para negocio: ${negocioId}`);
+          instance.qr = qr;
+          instance.status = 'connecting';
+
+          // Guardar QR en base de datos
+          await this.saveQrToDatabase(negocioId, qr);
+        }
+
+        // Conexión cerrada
+        if (connection === 'close') {
+          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+          console.log(`❌ WhatsApp desconectado (negocio: ${negocioId}), reconnect:`, shouldReconnect);
+
+          if (shouldReconnect) {
+            // Reconectar automáticamente
+            setTimeout(() => {
+              this.instances.delete(negocioId);
+              this.initInstance(negocioId);
+            }, 3000);
+          } else {
+            // Logout manual - limpiar sesión
+            this.instances.delete(negocioId);
+            await this.updateStatus(negocioId, 'disconnected', null);
           }
-        }, 120000);
-      });
-
-      this.client.on('ready', () => {
-        this.ready = true;
-        this.status = 'connected';
-        this.qrCode = null;
-        this.isInitializing = false;
-        console.log('✅ ✅ ✅ WhatsApp READY - Ya se pueden enviar mensajes ✅ ✅ ✅');
-        
-        // Verificación adicional de estado
-        setTimeout(() => {
-          this.verifyClientState();
-        }, 2000);
-      });
-
-      this.client.on('authenticated', (session) => {
-        console.log('🔐 WhatsApp autenticado correctamente');
-        this.status = 'authenticated';
-      });
-
-      this.client.on('auth_failure', async (msg) => {
-        console.log('❌ Fallo en autenticación de WhatsApp:', msg);
-        this.status = 'disconnected';
-        this.ready = false;
-        this.qrCode = null;
-        this.isInitializing = false;
-
-        // Destruir el cliente para permitir reintento
-        try {
-          if (this.client) {
-            await this.client.destroy();
-          }
-        } catch (e) {
-          console.log('⚠️ Error al destruir cliente:', e.message);
         }
-        this.client = null;
-      });
 
-      this.client.on('disconnected', (reason) => {
-        this.status = 'disconnected';
-        this.ready = false;
-        this.qrCode = null;
-        this.client = null;
-        this.isInitializing = false;
-        console.log('❌ WhatsApp desconectado:', reason);
-      });
+        // Conexión abierta (exitosa)
+        if (connection === 'open') {
+          console.log(`✅ WhatsApp conectado para negocio: ${negocioId}`);
+          instance.status = 'connected';
+          instance.qr = null;
+          instance.lastActivity = Date.now();
 
-      this.client.on('loading_screen', (percent, message) => {
-        console.log(`📲 Cargando WhatsApp... ${percent}% - ${message}`);
-      });
-
-      setTimeout(() => {
-        try {
-          console.log('🚀 Inicializando cliente WhatsApp...');
-          this.client.initialize();
-        } catch (e) {
-          console.log('❌ Error en inicialización:', e.message);
-          this.isInitializing = false;
-        }
-      }, 2000);
-
-      // Captura de errores mejorada
-      this.client.on('error', (err) => {
-        console.log('⚠️ Error WhatsApp:', err.message);
-      });
-
-      // Manejo global de errores
-      const existingHandler = process.listeners('unhandledRejection')[0];
-      process.removeAllListeners('unhandledRejection');
-      
-      process.on('unhandledRejection', (reason, promise) => {
-        const errorMsg = reason?.message || '';
-        if (errorMsg.includes('Execution context') || 
-            errorMsg.includes('ProtocolError') ||
-            errorMsg.includes('markedUnread') ||
-            errorMsg.includes('Evaluation failed')) {
-          console.log('⚠️ Error WhatsApp interno capturado (ignorado)');
-          return;
-        }
-        if (existingHandler) {
-          existingHandler(reason, promise);
-        } else {
-          console.error('Unhandled Rejection:', reason);
+          await this.updateStatus(negocioId, 'connected', null);
+          this.scheduleIdleShutdown(negocioId);
         }
       });
+
+      // Resetear idle timer en cada actividad
+      sock.ev.on('messages.upsert', () => {
+        this.resetIdleTimer(negocioId);
+      });
+
+      return instance;
 
     } catch (error) {
-      console.error('❌ Error inicializando WhatsApp:', error.message);
-      this.isInitializing = false;
+      console.error(`❌ Error inicializando WhatsApp para negocio ${negocioId}:`, error.message);
+      await this.updateStatus(negocioId, 'error', null);
+      throw error;
     }
   }
 
-  async verifyClientState() {
-    if (!this.client) return false;
-    
-    try {
-      const state = await this.client.getState();
-      console.log('🔍 Estado del cliente WhatsApp:', state);
-      
-      if (state === 'CONNECTED') {
-        this.ready = true;
-        this.status = 'connected';
-        return true;
-      } else {
-        console.log('⚠️ Cliente no está en estado CONNECTED, estado actual:', state);
-        this.ready = false;
-        return false;
-      }
-    } catch (err) {
-      console.log('⚠️ No se pudo verificar estado del cliente:', err.message);
-      return false;
-    }
-  }
+  /**
+   * Obtiene el estado de conexión de un negocio
+   */
+  async getStatus(negocioId) {
+    const instance = this.instances.get(negocioId);
 
-  getStatus() {
+    if (instance) {
+      return {
+        status: instance.status,
+        ready: instance.status === 'connected',
+        hasQr: !!instance.qr
+      };
+    }
+
+    // No hay instancia en memoria, consultar base de datos
+    const config = await WhatsAppConfig.findOne({ where: { negocioId } });
+
     return {
-      status: this.status,
-      ready: this.ready,
-      hasQr: !!this.qrCode
+      status: config?.status || 'disconnected',
+      ready: false,
+      hasQr: false
     };
   }
 
-  async getQrCode() {
-    if (!this.client && !this.isInitializing) {
-      this.init();
+  /**
+   * Obtiene el código QR para vincular WhatsApp
+   */
+  async getQrCode(negocioId) {
+    let instance = this.instances.get(negocioId);
+
+    // Si no existe instancia, crearla
+    if (!instance) {
+      instance = await this.getInstance(negocioId);
     }
-    
-    // Esperamos máximo 15 segundos a que se genere el QR
+
+    // Esperar hasta 15 segundos a que se genere el QR
     for (let i = 0; i < 30; i++) {
-      if (this.qrCode) break;
+      if (instance.qr) {
+        try {
+          const qrDataURL = await qrcode.toDataURL(instance.qr);
+          return qrDataURL;
+        } catch (error) {
+          console.error('Error generando QR data URL:', error.message);
+          return null;
+        }
+      }
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    if (!this.qrCode) {
-      console.log('❌ No se pudo generar código QR en el tiempo estimado');
-      return null;
-    }
-    try {
-      return await qrcode.toDataURL(this.qrCode);
-    } catch {
-      return null;
-    }
+    console.log(`⏱️ Timeout esperando QR para negocio: ${negocioId}`);
+    return null;
   }
 
-  async disconnect() {
+  /**
+   * Desconecta WhatsApp de un negocio específico
+   */
+  async disconnect(negocioId) {
     try {
-      if (this.client) {
-        await this.client.logout();
+      const instance = this.instances.get(negocioId);
+
+      if (instance && instance.sock) {
+        await instance.sock.logout();
       }
-      this.ready = false;
-      this.status = 'disconnected';
-      this.qrCode = null;
-      this.client = null;
-      this.isInitializing = false;
+
+      // Limpiar instancia
+      this.instances.delete(negocioId);
+      this.clearIdleTimer(negocioId);
+
+      // Limpiar sesión del filesystem
+      const authPath = path.join(__dirname, `../../whatsapp-sessions/${negocioId}`);
+      if (fs.existsSync(authPath)) {
+        fs.rmSync(authPath, { recursive: true, force: true });
+      }
+
+      // Actualizar base de datos
+      await this.updateStatus(negocioId, 'disconnected', null);
+
+      console.log(`🔌 WhatsApp desconectado para negocio: ${negocioId}`);
       return true;
-    } catch (err) {
-      console.log('Error al desconectar:', err.message);
+
+    } catch (error) {
+      console.error(`Error desconectando WhatsApp (negocio ${negocioId}):`, error.message);
       return false;
     }
   }
 
-  async sendMessage(number, message) {
+  /**
+   * Envía un mensaje de WhatsApp
+   */
+  async sendMessage(negocioId, number, message) {
     console.log(`\n📤 ========== INTENTO DE ENVÍO WHATSAPP ==========`);
-    console.log(`📱 Número destino: ${number}`);
+    console.log(`🏢 Negocio: ${negocioId}`);
+    console.log(`📱 Número: ${number}`);
     console.log(`💬 Mensaje: ${message.substring(0, 50)}...`);
-    
-    // Verificación 1: Cliente existe
-    if (!this.client) {
-      console.log('❌ FALLO: No hay cliente WhatsApp inicializado');
-      console.log('💡 Solución: Ve a Configuraciones → Integraciones y escanea el código QR');
-      return false;
-    }
-    
-    // Verificación 2: Estado del cliente
-    console.log(`🔍 Estado actual: ${this.status} | Ready: ${this.ready}`);
-    
+
     try {
-      const clientState = await this.client.getState();
-      console.log(`🔍 Estado del cliente: ${clientState}`);
-      
-      if (clientState !== 'CONNECTED') {
-        console.log(`❌ FALLO: Cliente no está conectado (estado: ${clientState})`);
-        console.log('💡 Solución: Espera a que WhatsApp se conecte o vuelve a escanear el QR');
+      // Obtener instancia
+      const instance = await this.getInstance(negocioId);
+
+      if (instance.status !== 'connected') {
+        console.log(`❌ WhatsApp no está conectado (status: ${instance.status})`);
         return false;
       }
-    } catch (stateError) {
-      console.log(`⚠️ No se pudo verificar estado (continuando): ${stateError.message}`);
-    }
 
-    // Anti-spam: máximo 1 mensaje por segundo
-    const now = Date.now();
-    if (now - this.lastMessageTime < 1000) {
-      console.log('⏱️ Esperando 1 segundo entre mensajes...');
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    
-    try {
-      // Formateo de número para Argentina
+      // Formatear número para Argentina
       let num = number.replace(/\D/g, '');
-      
+
       if (num.length === 10 && num.startsWith('11')) {
         num = '549' + num;
       } else if (num.length === 8) {
@@ -302,155 +250,222 @@ class WhatsAppService {
       } else if (num.length === 10 && !num.startsWith('549')) {
         num = '54' + num;
       }
-      
+
       console.log(`🔢 Número formateado: ${num}`);
-      
-      const chatId = num + '@c.us';
-      
-      // Verificar registro con timeout
-      console.log('🔍 Verificando si el número está registrado en WhatsApp...');
+
+      const jid = num + '@s.whatsapp.net';
+
+      // Verificar si el número está registrado
       let isRegistered = false;
-      
       try {
-        const checkPromise = this.client.isRegisteredUser(chatId);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        );
-        
-        isRegistered = await Promise.race([checkPromise, timeoutPromise]);
-        console.log(`✅ Número ${isRegistered ? 'SÍ' : 'NO'} está registrado en WhatsApp`);
+        const [result] = await instance.sock.onWhatsApp(jid);
+        isRegistered = result?.exists || false;
+        console.log(`${isRegistered ? '✅' : '❌'} Número ${isRegistered ? 'SÍ' : 'NO'} está en WhatsApp`);
       } catch (checkError) {
         console.log(`⚠️ No se pudo verificar registro: ${checkError.message}`);
-        console.log('🔄 Intentando enviar de todos modos...');
-        isRegistered = true; // Asumimos que sí para intentar
+        isRegistered = true; // Intentar enviar de todos modos
       }
 
       if (!isRegistered) {
-        console.log('❌ FALLO: El número no tiene WhatsApp');
+        console.log('❌ El número no tiene WhatsApp');
         return false;
       }
 
-      // Intentar envío con manejo robusto de errores
+      // Enviar mensaje
       console.log('📨 Enviando mensaje...');
-      
-      let enviado = false;
-      let ultimoError = null;
+      await instance.sock.sendMessage(jid, { text: message });
 
-      for (let intento = 1; intento <= 3; intento++) {
-        try {
-          console.log(`🔄 Intento ${intento}/3...`);
-          
-          // Crear promesa de envío con timeout de 10 segundos
-          const sendPromise = this.client.sendMessage(chatId, message);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout de 10 segundos')), 10000)
-          );
-          
-          await Promise.race([sendPromise, timeoutPromise]);
-          
-          console.log(`✅ ✅ ✅ MENSAJE ENVIADO EXITOSAMENTE ✅ ✅ ✅`);
-          this.lastMessageTime = Date.now();
-          enviado = true;
-          break;
-          
-        } catch (sendError) {
-          ultimoError = sendError;
-          const errorMsg = sendError?.message || '';
-          
-          console.log(`⚠️ Intento ${intento} falló: ${errorMsg}`);
-          
-          // Errores que consideramos como "posiblemente enviado"
-          if (errorMsg.includes('markedUnread') || 
-              errorMsg.includes('Evaluation failed') ||
-              errorMsg.includes('Cannot read properties')) {
-            console.log(`🤔 Error de tracking, el mensaje PUEDE haberse enviado`);
-            console.log(`💡 Verifica manualmente en WhatsApp si llegó`);
-            enviado = true; // Lo marcamos como enviado porque probablemente sí llegó
-            break;
-          }
-          
-          // Errores graves que indican que NO se envió
-          if (errorMsg.includes('not a contact') ||
-              errorMsg.includes('Chat not found') ||
-              errorMsg.includes('is not a WhatsApp user')) {
-            console.log(`❌ ERROR DEFINITIVO: ${errorMsg}`);
-            break;
-          }
-          
-          // Si aún quedan intentos, esperamos antes de reintentar
-          if (intento < 3) {
-            const espera = intento * 1000;
-            console.log(`⏳ Esperando ${espera}ms antes de reintentar...`);
-            await new Promise(r => setTimeout(r, espera));
-          }
-        }
-      }
+      console.log(`✅ ✅ ✅ MENSAJE ENVIADO EXITOSAMENTE ✅ ✅ ✅`);
+      console.log(`================================================\n`);
 
-      if (enviado) {
-        console.log(`✅ Resultado final: ENVIADO`);
-        console.log(`================================================\n`);
-        return true;
-      } else {
-        console.log(`❌ Resultado final: FALLÓ después de 3 intentos`);
-        console.log(`❌ Último error: ${ultimoError?.message || 'Desconocido'}`);
-        console.log(`================================================\n`);
-        return false;
-      }
-      
+      // Actualizar última actividad
+      instance.lastActivity = Date.now();
+      this.resetIdleTimer(negocioId);
+
+      return true;
+
     } catch (error) {
-      console.error('❌ ERROR CRÍTICO al enviar mensaje:', error.message);
+      console.error(`❌ Error enviando mensaje (negocio ${negocioId}):`, error.message);
       console.log(`================================================\n`);
       return false;
     }
   }
 
-  loadTemplates() {
-    const templatesPath = path.join(__dirname, '../../whatsapp_templates.json');
-    try {
-      if (fs.existsSync(templatesPath)) {
-        return JSON.parse(fs.readFileSync(templatesPath, 'utf8'));
-      }
-    } catch (err) {
-      console.log('No se pudieron cargar templates personalizados, usando defaults');
+  /**
+   * Renderiza un template de mensaje con variables
+   */
+  renderTemplate(templateKey, variables, config) {
+    const templates = config?.templates || this.getDefaultTemplates();
+    let template = templates[templateKey] || '';
+
+    for (const [key, value] of Object.entries(variables)) {
+      template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
     }
-    
-    // Plantillas por defecto
+
+    return template;
+  }
+
+  /**
+   * Guarda templates personalizados para un negocio
+   */
+  async saveTemplates(negocioId, templates) {
+    try {
+      let config = await WhatsAppConfig.findOne({ where: { negocioId } });
+
+      if (!config) {
+        config = await WhatsAppConfig.create({
+          negocioId,
+          config: { templates }
+        });
+      } else {
+        await config.update({
+          config: { ...config.config, templates }
+        });
+      }
+
+      console.log(`💾 Templates guardados para negocio: ${negocioId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error guardando templates (negocio ${negocioId}):`, error.message);
+      return false;
+    }
+  }
+
+  // ── Métodos privados ──────────────────────────────────────
+
+  /**
+   * Programa auto-shutdown de una instancia después de inactividad
+   */
+  scheduleIdleShutdown(negocioId) {
+    this.clearIdleTimer(negocioId);
+
+    const timer = setTimeout(async () => {
+      const instance = this.instances.get(negocioId);
+
+      if (instance && Date.now() - instance.lastActivity >= this.IDLE_TIMEOUT) {
+        console.log(`⏱️ Auto-shutdown idle WhatsApp instance: ${negocioId}`);
+
+        // No hacer logout, solo limpiar de memoria
+        this.instances.delete(negocioId);
+        this.clearIdleTimer(negocioId);
+      }
+    }, this.IDLE_TIMEOUT);
+
+    this.idleTimers.set(negocioId, timer);
+  }
+
+  /**
+   * Resetea el timer de idle cuando hay actividad
+   */
+  resetIdleTimer(negocioId) {
+    const instance = this.instances.get(negocioId);
+    if (instance) {
+      instance.lastActivity = Date.now();
+      this.scheduleIdleShutdown(negocioId);
+    }
+  }
+
+  /**
+   * Limpia el timer de idle
+   */
+  clearIdleTimer(negocioId) {
+    const timer = this.idleTimers.get(negocioId);
+    if (timer) {
+      clearTimeout(timer);
+      this.idleTimers.delete(negocioId);
+    }
+  }
+
+  /**
+   * Elimina la instancia menos usada (LRU eviction)
+   */
+  async evictLeastRecentlyUsed() {
+    let oldestNegocioId = null;
+    let oldestActivity = Infinity;
+
+    for (const [negocioId, instance] of this.instances.entries()) {
+      if (instance.lastActivity < oldestActivity) {
+        oldestActivity = instance.lastActivity;
+        oldestNegocioId = negocioId;
+      }
+    }
+
+    if (oldestNegocioId) {
+      console.log(`🗑️ LRU eviction - liberando instancia: ${oldestNegocioId}`);
+      this.instances.delete(oldestNegocioId);
+      this.clearIdleTimer(oldestNegocioId);
+    }
+  }
+
+  /**
+   * Guarda el QR en la base de datos
+   */
+  async saveQrToDatabase(negocioId, qr) {
+    try {
+      let config = await WhatsAppConfig.findOne({ where: { negocioId } });
+
+      if (!config) {
+        await WhatsAppConfig.create({
+          negocioId,
+          qrCode: qr,
+          status: 'connecting'
+        });
+      } else {
+        await config.update({
+          qrCode: qr,
+          status: 'connecting'
+        });
+      }
+    } catch (error) {
+      console.error(`Error guardando QR en DB (negocio ${negocioId}):`, error.message);
+    }
+  }
+
+  /**
+   * Actualiza el estado en la base de datos
+   */
+  async updateStatus(negocioId, status, qrCode) {
+    try {
+      let config = await WhatsAppConfig.findOne({ where: { negocioId } });
+
+      if (!config) {
+        await WhatsAppConfig.create({
+          negocioId,
+          status,
+          qrCode,
+          lastActivity: new Date()
+        });
+      } else {
+        await config.update({
+          status,
+          qrCode,
+          lastActivity: new Date()
+        });
+      }
+    } catch (error) {
+      console.error(`Error actualizando status en DB (negocio ${negocioId}):`, error.message);
+    }
+  }
+
+  /**
+   * Retorna templates por defecto
+   */
+  getDefaultTemplates() {
     return {
-      nuevo_pedido_admin: '🔔 NUEVO PEDIDO #{{numero_pedido}}\n\nCliente: {{nombre_cliente}}\nTeléfono: {{telefono}}\nTotal: ${{total}}\n\nDetalle:\n{{detalle_pedido}}',
-      
       delivery: {
         nuevo_a_preparacion: '¡Hola! Tu pedido fue realizado y se encuentra en preparación.\nTe avisaremos por este medio cuando esté en camino!\nLas promociones y descuentos son validas solo en Efectivo.',
         preparacion_a_listo: 'Tu pedido ya está listo para ser entregado.\nen minutos sale hacia tu domicilio por favor estar atentos.',
         listo_a_en_camino: 'Tu pedido va en camino! Por favor este atento que el repartidor esta llegando.',
         cualquier_a_cancelado: 'Tu pedido ha sido cancelado.'
       },
-      
       takeaway: {
         nuevo_a_preparacion: '¡Hola! Tu pedido fue realizado y se encuentra en preparación.\nTe avisaremos por este medio cuando esté Listo!\nLas promociones y descuentos son validas solo en Efectivo.',
         preparacion_a_listo: 'Tu pedido ya está listo para retirar. Podes venir cuando quieras!',
-        cualquier_a_cancelado: ''
+        cualquier_a_cancelado: 'Tu pedido ha sido cancelado.'
       }
     };
   }
-
-  saveTemplates(templates) {
-    const templatesPath = path.join(__dirname, '../../whatsapp_templates.json');
-    this.templates = templates;
-    try {
-      fs.writeFileSync(templatesPath, JSON.stringify(templates, null, 2));
-    } catch (err) {
-      console.error('Error guardando templates:', err.message);
-    }
-  }
-
-  renderTemplate(templateKey, variables) {
-    let template = this.templates[templateKey] || '';
-    for (const [key, value] of Object.entries(variables)) {
-      template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
-    }
-    return template;
-  }
 }
 
-// Singleton
-module.exports = new WhatsAppService();
+// Exportar singleton
+module.exports = new WhatsAppMultiTenantService();
