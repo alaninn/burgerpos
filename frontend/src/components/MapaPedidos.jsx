@@ -358,54 +358,6 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
         )}
       </div>
 
-      {/* Lista debajo del mapa */}
-      {pedidosDelivery.length > 0 && (
-        <div
-          className="flex-shrink-0 max-h-36 overflow-y-auto"
-          style={{
-            backgroundColor: mapaConfig.colorHeader,
-            borderTop: `1px solid ${mapaConfig.colorTextoSecundario}40`
-          }}
-        >
-          {pedidosDelivery.map(p => {
-            const pinEncontrado = pinsData.find(d => d.pedido.id === p.id)
-            const isPagado = p.metodoPago !== 'efectivo'
-            return (
-              <div
-                key={p.id}
-                className="flex items-center gap-3 px-4 py-2.5 transition-colors"
-                style={{
-                  borderBottom: `1px solid ${mapaConfig.colorTextoSecundario}30`
-                }}
-              >
-                <div className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: isPagado ? mapaConfig.colorPinPagado : mapaConfig.colorPinPendiente }} />
-                <span className="text-xs font-bold w-8" style={{ color: mapaConfig.colorTextoSecundario }}>#{p.numero}</span>
-                <span className="text-sm flex-1 truncate" style={{ color: mapaConfig.colorTexto }}>{p.clienteNombre}</span>
-                <span className="text-xs truncate max-w-32 hidden md:block" style={{ color: mapaConfig.colorTextoSecundario }}>{p.clienteDireccion}</span>
-                {pinEncontrado ? (
-                  <span className="text-xs text-green-400">📍 localizado</span>
-                ) : geocodificando ? (
-                  <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>buscando...</span>
-                ) : (
-                  <span className="text-xs text-yellow-500">sin coords</span>
-                )}
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(p.clienteDireccion)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-violet-400 hover:text-violet-200 flex-shrink-0"
-                  title="Ver en Google Maps"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              </div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }
