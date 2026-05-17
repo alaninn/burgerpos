@@ -453,7 +453,7 @@ export default function PanelPedidos() {
       const sonidos = {
         default:  'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',  // Alerta urgente
         chime:    'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3',  // Alerta fuerte 1
-        ding:     'https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3',  // Alerta fuerte 2
+        ding:     'https://assets.mixkit.co/active_storage/sfx/2875/2875-preview.mp3',  // 🔔 Campana de servicio
         pop:      'https://assets.mixkit.co/active_storage/sfx/2858/2858-preview.mp3',  // Alerta triple
         notify:   'https://assets.mixkit.co/active_storage/sfx/2866/2866-preview.mp3',  // Alerta digital
         bell:     'https://assets.mixkit.co/active_storage/sfx/2868/2868-preview.mp3',  // Timbre fuerte
