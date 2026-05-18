@@ -418,9 +418,7 @@ export default function PanelPedidos() {
       return saved ? JSON.parse(saved) : {
         // Sonidos
         sonidoNuevoPedido: true,
-        sonidoAlertaTiempo: true,
-        tiempoAlertaMinutos: 15,
-        intervaloAlertaSegundos: 30,
+        intervaloAlertaSegundos: 1,
         sonidoSeleccionado: 'default',
         volumen: 0.8,
         // Impresion
@@ -429,15 +427,14 @@ export default function PanelPedidos() {
         copiasImpresion: 1,
         imprimirDireccion: true,
         imprimirTelefono: true,
-        cortarPapelAutomatico: true,
         // Mensajes
         mensajesAutomaticosEstado: true,
         preguntarAntesEnviarMensaje: true,
         enviarMensajePorEstado: {
           nuevo: true,
-          confirmado: true,
+          en_preparacion: true,
           listo: true,
-          encamino: true,
+          en_camino: true,
           entregado: true
         }
       }
@@ -507,11 +504,11 @@ export default function PanelPedidos() {
 
     // 4B. Impresión automática al recibir pedido
     if (configPanel.imprimirAutomatico && data?.pedido) {
-      for (let i = 0; i < configPanel.cantidadCopias; i++) {
+      for (let i = 0; i < configPanel.copiasImpresion; i++) {
         await generarComanda(data.pedido)
       }
     }
-  }, [cargarPedidos, configPanel.sonidoNuevoPedido, configPanel.sonidoSeleccionado, configPanel.volumen, configPanel.imprimirAutomatico, configPanel.cantidadCopias])
+  }, [cargarPedidos, configPanel.sonidoNuevoPedido, configPanel.sonidoSeleccionado, configPanel.volumen, configPanel.imprimirAutomatico, configPanel.copiasImpresion])
   useSocket(negocioId, onNuevoPedido, cargarPedidos)
 
   const porModalidad = pedidos.filter(p => filtroModalidad === 'todos' || p.modalidad === filtroModalidad)
@@ -558,29 +555,6 @@ export default function PanelPedidos() {
       }
     }
   }, [cuentas.nuevo, configPanel.sonidoNuevoPedido, configPanel.intervaloAlertaSegundos, configPanel.sonidoSeleccionado, configPanel.volumen])
-
-  // 4A. Alerta por tiempo límite - Revisar pedidos antiguos cada minuto
-  useEffect(() => {
-    if (!configPanel.sonidoAlertaTiempo) return
-
-    const checkPedidosAntiguos = () => {
-      const ahora = Date.now()
-      pedidos.forEach(ped => {
-        if (['nuevo', 'en_preparacion'].includes(ped.estado)) {
-          const minutos = (ahora - new Date(ped.createdAt).getTime()) / 60000
-          if (minutos >= configPanel.tiempoAlertaMinutos) {
-            reproducirSonido(configPanel.sonidoSeleccionado)
-          }
-        }
-      })
-    }
-
-    // Ejecutar inmediatamente y luego cada minuto
-    checkPedidosAntiguos()
-    const interval = setInterval(checkPedidosAntiguos, 60000)
-
-    return () => clearInterval(interval)
-  }, [pedidos, configPanel.sonidoAlertaTiempo, configPanel.tiempoAlertaMinutos, configPanel.sonidoSeleccionado])
 
   return (
     <div className="h-full flex flex-col" style={{ background: 'var(--bg-main)' }}>
@@ -818,16 +792,6 @@ export default function PanelPedidos() {
                     <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Sonido al recibir nuevo pedido</span>
                     <input type="checkbox" checked={configPanel.sonidoNuevoPedido} onChange={e => setConfigPanel({ ...configPanel, sonidoNuevoPedido: e.target.checked })} className="w-5 h-5" />
                   </label>
-                  <label className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-secondary)' }}>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Alerta sonora por tiempo limite</span>
-                    <input type="checkbox" checked={configPanel.sonidoAlertaTiempo} onChange={e => setConfigPanel({ ...configPanel, sonidoAlertaTiempo: e.target.checked })} className="w-5 h-5" />
-                  </label>
-                  <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-secondary)' }}>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Tiempo limite para alerta</span>
-                    <select value={configPanel.tiempoAlertaMinutos} onChange={e => setConfigPanel({ ...configPanel, tiempoAlertaMinutos: parseInt(e.target.value) })} className="px-3 py-1.5 rounded-lg text-sm font-medium" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-                      {[5,10,15,20,30,45,60].map(m => <option key={m} value={m}>{m} minutos</option>)}
-                    </select>
-                  </div>
                   <div className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-secondary)' }}>
                     <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Repetir alerta cada</span>
                     <select value={configPanel.intervaloAlertaSegundos} onChange={e => setConfigPanel({ ...configPanel, intervaloAlertaSegundos: parseInt(e.target.value) })} className="px-3 py-1.5 rounded-lg text-sm font-medium" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
@@ -889,10 +853,6 @@ export default function PanelPedidos() {
                   <label className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-secondary)' }}>
                     <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Imprimir numero de telefono</span>
                     <input type="checkbox" checked={configPanel.imprimirTelefono} onChange={e => setConfigPanel({ ...configPanel, imprimirTelefono: e.target.checked })} className="w-5 h-5" />
-                  </label>
-                  <label className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'var(--bg-secondary)' }}>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Cortar papel automaticamente</span>
-                    <input type="checkbox" checked={configPanel.cortarPapelAutomatico} onChange={e => setConfigPanel({ ...configPanel, cortarPapelAutomatico: e.target.checked })} className="w-5 h-5" />
                   </label>
                 </div>
               </div>
