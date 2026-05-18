@@ -63,6 +63,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/menu" element={<MenuPublico />} />
       <Route path="/menu/:slug" element={<MenuPublico />} />
       <Route path="/menu/:slug/pago-exitoso" element={<PagoExitoso />} />
       <Route path="/menu/:slug/pago-fallido" element={<PagoFallido />} />

@@ -1237,7 +1237,8 @@ function BotonCarrito({ carrito, onClick, color, disabled }) {
 
 // ─── Página principal ─────────────────────────────────────
 export default function MenuPublico() {
-  const { slug }     = useParams()
+  const { slug: paramSlug } = useParams()
+  const slug = paramSlug || import.meta.env.VITE_DEFAULT_MENU_SLUG || 'qrban'
   const [data, setData]             = useState(null)
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(null)
