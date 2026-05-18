@@ -33,13 +33,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "cdnjs.cloudflare.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "http:", "*.openstreetmap.org", "*.tile.openstreetmap.org"],
       connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"],
       fontSrc: ["'self'", "data:", "https:"],
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'", "blob:", "data:"],
+      mediaSrc: ["'self'", "blob:", "data:", "https:", "http:", "assets.mixkit.co"],
       frameSrc: ["'self'"]
     }
   }
