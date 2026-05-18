@@ -588,116 +588,119 @@ export default function PanelPedidos() {
       {/* ── Toolbar ───────────────────────────────────────── */}
       <div className="flex-shrink-0" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
 
-        {/* Top bar: filtros de modalidad + acciones */}
-        <div className="px-5 pt-3 pb-0 flex items-center justify-between gap-4">
-          {/* Filtros modalidad */}
-          <div className="flex items-center gap-1.5">
-            {modalidadesActivas.map(f => {
-              const active = filtroModalidad === f.id
-              const mc = f.id !== 'todos' ? MODALIDAD_COLOR[f.id] : null
-              return (
-                <button key={f.id} onClick={() => setFiltroModalidad(f.id)}
-                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
-                  style={active
-                    ? mc
-                      ? { background: mc.bg, color: mc.text, border: `1.5px solid ${mc.dot}` }
-                      : { background: '#7c3aed', color: '#fff', border: '1.5px solid #7c3aed' }
-                    : { background: 'transparent', color: 'var(--text-muted)', border: '1.5px solid var(--border)' }}>
-                  {f.label}
-                  {f.id !== 'todos' && (
-                    <span className="ml-1.5 text-xs opacity-70">
-                      {pedidos.filter(p => p.modalidad === f.id).length}
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+        {/* Top bar: reorganizado - filtros principales arriba, acciones secundarias abajo */}
+        <div className="px-3 md:px-5 pt-3 pb-0 space-y-2">
+
+          {/* Fila 1: Botones principales (modalidades) + Nuevo pedido */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            {/* Filtros modalidad - TEXTO COMPLETO SIEMPRE */}
+            <div className="flex items-center gap-1 md:gap-1.5 flex-wrap">
+              {modalidadesActivas.map(f => {
+                const active = filtroModalidad === f.id
+                const mc = f.id !== 'todos' ? MODALIDAD_COLOR[f.id] : null
+                return (
+                  <button key={f.id} onClick={() => setFiltroModalidad(f.id)}
+                    className="px-2.5 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-bold transition-all whitespace-nowrap"
+                    style={active
+                      ? mc
+                        ? { background: mc.bg, color: mc.text, border: `1.5px solid ${mc.dot}` }
+                        : { background: '#7c3aed', color: '#fff', border: '1.5px solid #7c3aed' }
+                      : { background: 'transparent', color: 'var(--text-muted)', border: '1.5px solid var(--border)' }}>
+                    {f.label}
+                    {f.id !== 'todos' && (
+                      <span className="ml-1 md:ml-1.5 text-[10px] md:text-xs opacity-70">
+                        {pedidos.filter(p => p.modalidad === f.id).length}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Botón Nuevo pedido - siempre visible */}
+            <button onClick={() => setPedidoEditar({})}
+              className="flex items-center gap-1 md:gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-xl text-xs md:text-sm font-black text-white transition-all hover:opacity-90 active:scale-95 whitespace-nowrap"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}>
+              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Nuevo pedido
+            </button>
           </div>
 
-          {/* Acciones */}
-           <div className="flex items-center gap-2">
-             <button onClick={() => setShowMapa(m => !m)}
-               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
-               style={showMapa
-                 ? { background: '#ede9fe', color: '#7c3aed', border: '1.5px solid #c4b5fd' }
-                 : { background: 'transparent', color: '#6b7280', border: '1.5px solid #e5e7eb' }}>
-               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-               </svg>
-               Mapa
-             </button>
-             <button
-               onClick={() => {
-                 const configDefecto = {
-                   tema: 'standard',
-                   colorPinPagado: '#22c55e',
-                   colorPinPendiente: '#ef4444',
-                   colorFondo: '#f5f5f5',
-                   colorHeader: '#ffffff',
-                   colorTexto: '#1f2937',
-                   colorTextoSecundario: '#6b7280',
-                   colorNegocio: '#1f2937',
-                   tamanioPins: 'mediano',
-                   opacidadMapa: 1,
-                   tileLayer: 'standard',
-                   brillo: 0,
-                   contraste: 0,
-                   saturacion: 0,
-                   matiz: 0
-                 }
-                 const config = { ...configDefecto, ...(negocio?.configuracion?.mapaConfiguracion || {}) }
-                 // Guardar copia profunda de los valores originales
-                 setMapaConfigOriginal(JSON.parse(JSON.stringify(config)))
-                 setMapaConfigTemp(JSON.parse(JSON.stringify(config)))
-                 setShowConfigMapa(true)
-               }}
-               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
-               style={{ background: 'transparent', color: '#6b7280', border: '1.5px solid #e5e7eb' }}
-               title="Personalizar colores y estilo del mapa"
-             >
-               <span>🎨</span>
-               <span className="hidden lg:inline">Config. Mapa</span>
-             </button>
-             <button onClick={() => setShowOtros(true)}
-               className="px-3.5 py-2 rounded-xl text-sm font-bold transition-all"
-               style={{ background: 'transparent', color: '#6b7280', border: '1.5px solid #e5e7eb' }}>
-               Historial
-             </button>
-             <button onClick={() => setShowConfig(true)}
-               className="p-2 rounded-xl text-sm font-bold transition-all"
-               style={{ background: 'transparent', color: '#6b7280', border: '1.5px solid #e5e7eb' }}
-               title="Configuracion del panel de pedidos">
-               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-               </svg>
-             </button>
-             <button onClick={() => setPedidoEditar({})}
-               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-black text-white transition-all hover:opacity-90 active:scale-95"
-               style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.35)' }}>
-               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-               </svg>
-               Nuevo pedido
-             </button>
-           </div>
+          {/* Fila 2: Acciones secundarias (más pequeñas, menos prominentes) */}
+          <div className="flex items-center gap-1 md:gap-1.5 flex-wrap text-xs">
+            <button onClick={() => setShowMapa(m => !m)}
+              className="flex items-center gap-1 px-2 md:px-2.5 py-1 md:py-1.5 rounded-lg font-medium transition-all"
+              style={showMapa
+                ? { background: '#ede9fe', color: '#7c3aed' }
+                : { background: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb' }}>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              Mapa
+            </button>
+            <button
+              onClick={() => {
+                const configDefecto = {
+                  tema: 'standard',
+                  colorPinPagado: '#22c55e',
+                  colorPinPendiente: '#ef4444',
+                  colorFondo: '#f5f5f5',
+                  colorHeader: '#ffffff',
+                  colorTexto: '#1f2937',
+                  colorTextoSecundario: '#6b7280',
+                  colorNegocio: '#1f2937',
+                  tamanioPins: 'mediano',
+                  opacidadMapa: 1,
+                  tileLayer: 'standard',
+                  brillo: 0,
+                  contraste: 0,
+                  saturacion: 0,
+                  matiz: 0
+                }
+                const config = { ...configDefecto, ...(negocio?.configuracion?.mapaConfiguracion || {}) }
+                setMapaConfigOriginal(JSON.parse(JSON.stringify(config)))
+                setMapaConfigTemp(JSON.parse(JSON.stringify(config)))
+                setShowConfigMapa(true)
+              }}
+              className="flex items-center gap-1 px-2 md:px-2.5 py-1 md:py-1.5 rounded-lg font-medium transition-all"
+              style={{ background: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb' }}
+              title="Personalizar mapa">
+              🎨 <span className="hidden md:inline">Personalizar</span>
+            </button>
+            <button onClick={() => setShowOtros(true)}
+              className="px-2 md:px-2.5 py-1 md:py-1.5 rounded-lg font-medium transition-all"
+              style={{ background: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb' }}>
+              📋 Historial
+            </button>
+            <button onClick={() => setShowConfig(true)}
+              className="p-1 md:p-1.5 rounded-lg font-medium transition-all"
+              style={{ background: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb' }}
+              title="Configuración panel">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Tabs de estado */}
-        <div className="flex px-5 gap-1" style={{ borderTop: '1px solid var(--border)' }}>
+        <div className="flex px-3 md:px-5 gap-1 md:gap-2 overflow-x-auto" style={{ borderTop: '1px solid var(--border)' }}>
           {Object.entries(STATE_CONFIG).map(([id, s]) => (
             <button key={id} onClick={() => setTabEstado(id)}
-              className="flex items-center gap-2 px-4 py-3 text-sm font-bold transition-all relative"
+              className="flex items-center gap-2 md:gap-2.5 px-3 md:px-5 py-2.5 md:py-3 text-sm md:text-base font-bold transition-all relative whitespace-nowrap"
               style={tabEstado === id
                 ? { color: s.color }
                 : { color: 'var(--text-muted)' }}>
               {tabEstado === id && (
                 <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: s.color }} />
               )}
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tabEstado === id ? s.color : 'var(--border)' }} />
-              {s.label}
+              <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full flex-shrink-0" style={{ background: tabEstado === id ? s.color : 'var(--border)' }} />
+              <span>{s.label}</span>
               {cuentas[id] > 0 && (
-                <span className="text-xs font-black px-1.5 py-0.5 rounded-full"
+                <span className="text-xs md:text-sm font-black px-1.5 md:px-2 py-0.5 rounded-full"
                   style={tabEstado === id
                     ? { background: s.color, color: '#fff' }
                     : { background: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>
@@ -710,19 +713,19 @@ export default function PanelPedidos() {
       </div>
 
       {/* ── Contenido ─────────────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
         {/* Lista */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 lg:w-1/2 flex flex-col overflow-hidden min-w-0">
           {/* Sub-header */}
-          <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: currentState?.color }} />
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+          <div className="px-3 md:px-5 py-2 md:py-3 flex items-center gap-2 flex-shrink-0">
+            <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full" style={{ background: currentState?.color }} />
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
               {currentState?.label} · {pedidosVisibles.length} pedido{pedidosVisibles.length !== 1 ? 's' : ''}
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-3 md:px-4 pb-4 space-y-2 md:space-y-3">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <div className="w-8 h-8 border-3 border-violet-600 border-t-transparent rounded-full animate-spin"
@@ -754,7 +757,7 @@ export default function PanelPedidos() {
 
         {/* Mapa */}
         {showMapa && (
-          <div className="flex-shrink-0 overflow-hidden" style={{ width: '48%', minWidth: 320, maxWidth: 680, borderLeft: '1px solid var(--border)' }}>
+          <div className="w-full lg:w-1/2 h-96 lg:h-auto flex-shrink-0 overflow-hidden" style={{ borderLeft: 'none', borderTop: '1px solid var(--border)', borderLeftWidth: '0', borderTopWidth: '1px' }} className="w-full lg:w-1/2 h-96 lg:h-auto flex-shrink-0 overflow-hidden lg:border-t-0 lg:border-l" style={{ borderColor: 'var(--border)' }}>
             <MapaPedidos
               key={showConfigMapa && mapaConfigTemp ? JSON.stringify(mapaConfigTemp) : 'mapa-default'}
               pedidos={todosParaMapa}
@@ -794,10 +797,10 @@ export default function PanelPedidos() {
 
       {/* ✅ MODAL CONFIGURACION PANEL PEDIDOS */}
       {showConfig && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowConfig(false)}>
-          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h3 className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>⚙️ Configuración del panel</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowConfig(false)}>
+          <div className="w-full md:max-w-md rounded-2xl shadow-2xl overflow-hidden" style={{ background: 'var(--bg-card)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 md:px-6 py-3 md:py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 className="font-black text-base md:text-lg" style={{ color: 'var(--text-primary)' }}>⚙️ Configuración del panel</h3>
               <button onClick={() => setShowConfig(false)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors" style={{ background: 'var(--bg-hover)' }}>
                 <svg className="w-4 h-4" style={{ color: 'var(--text-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -993,34 +993,34 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-100 dark:bg-gray-900">
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-3.5 bg-gray-900 text-white flex-shrink-0">
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors flex-shrink-0">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2.5 md:py-3.5 bg-gray-900 text-white flex-shrink-0">
+        <button onClick={onClose} className="p-1.5 md:p-2 hover:bg-white/10 rounded-xl transition-colors flex-shrink-0">
+          <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-bold text-base">
-            {pedidoExistente ? `Editando pedido #${pedidoExistente.numero}` : 'Nuevo pedido'}
+          <h1 className="font-bold text-sm md:text-base">
+            {pedidoExistente ? `Editando #${pedidoExistente.numero}` : 'Nuevo pedido'}
           </h1>
-          <p className="text-xs text-gray-700 dark:text-gray-300">
+          <p className="text-[10px] md:text-xs text-gray-400">
             {modalidad === 'delivery' ? '🛵 Delivery' : modalidad === 'takeaway' ? '🥡 Take Away' : '🪑 Salón'}
             {!pedidoExistente && (
-              <button onClick={() => setPaso(1)} className="ml-2 text-violet-400 hover:text-violet-300 underline">cambiar</button>
+              <button onClick={() => setPaso(1)} className="ml-1 md:ml-2 text-violet-400 hover:text-violet-300 underline">cambiar</button>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm flex-shrink-0">
-          <span className="text-gray-600 dark:text-gray-400">{carrito.length} producto{carrito.length !== 1 ? 's' : ''}</span>
-          {carrito.length > 0 && <span className="text-white font-bold text-lg">${fmt(total)}</span>}
+        <div className="hidden sm:flex items-center gap-2 md:gap-3 text-xs md:text-sm flex-shrink-0">
+          <span className="text-gray-400">{carrito.length} producto{carrito.length !== 1 ? 's' : ''}</span>
+          {carrito.length > 0 && <span className="text-white font-bold text-base md:text-lg">${fmt(total)}</span>}
         </div>
       </div>
 
-      {/* 3 columnas */}
-      <div className="flex-1 flex overflow-hidden gap-3 p-3">
+      {/* 3 columnas - responsive: stack en móvil, lado a lado en desktop */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-auto lg:overflow-hidden gap-2 md:gap-3 p-2 md:p-3">
 
         {/* IZQUIERDA: Carrito */}
-        <div className="w-[480px] min-w-[220px] flex flex-col flex-shrink bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="w-full lg:w-[480px] lg:min-w-[220px] min-h-[200px] lg:min-h-0 flex flex-col flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-between">
             <p className="text-sm font-bold text-gray-900 dark:text-gray-100">Detalle del pedido</p>
             {subtotal > 0 && <span className="text-sm font-bold text-gray-900 dark:text-gray-100">${fmt(subtotal)}</span>}
@@ -1082,7 +1082,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
         </div>
 
         {/* CENTRO: Catálogo o Customizador */}
-        <div className="flex-1 min-w-[280px] flex flex-col overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="flex-1 w-full min-h-[400px] lg:min-h-0 lg:min-w-[280px] flex flex-col overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
           {productoCustom ? (
             <div className="flex-1 overflow-hidden bg-white dark:bg-[#1a1a24]">
               <ProductoCustomizer
@@ -1124,7 +1124,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                     <p className="text-sm font-medium">No hay productos</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
                     {productosFiltrados.map(prod => (
                       <button key={prod.id}
                         onClick={() => prod.activo && setProductoCustom(prod)}
@@ -1150,7 +1150,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
         </div>
 
         {/* DERECHA: Pago + Cliente — más ancho que antes */}
-        <div className="w-[480px] min-w-[220px] flex flex-col flex-shrink bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="w-full lg:w-[480px] lg:min-w-[220px] min-h-[300px] lg:min-h-0 flex flex-col flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 space-y-4">
 
@@ -1172,7 +1172,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
               {/* Método de pago */}
               <div>
                 <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-1.5">Método de pago</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {metodosPagoHabilitados.filter(m => {
                     if (!m.cfgKey || !modalidad) return true
                     const cfg = configProp.metodosPago?.[m.cfgKey]

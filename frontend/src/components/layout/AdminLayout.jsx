@@ -89,6 +89,7 @@ export default function AdminLayout() {
   const { usuario, logout, negocioGestionado, salirDeGestion } = useAuth()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showCambiarPass, setShowCambiarPass] = useState(false)
   const { darkMode, toggleTheme } = useTheme()
@@ -112,8 +113,22 @@ export default function AdminLayout() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      {/* Mobile overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`${collapsed ? 'w-0 overflow-hidden' : 'w-60'} flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-200`}>
+      <aside className={`
+        ${collapsed ? 'w-0 overflow-hidden' : 'w-60'}
+        fixed md:relative inset-y-0 left-0 z-30
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0
+        flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300
+      `}>
         {/* Brand */}
         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
@@ -132,6 +147,7 @@ export default function AdminLayout() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium mb-0.5 transition-colors ${
                   isActive
@@ -170,9 +186,17 @@ export default function AdminLayout() {
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* TopBar */}
-        <header className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 flex-shrink-0">
+        <header className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-3 md:px-4 flex-shrink-0">
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              // Mobile: toggle menu open/close
+              // Desktop: toggle sidebar collapse
+              if (window.innerWidth < 768) {
+                setMobileMenuOpen(!mobileMenuOpen)
+              } else {
+                setCollapsed(!collapsed)
+              }
+            }}
             className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,43 +204,47 @@ export default function AdminLayout() {
             </svg>
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             {usuario?.negocio?.slug && (
               <Link
                 to={`/menu/${usuario.negocio.slug}`}
                 target="_blank"
-                className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-1 px-2 md:px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                Ver tienda
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <span className="hidden sm:inline">Ver tienda</span>
               </Link>
             )}
             {/* Dark mode toggle */}
             <button onClick={toggleTheme}
               title={darkMode ? 'Modo claro' : 'Modo oscuro'}
-              className="p-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              className="p-1.5 md:p-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               {darkMode ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
               )}
             </button>
 
-            <button className="px-3 py-1.5 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-100 transition-colors flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              Soporte
+            <button className="hidden sm:flex px-2 md:px-3 py-1.5 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg text-xs md:text-sm font-medium text-violet-700 dark:text-violet-400 hover:bg-violet-100 transition-colors items-center gap-1.5">
+              <svg className="w-3 h-3 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              <span className="hidden md:inline">Soporte</span>
             </button>
 
             {/* Menú usuario topbar */}
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <div className="w-6 h-6 bg-violet-100 dark:bg-violet-900/30 rounded-full flex items-center justify-center">
                   <span className="text-xs font-bold text-violet-700 dark:text-violet-400">{usuario?.nombre?.[0]?.toUpperCase()}</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{usuario?.nombre}</span>
-                <svg className={`w-3.5 h-3.5 text-gray-600 dark:text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span className="hidden sm:inline text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200">{usuario?.nombre}</span>
+                <svg className={`w-3 h-3 md:w-3.5 md:h-3.5 text-gray-600 dark:text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -249,23 +277,23 @@ export default function AdminLayout() {
 
         {/* Banner Modo Superadmin */}
         {usuario?.rol === 'superadmin' && negocioGestionado && (
-          <div className="bg-gradient-to-r from-purple-600 to-violet-600 text-white px-6 py-3 flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-r from-purple-600 to-violet-600 text-white px-3 md:px-6 py-2 md:py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 shadow-lg">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                <span className="font-bold">MODO SUPERADMIN</span>
+                <span className="font-bold text-xs md:text-sm">MODO SUPERADMIN</span>
               </div>
-              <div className="h-4 w-px bg-white/30" />
-              <div>
-                <span className="text-sm opacity-90">Gestionando:</span>
-                <span className="ml-2 font-semibold">{negocioGestionado.nombre}</span>
-                <span className="ml-2 text-xs opacity-75">({negocioGestionado.slug})</span>
+              <div className="hidden sm:block h-4 w-px bg-white/30" />
+              <div className="text-xs md:text-sm">
+                <span className="opacity-90">Gestionando:</span>
+                <span className="ml-1 md:ml-2 font-semibold">{negocioGestionado.nombre}</span>
+                <span className="ml-1 md:ml-2 text-[10px] md:text-xs opacity-75">({negocioGestionado.slug})</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-xs opacity-90">
+            <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
+              <div className="text-[10px] md:text-xs opacity-90">
                 Plan: <span className="font-semibold">{negocioGestionado.plan === 'premium' ? '⭐ Premium' : 'Estándar'}</span>
               </div>
               <button
@@ -273,9 +301,9 @@ export default function AdminLayout() {
                   salirDeGestion()
                   navigate('/superadmin/negocios')
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs md:text-sm font-medium transition-colors ml-auto"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
                 </svg>
                 Salir

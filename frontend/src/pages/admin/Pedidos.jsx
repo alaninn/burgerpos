@@ -81,8 +81,8 @@ export default function Pedidos() {
       <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">Pedidos</h1>
 
       {/* Buscador */}
-      <div className="flex justify-center mb-4">
-        <div className="relative w-80">
+      <div className="flex justify-center mb-4 px-4">
+        <div className="relative w-full md:w-80">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar por N° o cliente"

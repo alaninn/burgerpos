@@ -28,7 +28,7 @@ function StatCard({ title, value, subtitle, icon, gradient, trend, trendValue })
           </div>
         </div>
 
-        <div className="text-3xl font-black mb-2">{value}</div>
+        <div className="text-xl md:text-2xl lg:text-3xl font-black mb-2">{value}</div>
 
         {subtitle && (
           <div className="text-sm opacity-80">{subtitle}</div>
@@ -188,10 +188,10 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100">
+          <h1 className="text-xl md:text-2xl font-black text-gray-900 dark:text-gray-100">
             Dashboard
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5 capitalize">
+          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-0.5 capitalize">
             {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>

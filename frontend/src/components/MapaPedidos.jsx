@@ -215,41 +215,41 @@ export default function MapaPedidos({ pedidos, negocio = null }) {
     <div className="flex flex-col h-full" style={{ backgroundColor: mapaConfig.colorFondo }}>
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-4 py-2 sm:py-3 gap-2 sm:gap-4 flex-shrink-0"
         style={{
           backgroundColor: mapaConfig.colorHeader,
           borderBottom: `1px solid ${mapaConfig.colorTextoSecundario}40`
         }}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <svg className="w-4 h-4" style={{ color: mapaConfig.colorTexto }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" style={{ color: mapaConfig.colorTexto }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span className="text-sm font-semibold" style={{ color: mapaConfig.colorTexto }}>Mapa en vivo</span>
+            <span className="text-xs sm:text-sm font-semibold" style={{ color: mapaConfig.colorTexto }}>Mapa en vivo</span>
           </div>
           {geocodificando && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Localizando... {progreso}%</span>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] sm:text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Localizando... {progreso}%</span>
             </div>
           )}
         </div>
 
         {/* Leyenda */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: mapaConfig.colorPinPendiente }} />
-            <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Efectivo (pendiente)</span>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ background: mapaConfig.colorPinPendiente }} />
+            <span className="text-[10px] sm:text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Efectivo (pendiente)</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ background: mapaConfig.colorPinPagado }} />
-            <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Pagado</span>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ background: mapaConfig.colorPinPagado }} />
+            <span className="text-[10px] sm:text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Pagado</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: mapaConfig.colorNegocio, border: '1px solid rgba(255,255,255,0.3)' }} />
-            <span className="text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Negocio</span>
+            <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: mapaConfig.colorNegocio, border: '1px solid rgba(255,255,255,0.3)' }} />
+            <span className="text-[10px] sm:text-xs" style={{ color: mapaConfig.colorTextoSecundario }}>Negocio</span>
           </div>
         </div>
       </div>

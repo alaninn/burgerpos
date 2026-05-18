@@ -124,48 +124,48 @@ function ProductoCard({ prod, color, onAbrirDetalle }) {
   return (
     <div
       onClick={() => !sinStock && onAbrirDetalle(prod)}
-      className={`flex items-center gap-3 p-4 cursor-pointer transition-colors ${sinStock ? 'opacity-50' : ''}`}
+      className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${sinStock ? 'opacity-50' : ''}`}
       style={{ background: 'transparent' }}
       onMouseEnter={e => !sinStock && (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
 
       {/* Texto izquierda */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-white leading-snug mb-1.5 line-clamp-2" style={{ fontSize: 14 }}>{prod.nombre}</h3>
+        <h3 className="font-bold text-white leading-snug mb-1.5 line-clamp-2 text-xs sm:text-sm">{prod.nombre}</h3>
         {prod.descripcion && (
-          <p className="line-clamp-3 mb-2 leading-relaxed" style={{ fontSize: 12, color: '#8e8e93' }}>{prod.descripcion}</p>
+          <p className="line-clamp-3 mb-2 leading-relaxed text-[11px] sm:text-xs" style={{ color: '#8e8e93' }}>{prod.descripcion}</p>
         )}
         <div className="flex items-center gap-1.5 flex-wrap">
           {descuento && (
             <>
-              <span className="line-through font-medium" style={{ fontSize: 11, color: '#636366' }}>
+              <span className="line-through font-medium text-[10px] sm:text-[11px]" style={{ color: '#636366' }}>
                 $ {precioBase.toLocaleString('es-AR')}
               </span>
-              <span className="px-1.5 py-0.5 rounded-full font-bold"
-                style={{ fontSize: 10, background: color, color: '#fff' }}>
+              <span className="px-1.5 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]"
+                style={{ background: color, color: '#fff' }}>
                 -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${Number(descuento.valor).toLocaleString('es-AR')}`}
               </span>
             </>
           )}
-          <span className="font-black" style={{ fontSize: 13, color }}>
+          <span className="font-black text-xs sm:text-[13px]" style={{ color }}>
             $ {precioMostrar.toLocaleString('es-AR')}
           </span>
-          {tieneVariantes && <span style={{ fontSize: 11, color: '#636366' }}>desde</span>}
+          {tieneVariantes && <span className="text-[10px] sm:text-[11px]" style={{ color: '#636366' }}>desde</span>}
           {sinStock && (
-            <span className="px-1.5 py-0.5 rounded-full font-bold" style={{ fontSize: 10, background: '#2a2a2a', color: '#8e8e93' }}>Agotado</span>
+            <span className="px-1.5 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]" style={{ background: '#2a2a2a', color: '#8e8e93' }}>Agotado</span>
           )}
         </div>
       </div>
 
       {/* Imagen derecha */}
-      <div className="relative flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 95, height: 95, background: '#1c1c1e' }}>
+      <div className="relative flex-shrink-0 rounded-xl overflow-hidden w-20 h-20 sm:w-24 sm:h-24" style={{ background: '#1c1c1e' }}>
         {prod.imagen
           ? <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
-          : <div className="w-full h-full flex items-center justify-center text-3xl">🍔</div>
+          : <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl">🍔</div>
         }
         {!sinStock && (
-          <div className="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-white font-black shadow-lg"
-            style={{ fontSize: 15, backgroundColor: color }}>+</div>
+          <div className="absolute bottom-1.5 right-1.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-white font-black shadow-lg text-sm sm:text-[15px]"
+            style={{ backgroundColor: color }}>+</div>
         )}
       </div>
     </div>
@@ -181,14 +181,14 @@ function CarruselDestacados({ productos, color, onAbrirDetalle }) {
   }
 
   return (
-    <div className="px-5 pb-4">
+    <div className="px-2 md:px-5 pb-3 md:pb-4">
       {/* Encabezado con título y flechas */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" style={{ color }}>
+      <div className="flex items-center justify-between mb-2 md:mb-3">
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <svg className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" style={{ color }}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
-          <span className="text-sm font-black text-white uppercase tracking-wide">Productos destacados</span>
+          <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">Productos destacados</span>
         </div>
         <div className="flex gap-1.5">
           <button onClick={() => scroll(-1)}
@@ -210,7 +210,7 @@ function CarruselDestacados({ productos, color, onAbrirDetalle }) {
 
       {/* Track horizontal */}
       <div ref={scrollRef}
-        className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+        className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar pb-1">
         {productos.map(prod => {
           const sinStock = prod.stock !== null && prod.stock !== undefined && prod.stock === 0
           const precio = prod.variantes?.length > 0
@@ -222,38 +222,38 @@ function CarruselDestacados({ productos, color, onAbrirDetalle }) {
             <div key={prod.id}
               onClick={() => !sinStock && onAbrirDetalle(prod)}
               className={`flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden transition-all active:scale-95 ${sinStock ? 'opacity-50' : ''}`}
-              style={{ width: 160, background: '#111', border: '1px solid #1c1c1e' }}
+              style={{ width: 144, background: '#111', border: '1px solid #1c1c1e' }}
               onMouseEnter={e => !sinStock && (e.currentTarget.style.borderColor = `${color}55`)}
               onMouseLeave={e => (e.currentTarget.style.borderColor = '#1c1c1e')}>
 
               {/* Imagen cuadrada */}
-              <div className="relative w-full" style={{ height: 130, background: '#1c1c1e' }}>
+              <div className="relative w-full h-36 sm:h-40" style={{ background: '#1c1c1e' }}>
                 {prod.imagen
                   ? <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-4xl">🍔</div>
+                  : <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl">🍔</div>
                 }
                 {!sinStock && (
-                  <div className="absolute bottom-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-white font-black shadow-lg"
-                    style={{ fontSize: 16, backgroundColor: color }}>+</div>
+                  <div className="absolute bottom-2 right-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-white font-black shadow-lg text-sm sm:text-base"
+                    style={{ backgroundColor: color }}>+</div>
                 )}
                 {sinStock && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="px-2 py-1 rounded-full text-xs font-bold" style={{ background: 'rgba(0,0,0,0.75)', color: '#8e8e93' }}>Agotado</span>
+                    <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold" style={{ background: 'rgba(0,0,0,0.75)', color: '#8e8e93' }}>Agotado</span>
                   </div>
                 )}
               </div>
 
               {/* Info */}
-              <div className="p-3">
-                <h3 className="font-bold text-white leading-snug line-clamp-2 mb-1" style={{ fontSize: 13 }}>{prod.nombre}</h3>
+              <div className="p-2.5 sm:p-3">
+                <h3 className="font-bold text-white leading-snug line-clamp-2 mb-1 text-xs sm:text-[13px]">{prod.nombre}</h3>
                 {prod.descripcion && (
-                  <p className="line-clamp-2 mb-1.5 leading-relaxed" style={{ fontSize: 11, color: '#8e8e93' }}>{prod.descripcion}</p>
+                  <p className="line-clamp-2 mb-1.5 leading-relaxed text-[10px] sm:text-[11px]" style={{ color: '#8e8e93' }}>{prod.descripcion}</p>
                 )}
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className="font-black" style={{ fontSize: 13, color }}>
+                  <span className="font-black text-xs sm:text-[13px]" style={{ color }}>
                     $ {precio.toLocaleString('es-AR')}
                   </span>
-                  {tieneVariantes && <span style={{ fontSize: 10, color: '#636366' }}>desde</span>}
+                  {tieneVariantes && <span className="text-[9px] sm:text-[10px]" style={{ color: '#636366' }}>desde</span>}
                 </div>
               </div>
             </div>
@@ -346,7 +346,7 @@ function ModalDetalle({ prod, color, onClose, onAgregar }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={onClose}>
-      <div className="w-full max-w-lg rounded-t-3xl flex flex-col modal-enter no-scrollbar"
+      <div className="w-full md:max-w-lg rounded-t-3xl flex flex-col modal-enter no-scrollbar px-0 md:px-0"
         style={{ background: '#111', maxHeight: '93vh', boxShadow: '0 -20px 80px rgba(0,0,0,0.9)', border: '1px solid #222' }}
         onClick={e => e.stopPropagation()}>
 
@@ -860,12 +860,12 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={onClose}>
-      <div className="w-full max-w-lg rounded-t-3xl flex flex-col modal-enter"
+      <div className="w-full md:max-w-lg rounded-t-3xl flex flex-col modal-enter"
         style={{ background: '#111', maxHeight: '95vh', boxShadow: '0 -20px 80px rgba(0,0,0,0.9)', border: '1px solid #222' }}
         onClick={e => e.stopPropagation()}>
 
-        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #222' }}>
-          <h3 className="font-black text-white text-lg">
+        <div className="flex items-center justify-between px-4 md:px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid #222' }}>
+          <h3 className="font-black text-white text-base md:text-lg">
             Pedido de {modalidad === 'delivery' ? 'delivery' : 'retiro'}
           </h3>
           <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#222' }}>
@@ -876,10 +876,10 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
         </div>
 
         {modalidades.length > 1 && (
-          <div className="px-5 py-3 flex gap-2 flex-shrink-0" style={{ borderBottom: '1px solid #222' }}>
+          <div className="px-4 md:px-5 py-3 flex gap-2 flex-shrink-0" style={{ borderBottom: '1px solid #222' }}>
             {modalidades.map(m => (
               <button key={m.id} onClick={() => setModalidad(m.id)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
+                className="flex-1 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all"
                 style={modalidad === m.id
                   ? { background: color, color: '#fff' }
                   : { background: '#1c1c1e', color: '#8e8e93', border: '1px solid #2c2c2e' }}>
@@ -889,13 +889,13 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto no-scrollbar px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-4 md:px-5 py-4 space-y-3 md:space-y-4">
           {/* Productos */}
           <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #2c2c2e' }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#1a1a1a', borderBottom: '1px solid #2c2c2e' }}>
-              <span className="text-sm font-bold text-white">{carrito.reduce((s,i) => s+i.cantidad,0)} Producto{carrito.reduce((s,i) => s+i.cantidad,0) !== 1 ? 's' : ''}</span>
+            <div className="px-3 md:px-4 py-3 flex items-center justify-between" style={{ background: '#1a1a1a', borderBottom: '1px solid #2c2c2e' }}>
+              <span className="text-xs md:text-sm font-bold text-white">{carrito.reduce((s,i) => s+i.cantidad,0)} Producto{carrito.reduce((s,i) => s+i.cantidad,0) !== 1 ? 's' : ''}</span>
             </div>
-            <div className="grid grid-cols-3 px-4 py-2 text-xs font-semibold" style={{ color: '#8e8e93', background: '#161616', borderBottom: '1px solid #2c2c2e' }}>
+            <div className="grid grid-cols-[2fr_auto_auto] sm:grid-cols-3 px-3 md:px-4 py-2 text-[10px] sm:text-xs font-semibold" style={{ color: '#8e8e93', background: '#161616', borderBottom: '1px solid #2c2c2e' }}>
               <span>Item</span><span className="text-center">Cant.</span><span className="text-right">Precio</span>
             </div>
             {carrito.map((item, idx) => (
@@ -1051,24 +1051,24 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
                   {propina > 0 && <span className="text-xs font-bold" style={{ color }}>${propina.toLocaleString('es-AR')}</span>}
                 </div>
               </div>
-              <div className="p-4 space-y-2" style={{ background: '#111' }}>
-                <div className="grid grid-cols-3 gap-2">
+              <div className="p-3 md:p-4 space-y-2" style={{ background: '#111' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {[10, 15, 20].map(pct => {
                     const amt = Math.round(subtotal * pct / 100)
                     const selected = !propinaOtro && propina === amt
                     return (
                       <button key={pct} onClick={() => { setPropina(amt); setPropinaOtro(false); setPropinaCustom('') }}
-                        className="py-3 rounded-xl text-xs font-bold transition-all"
+                        className="py-2.5 sm:py-3 rounded-xl text-xs font-bold transition-all"
                         style={selected
                           ? { background: color, color: '#fff' }
                           : { background: '#1c1c1e', color: '#8e8e93', border: '1px solid #2c2c2e' }}>
                         {pct}%
-                        <span className="block text-xs mt-0.5 opacity-75">+${amt.toLocaleString('es-AR')}</span>
+                        <span className="block text-[10px] sm:text-xs mt-0.5 opacity-75">+${amt.toLocaleString('es-AR')}</span>
                       </button>
                     )
                   })}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button onClick={() => { setPropina(0); setPropinaOtro(false); setPropinaCustom('') }}
                     className="py-2.5 rounded-xl text-xs font-bold transition-all"
                     style={!propinaOtro && propina === 0
@@ -1183,14 +1183,14 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
             className={`${inputCls} resize-none`} style={{ ...inputStyle, width: '100%' }} />
         </div>
 
-        <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid #222', background: '#111' }}>
+        <div className="px-4 md:px-5 py-3 md:py-4 flex-shrink-0" style={{ borderTop: '1px solid #222', background: '#111' }}>
           {bajoMinimo && (
-            <p className="text-center text-xs mb-3 font-semibold" style={{ color: '#ff9f0a' }}>
+            <p className="text-center text-[10px] sm:text-xs mb-2 md:mb-3 font-semibold" style={{ color: '#ff9f0a' }}>
               Monto mínimo ${montoMinimo.toLocaleString('es-AR')} · faltan ${(montoMinimo - subtotal).toLocaleString('es-AR')}
             </p>
           )}
           <button onClick={confirmar} disabled={loading || bajoMinimo}
-            className="w-full py-4 rounded-2xl font-black text-base text-white transition-all active:scale-95 disabled:opacity-50"
+            className="w-full py-3 md:py-4 rounded-2xl font-black text-sm md:text-base text-white transition-all active:scale-95 disabled:opacity-50"
             style={{ background: bajoMinimo ? '#444' : color }}>
             {loading ? 'Enviando...' : 'Realizar pedido'}
           </button>
@@ -1218,18 +1218,18 @@ function BotonCarrito({ carrito, onClick, color, disabled }) {
   if (cant === 0) return null
 
   return (
-    <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center">
+    <div className="fixed bottom-6 left-0 right-0 px-3 md:px-4 z-40 flex justify-center">
       <button onClick={onClick} disabled={disabled}
-        className="w-full max-w-2xl flex items-center justify-between text-white rounded-2xl px-5 py-4 transition-all active:scale-95 disabled:opacity-40"
+        className="w-full md:max-w-2xl flex items-center justify-between text-white rounded-2xl px-4 md:px-5 py-3.5 md:py-4 transition-all active:scale-95 disabled:opacity-40"
         style={{
           background: disabled ? '#333' : color,
           boxShadow: disabled ? 'none' : `0 8px 30px ${color}55`
         }}>
-        <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black" style={{ background: 'rgba(255,255,255,0.2)' }}>
+        <span className="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm font-black" style={{ background: 'rgba(255,255,255,0.2)' }}>
           {cant}
         </span>
-        <span className="font-black text-base">{disabled ? 'Pedidos cerrados' : 'Ver carrito'}</span>
-        <span className="font-black text-base">$ {total.toLocaleString('es-AR')}</span>
+        <span className="font-black text-sm md:text-base">{disabled ? 'Pedidos cerrados' : 'Ver carrito'}</span>
+        <span className="font-black text-sm md:text-base">$ {total.toLocaleString('es-AR')}</span>
       </button>
     </div>
   )
@@ -1367,18 +1367,18 @@ export default function MenuPublico() {
         style={{ background: 'rgba(9,9,11,0.92)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
 
         {/* Buscador prominente */}
-        <div className="px-4 pt-3 pb-2">
-          <div className="relative max-w-3xl mx-auto">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#636366' }}
+        <div className="px-3 md:px-4 pt-3 pb-2">
+          <div className="relative w-full md:max-w-3xl mx-auto">
+            <svg className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#636366' }}
               fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar en el menú..."
-              className="w-full pl-11 pr-10 py-3 text-sm text-white focus:outline-none rounded-2xl transition-all"
-              style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.09)', fontSize: 14 }} />
+              className="w-full pl-10 md:pl-11 pr-9 md:pr-10 py-2.5 md:py-3 text-xs md:text-sm text-white focus:outline-none rounded-2xl transition-all"
+              style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.09)' }} />
             {busqueda && (
-              <button onClick={() => setBusqueda('')} className="absolute right-4 top-1/2 -translate-y-1/2" style={{ color: '#636366' }}>
+              <button onClick={() => setBusqueda('')} className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2" style={{ color: '#636366' }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1389,12 +1389,12 @@ export default function MenuPublico() {
 
         {/* Tabs de categorías */}
         {!busqueda && categorias.length > 0 && (
-          <div ref={tabsContainerRef} className="flex overflow-x-auto no-scrollbar px-4 gap-0 max-w-3xl mx-auto"
+          <div ref={tabsContainerRef} className="flex overflow-x-auto no-scrollbar px-3 md:px-4 gap-0 w-full md:max-w-3xl mx-auto"
             style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             {categorias.map(cat => (
               <button key={cat.id} ref={el => tabBtnRefs.current[cat.id] = el}
                 onClick={() => scrollToCategoria(cat.id)}
-                className="flex-shrink-0 px-4 py-3 text-xs font-black whitespace-nowrap transition-all relative"
+                className="flex-shrink-0 px-3 md:px-4 py-2.5 md:py-3 text-[10px] md:text-xs font-black whitespace-nowrap transition-all relative"
                 style={catActiva === cat.id ? { color: '#fff' } : { color: '#52525b' }}>
                 {cat.nombre.toUpperCase()}
                 {catActiva === cat.id && (
@@ -1408,30 +1408,30 @@ export default function MenuPublico() {
 
       {/* ── Imagen de portada ── */}
       {conf.imagenPortada && (
-        <div className="relative w-full overflow-hidden" style={{ height: 170 }}>
+        <div className="relative w-full overflow-hidden h-32 sm:h-40 md:h-48">
           <img src={conf.imagenPortada} alt="portada" className="w-full h-full object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(9,9,11,0.15) 0%, rgba(9,9,11,0.9) 100%)' }} />
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto">
+      <div className="w-full md:max-w-3xl mx-auto px-3 md:px-0">
 
         {/* Header negocio */}
-        <div className="px-5 pt-7 pb-5">
-          <div className="flex items-center gap-5 mb-5">
+        <div className="px-2 md:px-5 pt-5 md:pt-7 pb-4 md:pb-5">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 mb-4 md:mb-5">
             {negocio?.logo ? (
               <img src={negocio.logo} alt={negocio.nombre}
-                className="w-20 h-20 rounded-full object-cover flex-shrink-0 highlight-ring"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover flex-shrink-0 highlight-ring"
                 style={{ border: '3px solid rgba(255,255,255,0.08)' }} />
             ) : (
-              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl flex-shrink-0 font-black text-white highlight-ring"
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-2xl sm:text-3xl flex-shrink-0 font-black text-white highlight-ring"
                 style={{ background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
                 {negocio?.nombre?.[0]?.toUpperCase() || '🍔'}
               </div>
             )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap mb-1">
-                <h1 className="text-xl font-black text-white leading-tight">{negocio?.nombre}</h1>
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap mb-1">
+                <h1 className="text-lg sm:text-xl font-black text-white leading-tight">{negocio?.nombre}</h1>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold flex-shrink-0"
                   style={recibirPedidos
                     ? { background: 'rgba(22,163,74,0.2)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }
@@ -1453,7 +1453,7 @@ export default function MenuPublico() {
             <div className="flex rounded-2xl p-1" style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.07)' }}>
               {modalidades.map(m => (
                 <button key={m.id} onClick={() => setModalidad(m.id)}
-                  className="flex-1 py-2.5 text-sm font-black transition-all rounded-xl"
+                  className="flex-1 py-2 sm:py-2.5 text-xs sm:text-sm font-black transition-all rounded-xl"
                   style={modalidad === m.id
                     ? { background: color, color: '#fff', boxShadow: `0 4px 14px ${color}55` }
                     : { background: 'transparent', color: '#52525b' }}>
@@ -1466,12 +1466,12 @@ export default function MenuPublico() {
 
         {/* ── Banner cerrado ── */}
         {!recibirPedidos && (
-          <div className="mx-5 mb-4 px-4 py-3 rounded-2xl flex items-center gap-3"
+          <div className="mx-2 md:mx-5 mb-3 md:mb-4 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl flex items-center gap-2 md:gap-3"
             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="#f87171" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 md:w-4 md:h-4 flex-shrink-0" fill="none" stroke="#f87171" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <p className="text-xs font-semibold" style={{ color: '#f87171' }}>
+            <p className="text-[10px] sm:text-xs font-semibold" style={{ color: '#f87171' }}>
               Podés ver el menú, pero no aceptamos pedidos en este momento.
             </p>
           </div>
@@ -1485,13 +1485,13 @@ export default function MenuPublico() {
         {/* Productos */}
         <div className="pb-36">
           {busqueda ? (
-            <div className="pt-4 px-5">
-              <p className="text-xs mb-3" style={{ color: '#8e8e93' }}>
+            <div className="pt-4 px-2 md:px-5">
+              <p className="text-[10px] sm:text-xs mb-3" style={{ color: '#8e8e93' }}>
                 {productosFiltrados.length} resultado{productosFiltrados.length !== 1 ? 's' : ''} para "{busqueda}"
               </p>
               {productosFiltrados.length > 0 ? (
                 <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid #1c1c1e' }}>
-                  <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                     {productosFiltrados.map((prod, i) => {
                       const isLeft = i % 2 === 0
                       const isOdd = productosFiltrados.length % 2 === 1
@@ -1520,31 +1520,31 @@ export default function MenuPublico() {
               const prods = cat.productos || []
               if (prods.length === 0) return null
               return (
-                <div key={cat.id} ref={el => { catRefs.current[cat.id] = el }} className="scroll-mt-28 px-5 pt-5 pb-2">
+                <div key={cat.id} ref={el => { catRefs.current[cat.id] = el }} className="scroll-mt-28 px-2 md:px-5 pt-4 md:pt-5 pb-2">
                   <div className="rounded-2xl overflow-hidden" style={{ background: '#111', border: '1px solid #1c1c1e' }}>
 
                     {/* Banner de imagen de categoría */}
                     {cat.imagen && (
-                      <div className="relative w-full" style={{ height: 130 }}>
+                      <div className="relative w-full h-28 sm:h-32">
                         <img src={cat.imagen} alt={cat.nombre} className="w-full h-full object-cover" />
                         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%)' }} />
-                        <div className="absolute bottom-3 left-0 right-0 text-center">
-                          <h2 className="text-sm font-black text-white uppercase tracking-widest">{cat.nombre}</h2>
-                          {cat.descripcion && <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{cat.descripcion}</p>}
+                        <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 text-center px-2">
+                          <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest">{cat.nombre}</h2>
+                          {cat.descripcion && <p className="text-[10px] sm:text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{cat.descripcion}</p>}
                         </div>
                       </div>
                     )}
 
                     {/* Header centrado (sin imagen) */}
                     {!cat.imagen && (
-                      <div className="py-4 px-4 text-center" style={{ borderBottom: '1px solid #1c1c1e' }}>
-                        <h2 className="text-sm font-black text-white uppercase tracking-widest">{cat.nombre}</h2>
-                        {cat.descripcion && <p className="text-xs mt-1" style={{ color: '#8e8e93' }}>{cat.descripcion}</p>}
+                      <div className="py-3 md:py-4 px-3 md:px-4 text-center" style={{ borderBottom: '1px solid #1c1c1e' }}>
+                        <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest">{cat.nombre}</h2>
+                        {cat.descripcion && <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#8e8e93' }}>{cat.descripcion}</p>}
                       </div>
                     )}
 
-                    {/* Grid 2 columnas con divisores internos */}
-                    <div className="grid grid-cols-2" style={{ borderTop: cat.imagen ? '1px solid #1c1c1e' : 'none' }}>
+                    {/* Grid responsive con divisores internos */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: cat.imagen ? '1px solid #1c1c1e' : 'none' }}>
             {prods.map((prod, i) => {
               const isLeft = i % 2 === 0
               const isOdd = prods.length % 2 === 1

@@ -34,18 +34,18 @@ function ModalDetalleCaja({ caja, onClose }) {
 
         <div className="p-6 space-y-5">
           {/* Horarios */}
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 text-center">
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Apertura</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatHora(caja.aperturaAt)}</p>
+              <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">{formatHora(caja.aperturaAt)}</p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cierre</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatHora(caja.cierreAt)}</p>
+              <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">{formatHora(caja.cierreAt)}</p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Duración</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{duracion()}</p>
+              <p className="text-base md:text-lg font-bold text-gray-900 dark:text-gray-100">{duracion()}</p>
             </div>
           </div>
 

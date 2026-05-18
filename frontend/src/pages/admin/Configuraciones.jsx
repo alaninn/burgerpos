@@ -122,16 +122,16 @@ function ModalEditarNegocio({ negocio, onClose, onSaved }) {
   const inputCls = "w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col"
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 md:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full md:max-w-lg flex flex-col"
         style={{ maxHeight: '92vh' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div>
-            <h3 className="font-bold text-gray-900 dark:text-gray-100">Configurar tienda</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Carga los datos de tu negocio.</p>
+            <h3 className="font-bold text-sm md:text-base text-gray-900 dark:text-gray-100">Configurar tienda</h3>
+            <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400">Carga los datos de tu negocio.</p>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@ function ModalEditarNegocio({ negocio, onClose, onSaved }) {
         </div>
 
         {/* Body scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-5 space-y-4 md:space-y-6">
 
           {/* Datos básicos */}
           <div className="space-y-3">
@@ -555,16 +555,16 @@ export default function Configuraciones() {
 
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-thin pb-0.5 -mb-0.5">
           {TABS.map(t => (
             <button key={t} onClick={() => setTabActiva(t)}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${tabActiva === t ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700'}`}>
+              className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${tabActiva === t ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700'}`}>
               {t}
             </button>
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {/* Modalidades */}
           {tabActiva === 'Modalidades' && (
             <div className="space-y-3">
@@ -607,9 +607,9 @@ export default function Configuraciones() {
                   <span className="text-sm text-gray-700 dark:text-gray-300">{o.label}</span>
                 </label>
               ))}
-              <div className="mt-4 grid grid-cols-2 gap-4 max-w-xs">
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 max-w-xs">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto mínimo de compra</label>
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto mínimo de compra</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-sm">$</span>
                     <input type="number" value={config.montoMinimo || 0}
@@ -745,7 +745,7 @@ export default function Configuraciones() {
 
                         {/* Campos especiales: Transferencia */}
                         {key === 'transferencia' && (
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Alias</label>
                               <input
@@ -821,7 +821,7 @@ export default function Configuraciones() {
 
                         {/* Tipo y valor (si hay ajuste) */}
                         {(cfg.ajuste === 'descuento' || cfg.ajuste === 'recargo') && (
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Tipo</label>
                               <select value={cfg.tipoAjuste || 'porcentaje'}
@@ -1182,7 +1182,7 @@ export default function Configuraciones() {
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                     Colores de Pins de Pedidos
                   </label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     <div>
                       <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
                         Pin Pagado
@@ -1213,7 +1213,7 @@ export default function Configuraciones() {
                   <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2">
                     Colores de Interfaz
                   </label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     <div>
                       <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
                         Fondo del Mapa
