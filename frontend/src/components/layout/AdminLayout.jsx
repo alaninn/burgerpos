@@ -94,6 +94,7 @@ export default function AdminLayout() {
   const [showCambiarPass, setShowCambiarPass] = useState(false)
   const { darkMode, toggleTheme } = useTheme()
   const menuRef = useRef(null)
+  const sidebarRef = useRef(null)
 
   // Cerrar dropdown al hacer clic fuera
   useEffect(() => {
@@ -105,6 +106,17 @@ export default function AdminLayout() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Cerrar sidebar móvil al hacer clic fuera
+  useEffect(() => {
+    const handler = (e) => {
+      if (mobileMenuOpen && sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [mobileMenuOpen])
 
   const handleLogout = () => {
     logout()
