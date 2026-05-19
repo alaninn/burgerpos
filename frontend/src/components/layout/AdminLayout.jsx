@@ -125,10 +125,6 @@ export default function AdminLayout() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-      {/* Mobile overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-20 md:hidden pointer-events-none" />
-      )}
 
       {/* Sidebar */}
       <aside
