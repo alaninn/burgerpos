@@ -127,14 +127,13 @@ export default function AdminLayout() {
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Mobile overlay */}
       {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 z-20 md:hidden pointer-events-none" />
       )}
 
       {/* Sidebar */}
-      <aside className={`
+      <aside
+        ref={sidebarRef}
+        className={`
         ${collapsed ? 'w-0 overflow-hidden' : 'w-60'}
         fixed md:relative inset-y-0 left-0 z-50
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
