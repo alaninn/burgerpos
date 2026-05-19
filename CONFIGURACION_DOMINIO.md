@@ -1,24 +1,20 @@
 # Configuración del Dominio qrbanburger.com.ar
 
+## Arquitectura Multi-Dominio
+
+Este sistema soporta múltiples dominios apuntando al mismo servidor:
+- **burgerpos.gestionq24.store**: Sistema multi-tenant (mantiene configuración actual)
+- **qrbanburger.com.ar**: Dominio específico para QRBan Burger
+
 ## Cambios realizados
 
-### 1. Variables de entorno actualizadas
+### 1. Detección automática de dominio
 
-**Backend** (`backend/.env.production`):
-```env
-CLIENT_URL=https://qrbanburger.com.ar
-API_URL=https://qrbanburger.com.ar/api
-FRONTEND_URL=https://qrbanburger.com.ar
-BACKEND_URL=https://qrbanburger.com.ar
-CORS_ORIGIN=https://qrbanburger.com.ar,http://localhost:3004,http://localhost:5173
-```
+El frontend ahora detecta el hostname y usa el slug apropiado:
+- Si el dominio contiene "qrbanburger.com" → usa slug "qrban" por defecto
+- Otros dominios → requieren slug en la URL (comportamiento normal)
 
-**Frontend** (`frontend/.env.production`):
-```env
-VITE_API_URL=https://qrbanburger.com.ar/api
-VITE_WS_URL=https://qrbanburger.com.ar
-VITE_DEFAULT_MENU_SLUG=qrban
-```
+**NO se modifican** los archivos `.env.production` para mantener compatibilidad con el dominio actual.
 
 ### 2. Rutas actualizadas
 
@@ -29,22 +25,29 @@ VITE_DEFAULT_MENU_SLUG=qrban
 
 ## Configuración del servidor (nginx)
 
-### Opción 1: Servidor único (Backend sirve frontend)
+### Agregar nuevo dominio al servidor existente
+
+Ya tienes `burgerpos.gestionq24.store` funcionando. Ahora agregaremos `qrbanburger.com.ar` como alias que apunta al mismo backend.
+
+**Opción A: Modificar configuración existente (más simple)**
+
+Editar `/etc/nginx/sites-available/burgerpos` y agregar el nuevo dominio:
 
 ```nginx
 server {
     listen 80;
     listen [::]:80;
-    server_name qrbanburger.com.ar www.qrbanburger.com.ar;
+    # Agregar el nuevo dominio aquí
+    server_name burgerpos.gestionq24.store qrbanburger.com.ar www.qrbanburger.com.ar;
     
-    # Redirigir HTTP a HTTPS
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name qrbanburger.com.ar www.qrbanburger.com.ar;
+    # Agregar el nuevo dominio aquí también
+    server_name burgerpos.gestionq24.store qrbanburger.com.ar www.qrbanburger.com.ar;
 
     # Certificados SSL (Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/qrbanburger.com.ar/fullchain.pem;
@@ -90,11 +93,18 @@ server {
 }
 ```
 
-### Opción 2: Frontend y Backend separados (puerto 3000 y 3004)
+**Opción B: Archivo separado (si prefieres mantener configuraciones separadas)**
 
-Si el frontend corre en puerto 3000 y el backend en 3004:
+Crear `/etc/nginx/sites-available/qrbanburger`:
 
 ```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name qrbanburger.com.ar www.qrbanburger.com.ar;
+    return 301 https://$server_name$request_uri;
+}
+
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
@@ -102,11 +112,12 @@ server {
 
     ssl_certificate /etc/letsencrypt/live/qrbanburger.com.ar/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/qrbanburger.com.ar/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
     
     client_max_body_size 10M;
 
-    # API y uploads → Backend (puerto 3004)
-    location ~ ^/(api|uploads|socket\.io) {
+    # Proxy al mismo backend que burgerpos.gestionq24.store
+    location / {
         proxy_pass http://localhost:3004;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -116,23 +127,35 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-    }
-
-    # Todo lo demás → Frontend (puerto 3000)
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
     }
 }
 ```
 
+Luego activar:
+```bash
+ln -s /etc/nginx/sites-available/qrbanburger /etc/nginx/sites-enabled/
+nginx -t
+systemctl reload nginx
+```
+
 ## Pasos de despliegue
 
-### 1. En el servidor VPS
+### 1. Actualizar CORS en el backend
+
+Editar `backend/.env.production` y agregar el nuevo dominio a CORS_ORIGIN:
+
+```bash
+nano /root/burgerpos/burgerpos/backend/.env.production
+```
+
+Modificar la línea CORS_ORIGIN para incluir ambos dominios:
+```env
+CORS_ORIGIN=http://vps-5839248-x.dattaweb.com:3004,https://burgerpos.gestionq24.store,https://qrbanburger.com.ar,http://localhost:3004
+```
+
+### 2. Actualizar código desde GitHub
 
 ```bash
 # Conectar por SSH
@@ -144,10 +167,7 @@ cd /root/burgerpos/burgerpos
 # Pull de los cambios
 git pull origin main
 
-# Actualizar .env.production (ya están los cambios)
-# Verificar que VITE_DEFAULT_MENU_SLUG sea el slug correcto de tu negocio
-
-# Rebuild del frontend
+# Rebuild del frontend (incluye detección de dominio)
 cd frontend
 npm run build
 cd ..
