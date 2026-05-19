@@ -116,7 +116,7 @@ export default function AdminLayout() {
       {/* Mobile overlay */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -124,7 +124,7 @@ export default function AdminLayout() {
       {/* Sidebar */}
       <aside className={`
         ${collapsed ? 'w-0 overflow-hidden' : 'w-60'}
-        fixed md:relative inset-y-0 left-0 z-30
+        fixed md:relative inset-y-0 left-0 z-50
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0
         flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300
