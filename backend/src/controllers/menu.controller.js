@@ -1,6 +1,62 @@
 const { Negocio, Categoria, Producto, ProductoVariante, GrupoAdicional, Adicional, Pedido, ItemPedido, Descuento, Cliente, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
+exports.obtenerMenuDefault = async (req, res) => {
+  try {
+    const negocio = await Negocio.findOne({
+      where: { activo: true },
+      attributes: ['id', 'nombre', 'logo', 'telefono', 'direccion', 'ciudad', 'configuracion', 'slug'],
+      order: [['createdAt', 'ASC']]
+    });
+    if (!negocio) return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
+
+    const categorias = await Categoria.findAll({
+      where: { negocioId: negocio.id, activo: true },
+      include: [{
+        model: Producto,
+        as: 'productos',
+        where: { activo: true },
+        required: false,
+        include: [
+          {
+            model: ProductoVariante,
+            as: 'variantes',
+            where: { activo: true, visible: true },
+            required: false,
+            order: [['orden', 'ASC']]
+          },
+          {
+            model: GrupoAdicional,
+            as: 'gruposAdicionales',
+            where: { activo: true },
+            required: false,
+            include: [{
+              model: Adicional,
+              as: 'items',
+              where: { activo: true, visible: true },
+              required: false,
+              order: [['orden', 'ASC']]
+            }]
+          },
+          {
+            model: Descuento,
+            as: 'descuento',
+            required: false,
+            attributes: ['id', 'codigo', 'tipo', 'valor', 'activo', 'descripcion']
+          }
+        ],
+        order: [['orden', 'ASC'], ['nombre', 'ASC']],
+        separate: true
+      }],
+      order: [['orden', 'ASC']]
+    });
+
+    res.json({ success: true, negocio, categorias });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.obtenerMenu = async (req, res) => {
   try {
     const negocio = await Negocio.findOne({

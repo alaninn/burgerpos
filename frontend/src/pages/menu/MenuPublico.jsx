@@ -1238,10 +1238,7 @@ function BotonCarrito({ carrito, onClick, color, disabled }) {
 // ─── Página principal ─────────────────────────────────────
 export default function MenuPublico() {
   const { slug: paramSlug } = useParams()
-  // Detectar dominio para slug por defecto
   const hostname = window.location.hostname
-  const defaultSlug = hostname.includes('qrbanburger.com') ? 'qrban' : null
-  const slug = paramSlug || defaultSlug || 'qrban'
   const [data, setData]             = useState(null)
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState(null)
@@ -1256,7 +1253,12 @@ export default function MenuPublico() {
   const tabBtnRefs = useRef({})
 
   useEffect(() => {
-    api.get(`/menu/${slug}`)
+    // Si no hay slug en la URL y estamos en qrbanburger.com.ar, usar endpoint default
+    const endpoint = !paramSlug && hostname.includes('qrbanburger.com')
+      ? '/menu/default'
+      : `/menu/${paramSlug || 'qrban'}`
+
+    api.get(endpoint)
       .then(({ data: d }) => {
         setData(d)
         if (d.categorias?.length) setCatActiva(d.categorias[0].id)
@@ -1267,7 +1269,7 @@ export default function MenuPublico() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [slug])
+  }, [paramSlug, hostname])
 
   // IntersectionObserver: actualiza tab activa al hacer scroll
   useEffect(() => {

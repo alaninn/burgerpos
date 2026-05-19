@@ -46,6 +46,7 @@ function normalizeMetodoPago(val) {
 function ModalEditarNegocio({ negocio, onClose, onSaved }) {
   const [form, setForm] = useState({
     nombre: negocio?.nombre || '',
+    slug: negocio?.slug || '',
     telefono: negocio?.telefono || '',
     provincia: negocio?.configuracion?.provincia || '',
     ciudad: negocio?.ciudad || '',
@@ -102,18 +103,20 @@ function ModalEditarNegocio({ negocio, onClose, onSaved }) {
 
   const guardar = async () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
+    if (!form.slug.trim()) return toast.error('El link de la tienda es obligatorio')
+    if (/\s/.test(form.slug)) return toast.error('El link no puede contener espacios')
     setSaving(true)
     try {
-      const { nombre, telefono, direccion, ciudad, logo, provincia, colorPrimario, tipografia, descripcion, mensajeBienvenida, imagenPortada, imagenFondo, opacidadFondo } = form
+      const { nombre, slug, telefono, direccion, ciudad, logo, provincia, colorPrimario, tipografia, descripcion, mensajeBienvenida, imagenPortada, imagenFondo, opacidadFondo } = form
       const nuevaConfig = {
         ...(negocio.configuracion || {}),
         provincia, colorPrimario, tipografia, descripcion,
         mensajeBienvenida, imagenPortada, imagenFondo, opacidadFondo,
         ...(form.lat != null ? { lat: form.lat, lng: form.lng } : {}),
       }
-      await api.put(`/negocios/${negocio.id}`, { nombre, telefono, direccion, ciudad, logo, configuracion: nuevaConfig })
+      await api.put(`/negocios/${negocio.id}`, { nombre, slug, telefono, direccion, ciudad, logo, configuracion: nuevaConfig })
       toast.success('Datos actualizados')
-      onSaved({ nombre, telefono, direccion, ciudad, logo, configuracion: nuevaConfig })
+      onSaved({ nombre, slug, telefono, direccion, ciudad, logo, configuracion: nuevaConfig })
       onClose()
     } catch { toast.error('Error al guardar') }
     finally { setSaving(false) }
@@ -145,17 +148,39 @@ function ModalEditarNegocio({ negocio, onClose, onSaved }) {
 
           {/* Datos básicos */}
           <div className="space-y-3">
-            {/* Nombre y teléfono */}
-            {[
-              { key: 'nombre', label: 'Nombre *', placeholder: 'Mi hamburguesería' },
-              { key: 'telefono', label: 'Teléfono', placeholder: '+54 9 11 0000-0000' },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{f.label}</label>
-                <input value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder} className={inputCls} />
+            {/* Nombre */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Nombre *</label>
+              <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                placeholder="Mi hamburguesería" className={inputCls} />
+            </div>
+
+            {/* Link de la tienda (slug) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Link de la tienda *</label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 dark:text-gray-400">{window.location.hostname}/menu/</span>
+                <input
+                  value={form.slug}
+                  onChange={e => {
+                    const value = e.target.value.replace(/\s/g, '-').toLowerCase()
+                    setForm(p => ({ ...p, slug: value }))
+                  }}
+                  placeholder="qrban-burger"
+                  className={`flex-1 ${inputCls}`}
+                />
               </div>
-            ))}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Sin espacios. Ejemplo: qrban-burger
+              </p>
+            </div>
+
+            {/* Teléfono */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Teléfono</label>
+              <input value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                placeholder="+54 9 11 0000-0000" className={inputCls} />
+            </div>
 
             {/* Provincia */}
             <div>

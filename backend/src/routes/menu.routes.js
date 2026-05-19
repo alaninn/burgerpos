@@ -2,6 +2,7 @@ const router = require('express').Router();
 const ctrl = require('../controllers/menu.controller');
 
 // Rutas públicas — sin autenticación
+router.get('/default', ctrl.obtenerMenuDefault);
 router.get('/:slug', ctrl.obtenerMenu);
 router.get('/:slug/cliente', ctrl.buscarCliente);
 router.get('/:slug/descuentos-automaticos', ctrl.obtenerDescuentosAutomaticos);
