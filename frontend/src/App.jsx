@@ -34,6 +34,7 @@ import PagoPendiente from './pages/menu/PagoPendiente'
 import SuperAdminLayout from './components/layout/SuperAdminLayout'
 import SADashboard from './pages/superadmin/Dashboard'
 import SANegocios from './pages/superadmin/Negocios'
+import SAUsuarios from './pages/superadmin/Usuarios'
 import SAPlanes from './pages/superadmin/Planes'
 import SAConfiguracion from './pages/superadmin/ConfiguracionPlataforma'
 
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<SADashboard />} />
         <Route path="negocios" element={<SANegocios />} />
+        <Route path="usuarios" element={<SAUsuarios />} />
         <Route path="planes" element={<SAPlanes />} />
         <Route path="configuracion" element={<SAConfiguracion />} />
       </Route>

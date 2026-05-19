@@ -329,8 +329,33 @@ export default function Repartidores() {
   const cargar = useCallback(() => {
     if (!negocioId) return
     setLoading(true)
-    api.get(`/negocios/${negocioId}/repartidores?includeStats=true&fechaDesde=${fechaDesde}`)
-      .then(({ data }) => setRepartidores(data.repartidores || []))
+    // Cargar usuarios con rol repartidor en lugar de tabla repartidores
+    api.get(`/negocios/${negocioId}/usuarios`)
+      .then(({ data }) => {
+        const repartidoresUsuarios = (data.usuarios || []).filter(u => u.rol === 'repartidor')
+        // Cargar stats para cada repartidor
+        return Promise.all(repartidoresUsuarios.map(async (rep) => {
+          try {
+            const statsRes = await api.get(`/negocios/${negocioId}/pedidos?fechaDesde=${fechaDesde}&repartidorId=${rep.id}&modalidad=delivery`)
+            const pedidos = (statsRes.data.pedidos || []).filter(p => p.repartidorId === rep.id)
+            const totalMonto = pedidos.reduce((s, p) => s + Number(p.total || 0), 0)
+            const efectivo = pedidos.filter(p => ['efectivo','efectivo_sin_descuento'].includes(p.metodoPago)).reduce((s, p) => s + Number(p.total || 0), 0)
+            const online = totalMonto - efectivo
+            rep.stats = {
+              totalPedidos: pedidos.length,
+              totalMonto,
+              efectivo,
+              online,
+              envios: pedidos.reduce((s, p) => s + Number(p.costoEnvio || 0), 0),
+              propinas: pedidos.reduce((s, p) => s + Number(p.propina || 0), 0)
+            }
+          } catch {
+            rep.stats = { totalPedidos: 0, totalMonto: 0, efectivo: 0, online: 0, envios: 0, propinas: 0 }
+          }
+          return rep
+        }))
+      })
+      .then(reps => setRepartidores(reps))
       .catch(() => setRepartidores([]))
       .finally(() => setLoading(false))
   }, [negocioId, fechaDesde])
@@ -345,32 +370,16 @@ export default function Repartidores() {
 
   useEffect(() => { cargar(); cargarStatsHoy() }, [cargar, cargarStatsHoy])
 
-  const eliminar = async (id) => {
-    if (!confirm('¿Eliminar este repartidor?')) return
-    try {
-      await api.delete(`/negocios/${negocioId}/repartidores/${id}`)
-      toast.success('Repartidor eliminado')
-      cargar()
-    } catch { toast.error('Error al eliminar') }
-  }
 
   const activos = repartidores.filter(r => r.activo)
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-4 border-b border-gray-300 dark:border-gray-700">
-          {[{ id: 'envios', label: 'Envíos' }, { id: 'mis_envios', label: 'Mis envíos' }].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700'}`}>
-              {t.label}
-            </button>
-          ))}
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Repartidores</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Los repartidores se crean desde Usuarios con rol "Repartidor"</p>
         </div>
-        <button onClick={() => { setEditRep(null); setShowModal(true) }}
-          className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors">
-          + Nuevo repartidor
-        </button>
       </div>
 
       {/* Estadísticas del día */}
@@ -450,17 +459,8 @@ export default function Repartidores() {
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200">{rep.nombre}</h3>
                   {rep.telefono && <p className="text-xs text-gray-600 dark:text-gray-400">{rep.telefono}</p>}
                 </div>
-                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => { setEditRep(rep); setShowModal(true) }}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    title="Editar">
-                    <svg className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  </button>
-                  <button onClick={() => eliminar(rep.id)}
-                    className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                    title="Eliminar">
-                    <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Editar desde Usuarios
                 </div>
               </div>
 

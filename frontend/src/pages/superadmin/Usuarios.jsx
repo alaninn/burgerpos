@@ -3,14 +3,26 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 
-const ROL_LABEL = { admin: 'Admin', operador: 'Operador', repartidor: 'Repartidor' }
-const ROL_COLOR = { admin: 'bg-violet-100 text-violet-700', operador: 'bg-gray-100 text-gray-600', repartidor: 'bg-blue-100 text-blue-700' }
+const ROL_LABEL = { superadmin: 'SuperAdmin', admin: 'Admin', operador: 'Operador', repartidor: 'Repartidor' }
+const ROL_COLOR = {
+  superadmin: 'bg-red-100 text-red-700',
+  admin: 'bg-violet-100 text-violet-700',
+  operador: 'bg-gray-100 text-gray-600',
+  repartidor: 'bg-blue-100 text-blue-700'
+}
 
-function ModalUsuario({ negocioId, usuario, onClose, onSaved }) {
+function ModalUsuario({ usuario, onClose, onSaved }) {
   const [form, setForm] = useState({
-    nombre: '', username: '', password: '', rol: 'operador', activo: true, telefono: '', ...usuario
+    nombre: '', username: '', email: '', password: '', rol: 'admin', negocioId: '', activo: true, telefono: '', ...usuario
   })
   const [loading, setLoading] = useState(false)
+  const [negocios, setNegocios] = useState([])
+
+  useEffect(() => {
+    api.get('/superadmin/negocios')
+      .then(({ data }) => setNegocios(data.negocios || []))
+      .catch(() => setNegocios([]))
+  }, [])
 
   const guardar = async () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
@@ -19,9 +31,9 @@ function ModalUsuario({ negocioId, usuario, onClose, onSaved }) {
     setLoading(true)
     try {
       if (usuario?.id) {
-        await api.put(`/negocios/${negocioId}/usuarios/${usuario.id}`, form)
+        await api.put(`/usuarios/${usuario.id}`, form)
       } else {
-        await api.post(`/negocios/${negocioId}/usuarios`, form)
+        await api.post('/usuarios', form)
       }
       toast.success(usuario?.id ? 'Usuario actualizado' : 'Usuario creado')
       onSaved(); onClose()
@@ -31,8 +43,8 @@ function ModalUsuario({ negocioId, usuario, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">{usuario?.id ? 'Editar usuario' : 'Nuevo usuario'}</h3>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -53,6 +65,42 @@ function ModalUsuario({ negocioId, usuario, onClose, onSaved }) {
               className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input type="email" value={form.email || ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              placeholder="email@ejemplo.com (opcional)"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{usuario?.id ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña *'}</label>
+            <input type="password" value={form.password || ''} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              placeholder="••••••••"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol *</label>
+            <select value={form.rol} onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+              <option value="operador">Operador</option>
+              <option value="admin">Admin</option>
+              <option value="repartidor">Repartidor</option>
+              <option value="superadmin">SuperAdmin</option>
+            </select>
+          </div>
+          {form.rol !== 'superadmin' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Negocio</label>
+              <select value={form.negocioId || ''} onChange={e => setForm(f => ({ ...f, negocioId: e.target.value || null }))}
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                <option value="">Sin negocio</option>
+                {negocios.map(n => (
+                  <option key={n.id} value={n.id}>{n.nombre}</option>
+                ))}
+              </select>
+            </div>
+          )}
           {form.rol === 'repartidor' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono</label>
@@ -62,28 +110,12 @@ function ModalUsuario({ negocioId, usuario, onClose, onSaved }) {
               />
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{usuario?.id ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña *'}</label>
-            <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              placeholder="••••••••"
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol</label>
-            <select value={form.rol} onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-              <option value="operador">Operador</option>
-              <option value="admin">Admin</option>
-              <option value="repartidor">Repartidor</option>
-            </select>
-          </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.activo} onChange={e => setForm(f => ({ ...f, activo: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
             <span className="text-sm text-gray-700 dark:text-gray-300">Usuario activo</span>
           </label>
         </div>
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
           <button onClick={onClose} className="text-sm text-red-500 hover:underline">Cancelar</button>
           <button onClick={guardar} disabled={loading}
             className="px-6 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50">
@@ -97,20 +129,19 @@ function ModalUsuario({ negocioId, usuario, onClose, onSaved }) {
 
 export default function Usuarios() {
   const { usuario: me } = useAuth()
-  const negocioId = me?.negocioId
   const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editUsuario, setEditUsuario] = useState(null)
+  const [filtroRol, setFiltroRol] = useState('todos')
 
   const cargar = useCallback(() => {
-    if (!negocioId) return
     setLoading(true)
-    api.get(`/negocios/${negocioId}/usuarios`)
-      .then(({ data }) => setUsuarios(data.usuarios || []))
+    api.get('/usuarios')
+      .then(({ data }) => setUsuarios(data.data || []))
       .catch(() => setUsuarios([]))
       .finally(() => setLoading(false))
-  }, [negocioId])
+  }, [])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -118,23 +149,43 @@ export default function Usuarios() {
     if (u.id === me?.id) return toast.error('No podés eliminarte a vos mismo')
     if (!confirm(`¿Eliminar a ${u.nombre}?`)) return
     try {
-      await api.delete(`/negocios/${negocioId}/usuarios/${u.id}`)
+      await api.delete(`/usuarios/${u.id}`)
       toast.success('Usuario eliminado')
       cargar()
     } catch { toast.error('Error al eliminar') }
   }
+
+  const usuariosFiltrados = filtroRol === 'todos'
+    ? usuarios
+    : usuarios.filter(u => u.rol === filtroRol)
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Usuarios</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Equipo con acceso al panel</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Gestión global de usuarios</p>
         </div>
         <button onClick={() => { setEditUsuario(null); setShowModal(true) }}
           className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors">
           + Nuevo usuario
         </button>
+      </div>
+
+      {/* Filtros */}
+      <div className="mb-4 flex gap-2">
+        {['todos', 'superadmin', 'admin', 'operador', 'repartidor'].map(rol => (
+          <button
+            key={rol}
+            onClick={() => setFiltroRol(rol)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              filtroRol === rol
+                ? 'bg-violet-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}>
+            {rol === 'todos' ? 'Todos' : ROL_LABEL[rol]}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -149,14 +200,15 @@ export default function Usuarios() {
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Nombre</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Usuario</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Rol</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Negocio</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Estado</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {usuarios.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-600 dark:text-gray-400 text-sm">No hay usuarios</td></tr>
-              ) : usuarios.map(u => (
+              {usuariosFiltrados.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-600 dark:text-gray-400 text-sm">No hay usuarios</td></tr>
+              ) : usuariosFiltrados.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
@@ -175,6 +227,9 @@ export default function Usuarios() {
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROL_COLOR[u.rol] || 'bg-gray-100 text-gray-600'}`}>
                       {ROL_LABEL[u.rol] || u.rol}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs">
+                    {u.negocio?.nombre || '-'}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className={`inline-block w-2 h-2 rounded-full ${u.activo ? 'bg-green-400' : 'bg-gray-300'}`} />
@@ -197,12 +252,14 @@ export default function Usuarios() {
               ))}
             </tbody>
           </table>
-          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">{usuarios.length} usuarios</div>
+          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">
+            {usuariosFiltrados.length} usuarios {filtroRol !== 'todos' && `(${ROL_LABEL[filtroRol]})`}
+          </div>
         </div>
       )}
 
       {showModal && (
-        <ModalUsuario negocioId={negocioId} usuario={editUsuario}
+        <ModalUsuario usuario={editUsuario}
           onClose={() => { setShowModal(false); setEditUsuario(null) }}
           onSaved={cargar}
         />

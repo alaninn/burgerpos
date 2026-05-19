@@ -5,8 +5,9 @@ module.exports = (sequelize, DataTypes) => {
     username: { type: DataTypes.STRING, allowNull: false, unique: true },
     email: { type: DataTypes.STRING, allowNull: true, validate: { isEmail: true } },
     password: { type: DataTypes.STRING, allowNull: false },
-    rol: { type: DataTypes.ENUM('superadmin', 'admin', 'operador'), defaultValue: 'admin' },
+    rol: { type: DataTypes.ENUM('superadmin', 'admin', 'operador', 'repartidor'), defaultValue: 'admin' },
     negocioId: { type: DataTypes.UUID, allowNull: true },
+    telefono: { type: DataTypes.STRING, allowNull: true },
     activo: { type: DataTypes.BOOLEAN, defaultValue: true },
     ultimoAcceso: { type: DataTypes.DATE }
   }, {
