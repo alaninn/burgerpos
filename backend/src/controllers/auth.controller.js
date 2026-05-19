@@ -6,12 +6,12 @@ const generarToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresI
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ success: false, message: 'Email y contraseña requeridos' });
+    const { username, password } = req.body;
+    if (!username || !password)
+      return res.status(400).json({ success: false, message: 'Usuario y contraseña requeridos' });
 
     const usuario = await Usuario.findOne({
-      where: { email: email.toLowerCase() },
+      where: { username: username.toLowerCase() },
       include: [{ model: Negocio, as: 'negocio', attributes: ['id','nombre','slug','logo','configuracion','plan'] }]
     });
 
@@ -30,6 +30,7 @@ exports.login = async (req, res) => {
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
+        username: usuario.username,
         email: usuario.email,
         rol: usuario.rol,
         negocioId: usuario.negocioId,

@@ -6,16 +6,16 @@ import toast from 'react-hot-toast'
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ username: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.email || !form.password) return toast.error('Completá todos los campos')
+    if (!form.username || !form.password) return toast.error('Completá todos los campos')
     setLoading(true)
     try {
-      const usuario = await login(form.email, form.password)
+      const usuario = await login(form.username, form.password)
       if (usuario.rol === 'superadmin') navigate('/superadmin')
       else navigate('/admin/panel-pedidos')
     } catch (err) {
@@ -47,14 +47,14 @@ export default function Login() {
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
+            {/* Usuario */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Usuario</label>
               <input
-                type="email"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                placeholder="tu@email.com"
+                type="text"
+                value={form.username}
+                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                placeholder="usuario"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
               />
             </div>
