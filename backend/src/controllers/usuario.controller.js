@@ -16,14 +16,19 @@ exports.listar = async (req, res) => {
 
 exports.crear = async (req, res) => {
   try {
-    const { nombre, email, password, rol } = req.body;
+    const { nombre, username, email, password, rol, telefono, activo } = req.body;
     const hash = await bcrypt.hash(password || 'burgerpos123', 10);
     const usuario = await Usuario.create({
-      nombre, email, password: hash,
+      nombre,
+      username,
+      email: email || null,
+      password: hash,
       rol: rol || 'operador',
+      telefono: telefono || null,
+      activo: activo !== undefined ? activo : true,
       negocioId: req.params.negocioId
     });
-    res.status(201).json({ success: true, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol, activo: usuario.activo } });
+    res.status(201).json({ success: true, usuario: { id: usuario.id, nombre: usuario.nombre, username: usuario.username, email: usuario.email, rol: usuario.rol, telefono: usuario.telefono, activo: usuario.activo } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
