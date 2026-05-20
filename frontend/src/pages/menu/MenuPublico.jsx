@@ -67,23 +67,22 @@ function SkeletonMenu() {
         <div className="h-10 rounded-2xl animate-pulse" style={{ background: '#1c1c1e' }} />
       </div>
       <div className="px-5">
-        <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background: 'transparent' }}>
-          <div className="py-4 px-4 text-center mb-4">
+        <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background: '#111' }}>
+          <div className="py-4 px-4 text-center" style={{ borderBottom: '1px solid #1c1c1e' }}>
             <div className="h-4 w-28 rounded mx-auto" style={{ background: '#1c1c1e' }} />
           </div>
-          <div className="space-y-4">
-            {[1,2,3,4].map((i) => (
-              <div key={i} className="flex items-start gap-4 p-4 sm:p-6 rounded-2xl"
-                   style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 w-3/4 rounded" style={{ background: '#1c1c1e' }} />
-                  <div className="h-3 w-full rounded" style={{ background: '#1c1c1e' }} />
-                  <div className="h-3 w-5/6 rounded" style={{ background: '#1c1c1e' }} />
-                  <div className="h-3 w-4/6 rounded" style={{ background: '#1c1c1e' }} />
-                  <div className="h-4 w-24 rounded mt-2" style={{ background: '#242424' }} />
+          <div className="grid grid-cols-2 gap-3 p-3">
+            {[1,2,3,4,5,6].map((i) => (
+              <div key={i} className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 w-full rounded" style={{ background: '#1c1c1e' }} />
+                    <div className="h-3 w-4/5 rounded" style={{ background: '#1c1c1e' }} />
+                    <div className="h-3 w-2/3 rounded" style={{ background: '#1c1c1e' }} />
+                    <div className="h-3 w-1/2 rounded" style={{ background: '#242424' }} />
+                  </div>
+                  <div className="flex-shrink-0 rounded-xl" style={{ width: 80, height: 80, background: '#1c1c1e' }} />
                 </div>
-                <div className="flex-shrink-0 rounded-2xl"
-                     style={{ width: 120, height: 120, background: '#1c1c1e' }} />
               </div>
             ))}
           </div>
@@ -121,76 +120,48 @@ function ProductoCard({ prod, color, onAbrirDetalle }) {
   return (
     <div
       onClick={() => !sinStock && onAbrirDetalle(prod)}
-      className={`flex items-start gap-4 sm:gap-5 p-4 sm:p-6 cursor-pointer transition-all duration-200 rounded-2xl ${sinStock ? 'opacity-50' : ''}`}
-      style={{ background: 'rgba(255,255,255,0.02)' }}
-      onMouseEnter={e => !sinStock && (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}>
+      className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${sinStock ? 'opacity-50' : ''}`}
+      style={{ background: 'transparent' }}
+      onMouseEnter={e => !sinStock && (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
 
       {/* Texto izquierda */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-black text-white leading-tight mb-2 line-clamp-2 text-base sm:text-lg md:text-xl">{prod.nombre}</h3>
+        <h3 className="font-bold text-white leading-snug mb-1.5 line-clamp-2 text-sm sm:text-base">{prod.nombre}</h3>
         {prod.descripcion && (
-          <p className="line-clamp-4 sm:line-clamp-5 mb-3 leading-relaxed text-xs sm:text-sm" style={{ color: '#a1a1aa' }}>{prod.descripcion}</p>
+          <p className="line-clamp-3 mb-2 leading-relaxed text-xs sm:text-sm" style={{ color: '#8e8e93' }}>{prod.descripcion}</p>
         )}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {descuento && (
             <>
-              <span className="line-through font-medium text-xs sm:text-sm" style={{ color: '#636366' }}>
+              <span className="line-through font-medium text-[10px] sm:text-xs" style={{ color: '#636366' }}>
                 $ {precioBase.toLocaleString('es-AR')}
               </span>
-              <span className="px-2 py-1 rounded-full font-bold text-[10px] sm:text-xs"
+              <span className="px-1.5 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]"
                 style={{ background: color, color: '#fff' }}>
                 -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${Number(descuento.valor).toLocaleString('es-AR')}`}
               </span>
             </>
           )}
-          <span className="font-black text-base sm:text-lg md:text-xl" style={{ color }}>
+          <span className="font-black text-sm sm:text-base" style={{ color }}>
             $ {precioMostrar.toLocaleString('es-AR')}
           </span>
-          {tieneVariantes && <span className="text-xs sm:text-sm font-normal ml-1" style={{ color: '#8e8e93' }}>desde</span>}
+          {tieneVariantes && <span className="text-[10px] sm:text-xs" style={{ color: '#636366' }}>desde</span>}
+          {sinStock && (
+            <span className="px-1.5 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]" style={{ background: '#2a2a2a', color: '#8e8e93' }}>Agotado</span>
+          )}
         </div>
-        {sinStock && (
-          <div className="mt-2 text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-lg inline-block"
-               style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
-            Sin stock
-          </div>
-        )}
       </div>
 
       {/* Imagen derecha */}
-      <div className="relative flex-shrink-0">
-        {prod.imagen ? (
-          <img
-            src={prod.imagen}
-            alt={prod.nombre}
-            className="rounded-2xl object-cover"
-            style={{
-              width: typeof window !== 'undefined' && window.innerWidth < 640 ? 100 : 120,
-              height: typeof window !== 'undefined' && window.innerWidth < 640 ? 100 : 120,
-              border: '1px solid rgba(255,255,255,0.05)'
-            }}
-            loading="lazy"
-          />
-        ) : (
-          <div className="rounded-2xl flex items-center justify-center"
-               style={{
-                 width: typeof window !== 'undefined' && window.innerWidth < 640 ? 100 : 120,
-                 height: typeof window !== 'undefined' && window.innerWidth < 640 ? 100 : 120,
-                 background: 'rgba(255,255,255,0.05)',
-                 border: '1px solid rgba(255,255,255,0.1)'
-               }}>
-            <svg className="w-10 h-10 sm:w-12 sm:h-12" style={{ color: '#3a3a3c' }}
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-
-        {sinStock && (
-          <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center">
-            <span className="text-white text-xs font-bold">Agotado</span>
-          </div>
+      <div className="relative flex-shrink-0 rounded-xl overflow-hidden w-20 h-20 sm:w-24 sm:h-24" style={{ background: '#1c1c1e' }}>
+        {prod.imagen
+          ? <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
+          : <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl">🍔</div>
+        }
+        {!sinStock && (
+          <div className="absolute bottom-1.5 right-1.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-white font-black shadow-lg text-sm sm:text-[15px]"
+            style={{ backgroundColor: color }}>+</div>
         )}
       </div>
     </div>
@@ -1521,10 +1492,12 @@ export default function MenuPublico() {
                 {productosFiltrados.length} resultado{productosFiltrados.length !== 1 ? 's' : ''} para "{busqueda}"
               </p>
               {productosFiltrados.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
-                  {productosFiltrados.map((prod) => (
-                    <ProductoCard key={prod.id} prod={prod} color={color} onAbrirDetalle={abrirDetalle} />
-                  ))}
+                <div className="rounded-2xl overflow-hidden" style={{ background: '#111' }}>
+                  <div className="grid grid-cols-2 gap-3 p-3">
+                    {productosFiltrados.map((prod) => (
+                      <ProductoCard key={prod.id} prod={prod} color={color} onAbrirDetalle={abrirDetalle} />
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-16" style={{ color: '#8e8e93' }}>
@@ -1539,11 +1512,11 @@ export default function MenuPublico() {
               if (prods.length === 0) return null
               return (
                 <div key={cat.id} ref={el => { catRefs.current[cat.id] = el }} className="scroll-mt-28 px-2 md:px-5 pt-4 md:pt-5 pb-2">
-                  <div className="rounded-2xl overflow-hidden" style={{ background: 'transparent' }}>
+                  <div className="rounded-2xl overflow-hidden" style={{ background: '#111' }}>
 
                     {/* Banner de imagen de categoría */}
                     {cat.imagen && (
-                      <div className="relative w-full h-28 sm:h-32 rounded-2xl overflow-hidden mb-4">
+                      <div className="relative w-full h-28 sm:h-32">
                         <img src={cat.imagen} alt={cat.nombre} className="w-full h-full object-cover" />
                         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 55%)' }} />
                         <div className="absolute bottom-2 sm:bottom-3 left-0 right-0 text-center px-2">
@@ -1555,14 +1528,14 @@ export default function MenuPublico() {
 
                     {/* Header centrado (sin imagen) */}
                     {!cat.imagen && (
-                      <div className="py-3 md:py-4 px-3 md:px-4 text-center mb-4">
+                      <div className="py-3 md:py-4 px-3 md:px-4 text-center" style={{ borderBottom: '1px solid #1c1c1e' }}>
                         <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest">{cat.nombre}</h2>
                         {cat.descripcion && <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#8e8e93' }}>{cat.descripcion}</p>}
                       </div>
                     )}
 
-                    {/* Lista vertical de productos */}
-                    <div className="space-y-3 sm:space-y-4 px-4 sm:px-5 py-4">
+                    {/* Grid 2 columnas sin bordes */}
+                    <div className="grid grid-cols-2 gap-3 p-3">
                       {prods.map((prod) => {
                         // ✅ AGREGAR NOMBRE DE CATEGORIA AL PRODUCTO
                         prod._categoriaNombre = cat.nombre
