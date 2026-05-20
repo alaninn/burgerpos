@@ -69,8 +69,8 @@ function SkeletonMenu() {
         <div className="h-10 rounded-2xl animate-pulse" style={{ background: '#1c1c1e' }} />
       </div>
       <div className="px-5">
-        <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background: '#111' }}>
-          <div className="py-4 px-4 text-center" style={{ borderBottom: '1px solid #1c1c1e' }}>
+        <div className="rounded-2xl overflow-hidden animate-pulse" style={{ background: '#000', border: '1px solid rgba(255,255,255,0.12)' }}>
+          <div className="py-4 px-4 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="h-4 w-28 rounded mx-auto" style={{ background: '#1c1c1e' }} />
           </div>
           <div className="grid grid-cols-2 gap-3 p-3">
@@ -1533,7 +1533,7 @@ export default function MenuPublico() {
                 {productosFiltrados.length} resultado{productosFiltrados.length !== 1 ? 's' : ''} para "{busqueda}"
               </p>
               {productosFiltrados.length > 0 ? (
-                <div className="rounded-2xl overflow-hidden" style={{ background: '#111' }}>
+                <div className="rounded-2xl overflow-hidden" style={{ background: '#000', border: '1px solid rgba(255,255,255,0.12)' }}>
                   <div className="grid grid-cols-2 gap-2.5 sm:gap-3 p-3 sm:p-4">
                     {productosFiltrados.map((prod) => (
                       <ProductoCard key={prod.id} prod={prod} color={color} onAbrirDetalle={abrirDetalle} />
@@ -1553,7 +1553,7 @@ export default function MenuPublico() {
               if (prods.length === 0) return null
               return (
                 <div key={cat.id} ref={el => { catRefs.current[cat.id] = el }} className="scroll-mt-28 px-2 md:px-5 pt-4 md:pt-5 pb-2">
-                  <div className="rounded-2xl overflow-hidden" style={{ background: '#111' }}>
+                  <div className="rounded-2xl overflow-hidden" style={{ background: '#000', border: '1px solid rgba(255,255,255,0.12)' }}>
 
                     {/* Banner de imagen de categoría */}
                     {cat.imagen && (
@@ -1569,7 +1569,7 @@ export default function MenuPublico() {
 
                     {/* Header centrado (sin imagen) */}
                     {!cat.imagen && (
-                      <div className="py-3 md:py-4 px-3 md:px-4 text-center" style={{ borderBottom: '1px solid #1c1c1e' }}>
+                      <div className="py-3 md:py-4 px-3 md:px-4 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                         <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest">{cat.nombre}</h2>
                         {cat.descripcion && <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#8e8e93' }}>{cat.descripcion}</p>}
                       </div>
