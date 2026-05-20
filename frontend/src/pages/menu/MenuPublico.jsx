@@ -214,7 +214,7 @@ function CarruselDestacados({ productos, color, onAbrirDetalle }) {
   const scrollRef = useRef(null)
 
   const scroll = (dir) => {
-    scrollRef.current?.scrollBy({ left: dir * 200, behavior: 'smooth' })
+    scrollRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' })
   }
 
   return (
@@ -247,7 +247,7 @@ function CarruselDestacados({ productos, color, onAbrirDetalle }) {
 
       {/* Track horizontal */}
       <div ref={scrollRef}
-        className="flex gap-2 sm:gap-3 overflow-x-auto no-scrollbar pb-1">
+        className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar pb-2">
         {productos.map(prod => {
           const sinStock = prod.stock !== null && prod.stock !== undefined && prod.stock === 0
           const precio = prod.variantes?.length > 0
@@ -258,36 +258,63 @@ function CarruselDestacados({ productos, color, onAbrirDetalle }) {
           return (
             <div key={prod.id}
               onClick={() => !sinStock && onAbrirDetalle(prod)}
-              className={`flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden transition-all active:scale-95 ${sinStock ? 'opacity-50' : ''}`}
-              style={{ width: 144, background: '#111', border: '1px solid #1c1c1e' }}
-              onMouseEnter={e => !sinStock && (e.currentTarget.style.borderColor = `${color}55`)}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = '#1c1c1e')}>
+              className={`flex-shrink-0 cursor-pointer rounded-2xl overflow-hidden transition-all ${sinStock ? 'opacity-50' : ''}`}
+              style={{
+                width: 180,
+                background: '#000',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}
+              onMouseEnter={e => {
+                if (!sinStock) {
+                  e.currentTarget.style.transform = 'translateY(-4px)'
+                  e.currentTarget.style.boxShadow = `0 8px 20px rgba(0,0,0,0.4), 0 0 0 2px ${color}40`
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)'
+              }}>
 
               {/* Imagen cuadrada */}
-              <div className="relative w-full h-36 sm:h-40" style={{ background: '#1c1c1e' }}>
+              <div className="relative w-full h-44 sm:h-48" style={{ background: '#1a1a1a' }}>
                 {prod.imagen
                   ? <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-3xl sm:text-4xl">🍔</div>
+                  : <div className="w-full h-full flex items-center justify-center text-4xl sm:text-5xl">🍔</div>
                 }
                 {!sinStock && (
-                  <div className="absolute bottom-2 right-2 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-white font-black shadow-lg text-sm sm:text-base"
-                    style={{ backgroundColor: color }}>+</div>
+                  <div className="absolute bottom-3 right-3 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white font-black text-base sm:text-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+                      boxShadow: `0 3px 10px ${color}60, 0 0 0 3px rgba(0,0,0,0.3)`
+                    }}>
+                    +
+                  </div>
                 )}
                 {sinStock && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="px-2 py-1 rounded-full text-[10px] sm:text-xs font-bold" style={{ background: 'rgba(0,0,0,0.75)', color: '#8e8e93' }}>Agotado</span>
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="px-3 py-1.5 rounded-full text-xs font-bold"
+                          style={{ background: 'rgba(239,68,68,0.2)', color: '#ef4444', border: '1px solid #ef4444' }}>
+                      Agotado
+                    </span>
                   </div>
                 )}
               </div>
 
               {/* Info */}
-              <div className="p-2.5 sm:p-3">
-                <h3 className="font-bold text-white leading-snug line-clamp-2 mb-1 text-xs sm:text-[13px]">{prod.nombre}</h3>
+              <div className="p-3 sm:p-4">
+                <h3 className="font-bold text-white leading-tight line-clamp-2 mb-1.5 text-sm sm:text-base"
+                    style={{ letterSpacing: '-0.01em' }}>
+                  {prod.nombre}
+                </h3>
                 {prod.descripcion && (
-                  <p className="line-clamp-2 mb-1.5 leading-relaxed text-[10px] sm:text-[11px]" style={{ color: '#8e8e93' }}>{prod.descripcion}</p>
+                  <p className="product-description line-clamp-2 mb-2 leading-relaxed text-xs sm:text-sm"
+                     style={{ color: '#9ca3af' }}>
+                    {prod.descripcion}
+                  </p>
                 )}
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="font-black text-xs sm:text-[13px]" style={{ color }}>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-black text-base sm:text-lg" style={{ color, letterSpacing: '-0.02em' }}>
                     $ {precio.toLocaleString('es-AR')}
                   </span>
                   {tieneVariantes && <span className="text-[9px] sm:text-[10px]" style={{ color: '#636366' }}>desde</span>}
