@@ -17,7 +17,9 @@ function buildStyles(tipografia) {
   const fUrl = f.replace(/ /g, '+')
   return `
   @import url('https://fonts.googleapis.com/css2?family=${fUrl}:wght@400;500;600;700;800;900&display=swap');
-  * { font-family: '${f}', sans-serif !important; }`
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { font-family: '${f}', sans-serif !important; }
+  .product-description { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; }`
 }
 
 const styles = `
@@ -120,48 +122,87 @@ function ProductoCard({ prod, color, onAbrirDetalle }) {
   return (
     <div
       onClick={() => !sinStock && onAbrirDetalle(prod)}
-      className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${sinStock ? 'opacity-50' : ''}`}
-      style={{ background: 'transparent' }}
-      onMouseEnter={e => !sinStock && (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+      className={`flex items-center gap-3 p-3.5 sm:p-4 cursor-pointer transition-all duration-200 rounded-xl ${sinStock ? 'opacity-50' : ''}`}
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+        border: '1px solid rgba(255,255,255,0.05)'
+      }}
+      onMouseEnter={e => {
+        if (!sinStock) {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+          e.currentTarget.style.transform = 'translateY(-1px)'
+          e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+        e.currentTarget.style.transform = 'translateY(0)'
+        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)'
+      }}>
 
       {/* Texto izquierda */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-white leading-snug mb-1.5 line-clamp-2 text-sm sm:text-base">{prod.nombre}</h3>
+        <h3 className="font-bold text-white leading-tight mb-2 line-clamp-2 text-sm sm:text-base"
+            style={{ letterSpacing: '-0.01em' }}>
+          {prod.nombre}
+        </h3>
         {prod.descripcion && (
-          <p className="line-clamp-3 mb-2 leading-relaxed text-xs sm:text-sm" style={{ color: '#8e8e93' }}>{prod.descripcion}</p>
+          <p className="product-description line-clamp-3 mb-2.5 leading-relaxed text-[11px] sm:text-xs"
+             style={{ color: '#a1a1aa', fontWeight: '400' }}>
+            {prod.descripcion}
+          </p>
         )}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {descuento && (
             <>
-              <span className="line-through font-medium text-[10px] sm:text-xs" style={{ color: '#636366' }}>
+              <span className="line-through font-medium text-[10px] sm:text-xs" style={{ color: '#6b7280' }}>
                 $ {precioBase.toLocaleString('es-AR')}
               </span>
-              <span className="px-1.5 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]"
-                style={{ background: color, color: '#fff' }}>
+              <span className="px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]"
+                style={{
+                  background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+                  color: '#fff',
+                  boxShadow: `0 2px 4px ${color}40`
+                }}>
                 -{descuento.tipo === 'porcentaje' ? `${descuento.valor}%` : `$${Number(descuento.valor).toLocaleString('es-AR')}`}
               </span>
             </>
           )}
-          <span className="font-black text-sm sm:text-base" style={{ color }}>
+          <span className="font-black text-base sm:text-lg" style={{ color, letterSpacing: '-0.02em' }}>
             $ {precioMostrar.toLocaleString('es-AR')}
           </span>
-          {tieneVariantes && <span className="text-[10px] sm:text-xs" style={{ color: '#636366' }}>desde</span>}
+          {tieneVariantes && <span className="text-[10px] sm:text-xs font-medium" style={{ color: '#9ca3af' }}>desde</span>}
           {sinStock && (
-            <span className="px-1.5 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]" style={{ background: '#2a2a2a', color: '#8e8e93' }}>Agotado</span>
+            <span className="px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]"
+                  style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}>
+              Agotado
+            </span>
           )}
         </div>
       </div>
 
       {/* Imagen derecha */}
-      <div className="relative flex-shrink-0 rounded-xl overflow-hidden w-20 h-20 sm:w-24 sm:h-24" style={{ background: '#1c1c1e' }}>
+      <div className="relative flex-shrink-0 rounded-xl overflow-hidden w-20 h-20 sm:w-24 sm:h-24"
+           style={{
+             background: '#1a1a1a',
+             boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+             border: '1px solid rgba(255,255,255,0.08)'
+           }}>
         {prod.imagen
           ? <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover" />
-          : <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl">🍔</div>
+          : <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl" style={{ filter: 'grayscale(0.3)' }}>
+              🍔
+            </div>
         }
         {!sinStock && (
-          <div className="absolute bottom-1.5 right-1.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-white font-black shadow-lg text-sm sm:text-[15px]"
-            style={{ backgroundColor: color }}>+</div>
+          <div className="absolute bottom-1.5 right-1.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-white font-black text-sm sm:text-base"
+            style={{
+              background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+              boxShadow: `0 2px 8px ${color}60, 0 0 0 2px rgba(0,0,0,0.3)`
+            }}>
+            +
+          </div>
         )}
       </div>
     </div>
@@ -1493,7 +1534,7 @@ export default function MenuPublico() {
               </p>
               {productosFiltrados.length > 0 ? (
                 <div className="rounded-2xl overflow-hidden" style={{ background: '#111' }}>
-                  <div className="grid grid-cols-2 gap-3 p-3">
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3 p-3 sm:p-4">
                     {productosFiltrados.map((prod) => (
                       <ProductoCard key={prod.id} prod={prod} color={color} onAbrirDetalle={abrirDetalle} />
                     ))}
@@ -1535,7 +1576,7 @@ export default function MenuPublico() {
                     )}
 
                     {/* Grid 2 columnas sin bordes */}
-                    <div className="grid grid-cols-2 gap-3 p-3">
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 p-3 sm:p-4">
                       {prods.map((prod) => {
                         // ✅ AGREGAR NOMBRE DE CATEGORIA AL PRODUCTO
                         prod._categoriaNombre = cat.nombre
