@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { Op } = require('sequelize');
 const { Usuario, Negocio } = require('../models');
 
 const generarToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
@@ -10,8 +11,10 @@ exports.login = async (req, res) => {
     if (!username || !password)
       return res.status(400).json({ success: false, message: 'Usuario y contraseña requeridos' });
 
+    // Acepta usuario o email indistintamente
+    const identificador = username.toLowerCase().trim();
     const usuario = await Usuario.findOne({
-      where: { email: username.toLowerCase() },
+      where: { [Op.or]: [{ username: identificador }, { email: identificador }] },
       include: [{ model: Negocio, as: 'negocio', attributes: ['id','nombre','slug','logo','configuracion','plan'] }]
     });
 
@@ -30,6 +33,7 @@ exports.login = async (req, res) => {
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
+        username: usuario.username,
         email: usuario.email,
         rol: usuario.rol,
         negocioId: usuario.negocioId,
