@@ -6,6 +6,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
+// Capturar console.log/warn/error en un buffer en memoria (visor de logs del superadmin)
+require('./services/logBuffer').instalar();
+
 const { sequelize } = require('./models');
 
 const app = express();
@@ -104,6 +107,8 @@ app.use('/api/negocios/:negocioId/gastos',      require('./routes/gasto.routes')
 app.use('/api/negocios/:negocioId/compras',     require('./routes/compra.routes'));
 app.use('/api/negocios/:negocioId/recetas',     require('./routes/receta.routes'));
 app.use('/api/usuarios',     require('./routes/usuario.routes'));
+app.use('/api/salud',        require('./routes/salud.routes'));       // reporte de errores frontend (público)
+app.use('/api/superadmin',   require('./routes/superadminErrores.routes')); // logs y errores (solo superadmin)
 app.use('/api/pagos',        require('./routes/pago.routes'));
 app.use('/api/mercadopago/oauth', require('./routes/mercadoPagoOAuth.routes'));
 app.use('/api/platform-config', require('./routes/platformConfig.routes'));

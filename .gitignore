@@ -42,3 +42,6 @@ out/
 
 # Claude
 .claude/
+
+# Credenciales del VPS (no versionar)
+.vps-credenciales

@@ -20,6 +20,7 @@ const ARCACredential = require('./ARCACredential')(sequelize, DataTypes);
 const ComprobanteElectronico = require('./ComprobanteElectronico')(sequelize, DataTypes);
 const TicketAccesoWSAA = require('./TicketAccesoWSAA')(sequelize, DataTypes);
 const WhatsAppConfig = require('./WhatsAppConfig')(sequelize, DataTypes);
+const ErrorFrontend  = require('./ErrorFrontend')(sequelize, DataTypes);
 
 // Módulo de Gestión
 const Proveedor      = require('./Proveedor');
@@ -172,6 +173,10 @@ RecetaIngrediente.belongsTo(Receta, { foreignKey: 'recetaId', as: 'receta' });
 RecetaIngrediente.belongsTo(Producto, { foreignKey: 'ingredienteId', as: 'ingrediente' });
 Producto.hasMany(RecetaIngrediente, { foreignKey: 'ingredienteId', as: 'usadoEnRecetas' });
 
+// ── ErrorFrontend → Negocio / Usuario (panel de errores) ──
+ErrorFrontend.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+ErrorFrontend.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+
 // ── Exportar ──────────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -199,5 +204,6 @@ module.exports = {
   Compra,
   CompraItem,
   Receta,
-  RecetaIngrediente
+  RecetaIngrediente,
+  ErrorFrontend
 };

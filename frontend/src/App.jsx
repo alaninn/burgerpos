@@ -42,6 +42,7 @@ import SANegocios from './pages/superadmin/Negocios'
 import SAUsuarios from './pages/superadmin/Usuarios'
 import SAPlanes from './pages/superadmin/Planes'
 import SAConfiguracion from './pages/superadmin/ConfiguracionPlataforma'
+import SAErrores from './pages/superadmin/Errores'
 
 function PrivateRoute({ children, roles }) {
   const { usuario, loading } = useAuth()
@@ -106,6 +107,7 @@ function AppRoutes() {
         <Route path="usuarios" element={<SAUsuarios />} />
         <Route path="planes" element={<SAPlanes />} />
         <Route path="configuracion" element={<SAConfiguracion />} />
+        <Route path="errores" element={<SAErrores />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
