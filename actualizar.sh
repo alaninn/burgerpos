@@ -29,7 +29,7 @@ fi
 
 # 4) Backend: dependencias y migraciones
 echo "📦 Instalando dependencias del backend..."
-cd backend && npm install --omit=dev
+cd backend && npm install
 
 echo "🗄️  Aplicando migraciones de base de datos..."
 npx sequelize-cli db:migrate || echo "⚠️  Revisar migraciones (puede que ya estén aplicadas)"
