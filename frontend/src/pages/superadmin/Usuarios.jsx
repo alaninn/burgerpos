@@ -1,26 +1,30 @@
+// Superadmin > Administradores: gestiona los admins de cada negocio (y la
+// cuenta de superadmin). Los usuarios internos de un negocio (operadores,
+// repartidores) se gestionan desde el panel de cada negocio.
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 
-const ROL_LABEL = { superadmin: 'SuperAdmin', admin: 'Admin', operador: 'Operador', repartidor: 'Repartidor' }
+const ROL_LABEL = { superadmin: 'SuperAdmin', admin: 'Admin' }
 const ROL_COLOR = {
   superadmin: 'bg-red-100 text-red-700',
   admin: 'bg-violet-100 text-violet-700',
-  operador: 'bg-gray-100 text-gray-600',
-  repartidor: 'bg-blue-100 text-blue-700'
 }
 
-function ModalUsuario({ usuario, onClose, onSaved }) {
+function ModalAdmin({ usuario, onClose, onSaved }) {
+  const esSuperadmin = usuario?.rol === 'superadmin'
   const [form, setForm] = useState({
-    nombre: '', username: '', email: '', password: '', rol: 'admin', negocioId: '', activo: true, telefono: '', ...usuario
+    nombre: '', username: '', email: '', password: '', negocioId: '', activo: true,
+    ...usuario,
+    rol: usuario?.rol || 'admin',
   })
   const [loading, setLoading] = useState(false)
   const [negocios, setNegocios] = useState([])
 
   useEffect(() => {
-    api.get('/superadmin/negocios')
-      .then(({ data }) => setNegocios(data.negocios || []))
+    api.get('/negocios')
+      .then(({ data }) => setNegocios(data.negocios || data.data || []))
       .catch(() => setNegocios([]))
   }, [])
 
@@ -28,6 +32,7 @@ function ModalUsuario({ usuario, onClose, onSaved }) {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
     if (!form.username.trim()) return toast.error('El usuario es obligatorio')
     if (!usuario?.id && !form.password) return toast.error('La contraseña es obligatoria')
+    if (!esSuperadmin && !form.negocioId) return toast.error('Seleccioná el negocio del admin')
     setLoading(true)
     try {
       if (usuario?.id) {
@@ -35,7 +40,7 @@ function ModalUsuario({ usuario, onClose, onSaved }) {
       } else {
         await api.post('/usuarios', form)
       }
-      toast.success(usuario?.id ? 'Usuario actualizado' : 'Usuario creado')
+      toast.success(usuario?.id ? 'Admin actualizado' : 'Admin creado')
       onSaved(); onClose()
     } catch (err) { toast.error(err.response?.data?.message || 'Error al guardar') }
     finally { setLoading(false) }
@@ -45,7 +50,9 @@ function ModalUsuario({ usuario, onClose, onSaved }) {
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100">{usuario?.id ? 'Editar usuario' : 'Nuevo usuario'}</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+            {usuario?.id ? (esSuperadmin ? 'Editar superadmin' : 'Editar admin') : 'Nuevo admin de negocio'}
+          </h3>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
             <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -75,50 +82,33 @@ function ModalUsuario({ usuario, onClose, onSaved }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{usuario?.id ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña *'}</label>
             <input type="password" value={form.password || ''} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              placeholder="••••••••"
+              placeholder="••••••••" autoComplete="new-password"
               className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rol *</label>
-            <select value={form.rol} onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-              <option value="operador">Operador</option>
-              <option value="admin">Admin</option>
-              <option value="repartidor">Repartidor</option>
-              <option value="superadmin">SuperAdmin</option>
-            </select>
-          </div>
-          {form.rol !== 'superadmin' && (
+          {!esSuperadmin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Negocio</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Negocio *</label>
               <select value={form.negocioId || ''} onChange={e => setForm(f => ({ ...f, negocioId: e.target.value || null }))}
                 className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                <option value="">Sin negocio</option>
+                <option value="">Seleccionar negocio…</option>
                 {negocios.map(n => (
                   <option key={n.id} value={n.id}>{n.nombre}</option>
                 ))}
               </select>
             </div>
           )}
-          {form.rol === 'repartidor' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono</label>
-              <input type="text" value={form.telefono || ''} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))}
-                placeholder="Teléfono del repartidor"
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-              />
-            </div>
+          {!esSuperadmin && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.activo} onChange={e => setForm(f => ({ ...f, activo: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Cuenta activa</span>
+            </label>
           )}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={form.activo} onChange={e => setForm(f => ({ ...f, activo: e.target.checked }))} className="w-4 h-4 accent-violet-600" />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Usuario activo</span>
-          </label>
         </div>
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
           <button onClick={onClose} className="text-sm text-red-500 hover:underline">Cancelar</button>
           <button onClick={guardar} disabled={loading}
-            className="px-6 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50">
+            className="px-6 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors disabled:opacity-50">
             {loading ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
@@ -133,7 +123,6 @@ export default function Usuarios() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editUsuario, setEditUsuario] = useState(null)
-  const [filtroRol, setFiltroRol] = useState('todos')
 
   const cargar = useCallback(() => {
     setLoading(true)
@@ -147,45 +136,27 @@ export default function Usuarios() {
 
   const eliminar = async (u) => {
     if (u.id === me?.id) return toast.error('No podés eliminarte a vos mismo')
-    if (!confirm(`¿Eliminar a ${u.nombre}?`)) return
+    if (!confirm(`¿Eliminar al admin ${u.nombre}? El negocio quedará sin administrador.`)) return
     try {
       await api.delete(`/usuarios/${u.id}`)
-      toast.success('Usuario eliminado')
+      toast.success('Admin eliminado')
       cargar()
     } catch { toast.error('Error al eliminar') }
   }
-
-  const usuariosFiltrados = filtroRol === 'todos'
-    ? usuarios
-    : usuarios.filter(u => u.rol === filtroRol)
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Usuarios</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Gestión global de usuarios</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Administradores</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            El admin de cada negocio. Los operadores y repartidores se gestionan desde el panel de cada negocio.
+          </p>
         </div>
         <button onClick={() => { setEditUsuario(null); setShowModal(true) }}
           className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors">
-          + Nuevo usuario
+          + Nuevo admin
         </button>
-      </div>
-
-      {/* Filtros */}
-      <div className="mb-4 flex gap-2">
-        {['todos', 'superadmin', 'admin', 'operador', 'repartidor'].map(rol => (
-          <button
-            key={rol}
-            onClick={() => setFiltroRol(rol)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              filtroRol === rol
-                ? 'bg-violet-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}>
-            {rol === 'todos' ? 'Todos' : ROL_LABEL[rol]}
-          </button>
-        ))}
       </div>
 
       {loading ? (
@@ -206,9 +177,9 @@ export default function Usuarios() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {usuariosFiltrados.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-600 dark:text-gray-400 text-sm">No hay usuarios</td></tr>
-              ) : usuariosFiltrados.map(u => (
+              {usuarios.length === 0 ? (
+                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-600 dark:text-gray-400 text-sm">No hay administradores</td></tr>
+              ) : usuarios.map(u => (
                 <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
@@ -218,7 +189,6 @@ export default function Usuarios() {
                       <div>
                         <p className="font-medium text-gray-800 dark:text-gray-200">{u.nombre}</p>
                         {u.id === me?.id && <p className="text-xs text-gray-600 dark:text-gray-400">Vos</p>}
-                        {u.rol === 'repartidor' && u.telefono && <p className="text-xs text-gray-500 dark:text-gray-400">{u.telefono}</p>}
                       </div>
                     </div>
                   </td>
@@ -229,7 +199,7 @@ export default function Usuarios() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-300 text-xs">
-                    {u.negocio?.nombre || '-'}
+                    {u.rol === 'superadmin' ? 'Toda la plataforma' : (u.negocio?.nombre || '-')}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className={`inline-block w-2 h-2 rounded-full ${u.activo ? 'bg-green-400' : 'bg-gray-300'}`} />
@@ -240,7 +210,7 @@ export default function Usuarios() {
                         className="p-1.5 hover:bg-violet-50 dark:hover:bg-violet-900/30 rounded-lg text-gray-600 dark:text-gray-400 hover:text-violet-600 transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
-                      {u.id !== me?.id && (
+                      {u.id !== me?.id && u.rol !== 'superadmin' && (
                         <button onClick={() => eliminar(u)}
                           className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-gray-600 dark:text-gray-400 hover:text-red-500 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -253,13 +223,13 @@ export default function Usuarios() {
             </tbody>
           </table>
           <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400">
-            {usuariosFiltrados.length} usuarios {filtroRol !== 'todos' && `(${ROL_LABEL[filtroRol]})`}
+            {usuarios.length} cuentas
           </div>
         </div>
       )}
 
       {showModal && (
-        <ModalUsuario usuario={editUsuario}
+        <ModalAdmin usuario={editUsuario}
           onClose={() => { setShowModal(false); setEditUsuario(null) }}
           onSaved={cargar}
         />
