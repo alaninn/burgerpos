@@ -11,7 +11,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Usuario y contraseña requeridos' });
 
     const usuario = await Usuario.findOne({
-      where: { username: username.toLowerCase() },
+      where: { email: username.toLowerCase() },
       include: [{ model: Negocio, as: 'negocio', attributes: ['id','nombre','slug','logo','configuracion','plan'] }]
     });
 
@@ -30,7 +30,6 @@ exports.login = async (req, res) => {
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
-        username: usuario.username,
         email: usuario.email,
         rol: usuario.rol,
         negocioId: usuario.negocioId,

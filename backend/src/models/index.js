@@ -21,6 +21,14 @@ const ComprobanteElectronico = require('./ComprobanteElectronico')(sequelize, Da
 const TicketAccesoWSAA = require('./TicketAccesoWSAA')(sequelize, DataTypes);
 const WhatsAppConfig = require('./WhatsAppConfig')(sequelize, DataTypes);
 
+// Módulo de Gestión
+const Proveedor      = require('./Proveedor');
+const Gasto          = require('./Gasto');
+const Compra         = require('./Compra');
+const CompraItem     = require('./CompraItem');
+const Receta         = require('./Receta');
+const RecetaIngrediente = require('./RecetaIngrediente');
+
 // ── Negocio → Usuario ─────────────────────────────────────
 Negocio.hasMany(Usuario,      { foreignKey: 'negocioId', as: 'usuarios' });
 Usuario.belongsTo(Negocio,    { foreignKey: 'negocioId', as: 'negocio' });
@@ -119,6 +127,51 @@ TicketAccesoWSAA.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
 Negocio.hasOne(WhatsAppConfig, { foreignKey: 'negocioId', as: 'whatsappConfig' });
 WhatsAppConfig.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
 
+// ── Negocio → Proveedor ───────────────────────────────────
+Negocio.hasMany(Proveedor, { foreignKey: 'negocioId', as: 'proveedores' });
+Proveedor.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
+// ── Producto → Proveedor (proveedor preferido) ────────────
+Producto.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+Proveedor.hasMany(Producto, { foreignKey: 'proveedorId', as: 'productos' });
+
+// ── Negocio → Gasto ───────────────────────────────────────
+Negocio.hasMany(Gasto, { foreignKey: 'negocioId', as: 'gastos' });
+Gasto.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+Gasto.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+Gasto.belongsTo(Compra, { foreignKey: 'compraId', as: 'compra' });
+
+// ── Negocio → Compra ──────────────────────────────────────
+Negocio.hasMany(Compra, { foreignKey: 'negocioId', as: 'compras' });
+Compra.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+Compra.belongsTo(Proveedor, { foreignKey: 'proveedorId', as: 'proveedor' });
+Compra.hasMany(CompraItem, { foreignKey: 'compraId', as: 'items', onDelete: 'CASCADE' });
+
+// ── CompraItem → Producto ─────────────────────────────────
+CompraItem.belongsTo(Compra, { foreignKey: 'compraId', as: 'compra' });
+CompraItem.belongsTo(Producto, { foreignKey: 'productoId', as: 'producto' });
+Producto.hasMany(CompraItem, { foreignKey: 'productoId', as: 'comprasItems' });
+
+// ── Negocio → Receta ──────────────────────────────────────
+Negocio.hasMany(Receta, { foreignKey: 'negocioId', as: 'recetas' });
+Receta.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
+// ── Receta → Producto (menú) ──────────────────────────────
+Receta.belongsTo(Producto, { foreignKey: 'productoMenuId', as: 'productoMenu' });
+Producto.hasOne(Receta, { foreignKey: 'productoMenuId', as: 'receta' });
+
+// ── Receta → ProductoVariante ─────────────────────────────
+Receta.belongsTo(ProductoVariante, { foreignKey: 'varianteId', as: 'variante' });
+ProductoVariante.hasMany(Receta, { foreignKey: 'varianteId', as: 'recetas' });
+
+// ── Receta → RecetaIngrediente ────────────────────────────
+Receta.hasMany(RecetaIngrediente, { foreignKey: 'recetaId', as: 'ingredientes', onDelete: 'CASCADE' });
+RecetaIngrediente.belongsTo(Receta, { foreignKey: 'recetaId', as: 'receta' });
+
+// ── RecetaIngrediente → Producto (ingrediente) ────────────
+RecetaIngrediente.belongsTo(Producto, { foreignKey: 'ingredienteId', as: 'ingrediente' });
+Producto.hasMany(RecetaIngrediente, { foreignKey: 'ingredienteId', as: 'usadoEnRecetas' });
+
 // ── Exportar ──────────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -140,5 +193,11 @@ module.exports = {
   ARCACredential,
   ComprobanteElectronico,
   TicketAccesoWSAA,
-  WhatsAppConfig
+  WhatsAppConfig,
+  Proveedor,
+  Gasto,
+  Compra,
+  CompraItem,
+  Receta,
+  RecetaIngrediente
 };

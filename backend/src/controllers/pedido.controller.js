@@ -1,4 +1,4 @@
-const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, sequelize } = require('../models');
+const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Receta, RecetaIngrediente, ProductoVariante, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const whatsappService = require('../services/whatsappService');
 
@@ -117,6 +117,106 @@ exports.crear = async (req, res) => {
     }, { transaction: t });
 
     await ItemPedido.bulkCreate(itemsData.map(i => ({ ...i, pedidoId: pedido.id })), { transaction: t });
+
+    // *** DESCUENTO AUTOMÁTICO DE STOCK POR RECETAS ***
+    for (const item of itemsData) {
+      if (item.productoId) {
+        // Construir query según variante
+        const whereClause = { productoMenuId: item.productoId };
+
+        // Si el pedido tiene variante, buscar receta específica
+        if (item.varianteNombre) {
+          // ItemPedido guarda varianteNombre (string), necesitamos el ID
+          const variante = await ProductoVariante.findOne({
+            where: {
+              productoId: item.productoId,
+              nombre: item.varianteNombre
+            },
+            transaction: t
+          });
+
+          if (variante) {
+            whereClause.varianteId = variante.id;
+          } else {
+            // Fallback: buscar receta sin variante
+            whereClause.varianteId = null;
+          }
+        } else {
+          // Sin variante: buscar receta base
+          whereClause.varianteId = null;
+        }
+
+        // Buscar si el producto tiene una receta asociada
+        let receta = await Receta.findOne({
+          where: whereClause,
+          include: [{
+            model: RecetaIngrediente,
+            as: 'ingredientes',
+            include: [{
+              model: Producto,
+              as: 'ingrediente'
+            }]
+          }],
+          transaction: t
+        });
+
+        // Si no hay receta específica para variante, intentar con receta base
+        if (!receta && item.varianteNombre) {
+          const recetaBase = await Receta.findOne({
+            where: { productoMenuId: item.productoId, varianteId: null },
+            include: [{
+              model: RecetaIngrediente,
+              as: 'ingredientes',
+              include: [{
+                model: Producto,
+                as: 'ingrediente'
+              }]
+            }],
+            transaction: t
+          });
+
+          if (recetaBase) {
+            console.log(`⚠️ Usando receta base para ${item.nombre} (${item.varianteNombre})`);
+            receta = recetaBase;
+          }
+        }
+
+        if (receta && receta.ingredientes && receta.ingredientes.length > 0) {
+          // Validar que hay stock suficiente de TODOS los ingredientes primero
+          for (const recetaIng of receta.ingredientes) {
+            const ingrediente = recetaIng.ingrediente;
+            const cantidadNecesaria = parseFloat(recetaIng.cantidad) * item.cantidad;
+            const stockActual = parseFloat(ingrediente.stock) || 0;
+
+            if (stockActual < cantidadNecesaria) {
+              throw new Error(
+                `Stock insuficiente de "${ingrediente.nombre}". ` +
+                `Necesario: ${cantidadNecesaria} ${recetaIng.unidad}, ` +
+                `Disponible: ${stockActual} ${ingrediente.unidadBase}`
+              );
+            }
+          }
+
+          // Si hay stock suficiente, descontar
+          for (const recetaIng of receta.ingredientes) {
+            const ingrediente = recetaIng.ingrediente;
+            const cantidadADescontar = parseFloat(recetaIng.cantidad) * item.cantidad;
+            const nuevoStock = (parseFloat(ingrediente.stock) || 0) - cantidadADescontar;
+
+            // No redondear: el stock puede ser fraccionario (kg, litros)
+            await Producto.update(
+              { stock: Math.max(0, nuevoStock) },
+              { where: { id: ingrediente.id }, transaction: t }
+            );
+
+            console.log(
+              `✓ Stock descontado: ${ingrediente.nombre} -${cantidadADescontar} ${recetaIng.unidad} ` +
+              `(Receta: ${receta.nombre}, Pedido: ${item.nombre} x${item.cantidad})`
+            );
+          }
+        }
+      }
+    }
 
     pedidoId = pedido.id;
     await t.commit();

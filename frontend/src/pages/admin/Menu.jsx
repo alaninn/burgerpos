@@ -19,6 +19,28 @@ function MargenBadge({ pv, pc }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${color}`}>{m}% margen</span>
 }
 
+// ─── Utilidad: costo de una receta desde sus ingredientes ─
+function costoDeReceta(receta) {
+  let total = 0
+  for (const ing of receta?.ingredientes || []) {
+    const ingrediente = ing.ingrediente
+    if (!ingrediente) continue
+
+    const precioCosto = parseFloat(ingrediente.precioCosto) || 0
+    const cantidadPorUnidad = parseFloat(ingrediente.cantidadPorUnidadCompra) || 1
+
+    let cantidadTotalEnUnidadBase = cantidadPorUnidad
+    if (ingrediente.unidadCompra === 'caja' && ingrediente.unidadContenidoCaja) {
+      const conversiones = { kg_gramo: 1000, litro_litro: 1, kg_kg: 1, gramo_gramo: 1, unidad_unidad: 1 }
+      const factor = conversiones[`${ingrediente.unidadContenidoCaja}_${ingrediente.unidadBase}`] || 1
+      cantidadTotalEnUnidadBase = cantidadPorUnidad * factor
+    }
+
+    total += (precioCosto / cantidadTotalEnUnidadBase) * (parseFloat(ing.cantidad) || 0)
+  }
+  return total
+}
+
 // ─── Exportar menú a Excel ────────────────────────────────
 async function exportarMenuExcel(negocioId) {
   const { data: catData } = await api.get(`/negocios/${negocioId}/productos/categorias`)
@@ -301,7 +323,7 @@ function ModalPrecios({ negocioId, categorias, onClose, onSaved }) {
 
 // ─── Modal categoría ──────────────────────────────────────
 function ModalCategoria({ negocioId, categoria, onClose, onSaved }) {
-  const [form, setForm] = useState({ nombre: '', descripcion: '', activo: true, ...categoria })
+  const [form, setForm] = useState({ nombre: '', descripcion: '', activo: true, tipo: 'elaborado', ...categoria })
   const [loading, setLoading] = useState(false)
 
   const guardar = async () => {
@@ -339,13 +361,13 @@ function ModalCategoria({ negocioId, categoria, onClose, onSaved }) {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
             <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
               placeholder="Nombre de la categoría"
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-800 dark:text-white" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
             <input value={form.descripcion || ''} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
               placeholder="Descripción opcional"
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-800 dark:text-white" />
           </div>
         </div>
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
@@ -645,6 +667,8 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
   const [adicionalesAbierto, setAdicionalesAbierto] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadingExtra, setLoadingExtra] = useState(false)
+  const [costoDesdeReceta, setCostoDesdeReceta] = useState(null)
+  const [recetas, setRecetas] = useState([])
 
   useEffect(() => {
     // Cargar grupos disponibles siempre
@@ -675,6 +699,58 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
       setGruposAsignados((aRes.data.grupos || []).map(g => g.id))
     }).catch(() => {}).finally(() => setLoadingExtra(false))
   }, [producto?.id, negocioId])
+
+  // Cargar recetas y calcular costo automáticamente
+  useEffect(() => {
+    if (!producto?.id) {
+      setCostoDesdeReceta(null)
+      setRecetas([])
+      return
+    }
+
+    api.get(`/negocios/${negocioId}/recetas`)
+      .then(({ data }) => {
+        const recetasProducto = (data || []).filter(r => r.productoMenuId === producto.id)
+        setRecetas(recetasProducto)
+
+        // Receta base (sin variante) → autocompletar el costo del producto
+        const recetaBase = recetasProducto.find(r => !r.varianteId)
+        if (recetaBase) {
+          const costo = costoDeReceta(recetaBase)
+          setCostoDesdeReceta(costo)
+          // Solo autocompletar si el usuario no cargó un costo propio
+          setForm(f => {
+            if (!f.precioCosto || f.precioCosto === '' || f.precioCosto === '0') {
+              return { ...f, precioCosto: costo.toFixed(2) }
+            }
+            return f
+          })
+        } else {
+          setCostoDesdeReceta(null)
+        }
+      })
+      .catch(() => setCostoDesdeReceta(null))
+  }, [producto?.id, negocioId])
+
+  // Aplicar costo de receta a cada variante (recetas y variantes cargan en paralelo,
+  // por eso se cruzan en un efecto aparte cuando ambas están disponibles)
+  useEffect(() => {
+    if (recetas.length === 0) return
+    setVariantes(prev => {
+      let cambio = false
+      const next = prev.map(v => {
+        const receta = recetas.find(r => r.varianteId && r.varianteId === v.id)
+        if (!receta) return v
+        const costo = costoDeReceta(receta).toFixed(2)
+        const sinCosto = !v.precioCosto || v.precioCosto === '' || parseFloat(v.precioCosto) === 0
+        const precioCosto = sinCosto ? costo : v.precioCosto
+        if (v._costoDesdeReceta === true && v.precioCosto === precioCosto) return v
+        cambio = true
+        return { ...v, precioCosto, _costoDesdeReceta: true }
+      })
+      return cambio ? next : prev
+    })
+  }, [recetas, variantes])
 
   const agregarVariante = () => {
     setVariantes(v => [...v, { nombre: '', precioVenta: '', precioCosto: '', visible: true, activo: true }])
@@ -799,12 +875,25 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Precio costo</label>
+                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                          Precio costo
+                          {v._costoDesdeReceta && (
+                            <span className="ml-1 text-green-600 dark:text-green-400 text-[10px]">✓ receta</span>
+                          )}
+                        </label>
                         <div className="relative">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-xs">$</span>
-                          <input type="number" value={v.precioCosto || ''} onChange={e => cambiarVariante(idx, 'precioCosto', e.target.value)}
+                          <input
+                            type="number"
+                            value={v.precioCosto || ''}
+                            onChange={e => cambiarVariante(idx, 'precioCosto', e.target.value)}
                             placeholder="0"
-                            className="w-full pl-5 pr-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white dark:bg-gray-800" />
+                            className={`w-full pl-5 pr-2 py-1.5 border rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 ${
+                              v._costoDesdeReceta
+                                ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
+                                : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800'
+                            }`}
+                          />
                         </div>
                       </div>
                     </div>
@@ -850,13 +939,36 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Precio costo</label>
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    Precio costo
+                    {costoDesdeReceta !== null && (
+                      <span className="ml-2 text-green-600 dark:text-green-400 font-medium">
+                        (desde receta)
+                      </span>
+                    )}
+                  </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 text-sm">$</span>
-                    <input type="number" value={form.precioCosto || ''} onChange={e => setForm(f => ({ ...f, precioCosto: e.target.value }))}
+                    <input
+                      type="number"
+                      value={form.precioCosto || ''}
+                      onChange={e => setForm(f => ({ ...f, precioCosto: e.target.value }))}
                       placeholder="0"
-                      className="w-full pl-7 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                      className={`w-full pl-7 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 ${
+                        costoDesdeReceta !== null
+                          ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10'
+                          : 'border-gray-300 dark:border-gray-700'
+                      }`}
+                    />
                   </div>
+                  {costoDesdeReceta !== null && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Calculado automáticamente desde la receta
+                    </p>
+                  )}
                 </div>
               </div>
               {form.precioVenta && (
@@ -1039,7 +1151,10 @@ export default function Menu() {
     if (!negocioId) return
     api.get(`/negocios/${negocioId}/productos/categorias`)
       .then(({ data }) => {
-        const cats = data.categorias || []
+        const todasCats = data.categorias || []
+        // Filtrar: solo mostrar categorías de productos de venta (elaborado y producto)
+        // NO mostrar categorías de ingredientes (tipo 'ingrediente')
+        const cats = todasCats.filter(c => c.tipo !== 'ingrediente')
         setCategorias(cats)
         setCatSeleccionada(prev => {
           if (prev && cats.find(c => c.id === prev)) return prev

@@ -44,17 +44,27 @@ app.use(helmet({
     }
   }
 }));
-app.use(cors({
+
+// CORS solo para rutas API
+const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173'];
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Permitir same-origin (cuando origin es undefined/null)
+    // Esto pasa cuando el frontend y backend están en el mismo dominio/puerto
+    if (!origin) return callback(null, true);
+
+    const defaultOrigins = ['http://localhost:5173', 'http://localhost:3001', 'http://localhost:3000'];
+    const allowedOrigins = process.env.CORS_ORIGIN ? [...process.env.CORS_ORIGIN.split(','), ...defaultOrigins] : defaultOrigins;
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn('CORS: origin rechazado:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
-}));
+};
+
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -65,6 +75,9 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // Pasar io a las rutas
 app.use((req, res, next) => { req.io = io; next(); });
+
+// Aplicar CORS solo a rutas API
+app.use('/api', cors(corsOptions));
 
 // Rutas
 app.use('/api/upload',   require('./routes/upload.routes'));
@@ -85,6 +98,11 @@ app.use('/api/negocios/:negocioId/descuentos',   require('./routes/descuento.rou
 app.use('/api/negocios/:negocioId/adicionales',  require('./routes/adicional.routes'));
 app.use('/api/negocios/:negocioId/arca',        require('./routes/arca.routes'));
 app.use('/api/negocios/:negocioId/whatsapp',    require('./routes/whatsapp.routes'));
+// Módulo de Gestión
+app.use('/api/negocios/:negocioId/proveedores', require('./routes/proveedor.routes'));
+app.use('/api/negocios/:negocioId/gastos',      require('./routes/gasto.routes'));
+app.use('/api/negocios/:negocioId/compras',     require('./routes/compra.routes'));
+app.use('/api/negocios/:negocioId/recetas',     require('./routes/receta.routes'));
 app.use('/api/usuarios',     require('./routes/usuario.routes'));
 app.use('/api/pagos',        require('./routes/pago.routes'));
 app.use('/api/mercadopago/oauth', require('./routes/mercadoPagoOAuth.routes'));

@@ -13,8 +13,17 @@ module.exports = (sequelize, DataTypes) => {
     activo:      { type: DataTypes.BOOLEAN, defaultValue: true },
     sugerido:    { type: DataTypes.BOOLEAN, defaultValue: false },
     modalidades: { type: DataTypes.JSONB, defaultValue: { delivery: true, takeaway: true, salon: true } },
-    stock:       { type: DataTypes.INTEGER, allowNull: true },
-    orden:       { type: DataTypes.INTEGER, defaultValue: 0 }
+    stock:       { type: DataTypes.DECIMAL(12, 3), allowNull: true },
+    orden:       { type: DataTypes.INTEGER, defaultValue: 0 },
+    // Campos de gestión de compras y stock
+    unidadCompra:           { type: DataTypes.ENUM('caja', 'kg', 'litro', 'gramo', 'unidad'), defaultValue: 'unidad' },
+    unidadContenidoCaja:    { type: DataTypes.ENUM('kg', 'litro', 'gramo', 'unidad'), allowNull: true },
+    unidadBase:             { type: DataTypes.ENUM('unidad', 'kg', 'gramo', 'litro'), defaultValue: 'unidad' },
+    cantidadPorUnidadCompra: { type: DataTypes.DECIMAL(10, 3), defaultValue: 1 },
+    pesoUnitario:           { type: DataTypes.DECIMAL(10, 3), allowNull: true },
+    ultimaCompraFecha:      { type: DataTypes.DATEONLY, allowNull: true },
+    ultimoCompraPrecio:     { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+    proveedorId:            { type: DataTypes.UUID, allowNull: true }
   }, {
     tableName: 'productos',
     timestamps: true

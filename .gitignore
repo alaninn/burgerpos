@@ -5,17 +5,19 @@ package-lock.json
 # Environment - archivos con credenciales reales
 .env
 .env.local
+backend/.env.production
 .env.production.local
 *.env.backup
+*.rar
 
-# Los archivos .env.production son TEMPLATES y deben estar en el repo
+# Solo los .env.production.example (templates sin credenciales) van al repo
 
 # WhatsApp session (no versionar la sesión)
 backend/.wwebjs_auth/
 backend/.wwebjs_cache/
 
-# Uploads
-backend/public/uploads/
+# Uploads y build copiado para deploy
+backend/public/
 
 # Logs
 *.log

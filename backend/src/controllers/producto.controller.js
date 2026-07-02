@@ -1,7 +1,7 @@
 const { Producto, Categoria, ProductoVariante, GrupoAdicional, Adicional, Descuento } = require('../models');
 
 const includeCompleto = [
-  { model: Categoria, as: 'categoria', attributes: ['id', 'nombre'] },
+  { model: Categoria, as: 'categoria', attributes: ['id', 'nombre', 'tipo'] },
   { model: ProductoVariante, as: 'variantes', order: [['orden', 'ASC']], separate: true },
 
     { model: GrupoAdicional, as: 'gruposAdicionales',
@@ -23,7 +23,7 @@ exports.listar = async (req, res) => {
     });
     res.json({ success: true, productos });
   } catch (err) {
-    
+    console.error('❌ Error en listar productos:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
