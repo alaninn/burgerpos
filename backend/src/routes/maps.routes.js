@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
 
-const TOMTOM_API_KEY = 'v391c1qxphzhWX8F4aAePglC00JIPzj2';
+// Key por env (fallback a la histórica para no romper entornos sin .env actualizado)
+const TOMTOM_API_KEY = process.env.TOMTOM_API_KEY || 'v391c1qxphzhWX8F4aAePglC00JIPzj2';
+
+// Radio de sesgo geográfico alrededor del local (en metros)
+const RADIO_BIAS_METROS = 15000;
+
+// Mapea el tipo de resultado de TomTom a una precisión entendible
+function precisionTomTom(tipo) {
+  if (tipo === 'Point Address') return 'exacta';       // parcela/altura exacta
+  if (tipo === 'Address Range') return 'aproximada';   // interpolada sobre la cuadra
+  return 'calle';                                      // centro de calle o zona
+}
 
 // Prioriza la localidad conocida sobre el partido político
 function extraerLocalidad(addr, ciudadConfig) {
@@ -13,7 +24,8 @@ function extraerLocalidad(addr, ciudadConfig) {
 }
 
 // Geocodificación usando TomTom Maps API (mejor precisión que OSM)
-async function geocodificarTomTom(input, ciudad, provincia) {
+// bias: { lat, lng } opcional — coords del local para acotar la búsqueda a su zona
+async function geocodificarTomTom(input, ciudad, provincia, bias) {
   try {
     // Construir query con contexto de ubicación
     const contexto = [ciudad, provincia, 'Argentina'].filter(Boolean).join(', ')
@@ -23,20 +35,30 @@ async function geocodificarTomTom(input, ciudad, provincia) {
       key: TOMTOM_API_KEY,
       limit: 5,
       countrySet: 'AR', // Solo Argentina
-      language: 'es',
+      language: 'es-ES', // TomTom rechaza 'es' a secas con 400
     })
 
+    // Sesgo geográfico: prioriza resultados cerca del local
+    if (bias?.lat && bias?.lng) {
+      params.set('lat', bias.lat)
+      params.set('lon', bias.lng)
+      params.set('radius', RADIO_BIAS_METROS)
+    }
+
     const url = `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(query)}.json?${params}`
-    console.log('[TomTom] Query:', query)
+    console.log('[TomTom] Query:', query, bias ? `| bias: ${bias.lat},${bias.lng}` : '')
 
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'BurgerPOS/1.0' }
     })
     const data = await resp.json()
 
-    if (!data.results || data.results.length === 0) return null
+    if (!data.results || data.results.length === 0) {
+      if (data.errorText) console.error('[TomTom] API error:', data.errorText)
+      return null
+    }
 
-    const predictions = data.results.map(r => {
+    let predictions = data.results.map(r => {
       const addr = r.address || {}
       const pos = r.position || {}
 
@@ -52,6 +74,9 @@ async function geocodificarTomTom(input, ciudad, provincia) {
 
       return {
         _coords: { lat: pos.lat, lng: pos.lon },
+        precision: precisionTomTom(r.type),
+        confidence: r.matchConfidence?.score || 0,
+        _municipio: (addr.municipality || '').toLowerCase(),
         structured_formatting: {
           main_text: mainText || addr.freeformAddress?.split(',')[0] || query,
           secondary_text: secondary,
@@ -59,6 +84,18 @@ async function geocodificarTomTom(input, ciudad, provincia) {
         description: addr.freeformAddress || `${mainText}, ${localidad}`,
       }
     })
+
+    // Priorizar resultados de la ciudad del local
+    if (ciudad) {
+      const ciudadLower = ciudad.toLowerCase()
+      predictions.sort((a, b) => {
+        const aMatch = a._municipio.includes(ciudadLower) ? 1 : 0
+        const bMatch = b._municipio.includes(ciudadLower) ? 1 : 0
+        if (aMatch !== bMatch) return bMatch - aMatch
+        return b.confidence - a.confidence
+      })
+    }
+    predictions.forEach(p => delete p._municipio)
 
     console.log('[TomTom] Results:', predictions.length)
     return predictions.length > 0 ? predictions : null
@@ -172,7 +209,7 @@ async function geocodificarGeoref(input, ciudad, provincia) {
 }
 
 // Fallback: Nominatim para calles no encontradas en georef
-async function geocodificarNominatim(input, ciudad, provincia) {
+async function geocodificarNominatim(input, ciudad, provincia, bias) {
   try {
     const todosLosNumeros = input.match(/\b\d{2,5}\b/g) || []
     const numeroDelInput = todosLosNumeros.length > 1
@@ -185,6 +222,12 @@ async function geocodificarNominatim(input, ciudad, provincia) {
       q, format: 'json', limit: '8', addressdetails: '1',
       'accept-language': 'es', countrycodes: 'ar',
     })
+
+    // Sesgo geográfico: viewbox alrededor del local (sin bounded, solo prioriza)
+    if (bias?.lat && bias?.lng) {
+      const delta = 0.15 // ~15 km
+      params.set('viewbox', `${bias.lng - delta},${bias.lat + delta},${bias.lng + delta},${bias.lat - delta}`)
+    }
     const resp = await fetch(
       `https://nominatim.openstreetmap.org/search?${params}`,
       { headers: { 'User-Agent': 'BurgerPOS/1.0' } }
@@ -226,16 +269,24 @@ async function geocodificarNominatim(input, ciudad, provincia) {
   }
 }
 
-// GET /api/maps/autocomplete?input=...&ciudad=...&provincia=...
+// Lee el bias opcional (coords del local) de la query
+function leerBias(query) {
+  const lat = parseFloat(query.lat)
+  const lng = parseFloat(query.lng)
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
+}
+
+// GET /api/maps/autocomplete?input=...&ciudad=...&provincia=...&lat=...&lng=...
 router.get('/autocomplete', async (req, res) => {
   try {
     const { input, ciudad, provincia } = req.query
     if (!input || input.length < 3) return res.json({ predictions: [] })
+    const bias = leerBias(req.query)
 
     console.log('[Maps] autocomplete ->', input, '| ciudad:', ciudad)
 
     // Prioridad 1: TomTom (mejor precisión)
-    let predictions = await geocodificarTomTom(input, ciudad, provincia)
+    let predictions = await geocodificarTomTom(input, ciudad, provincia, bias)
 
     // Prioridad 2: Georef (Argentina oficial, altura exacta)
     if (!predictions || predictions.length === 0) {
@@ -246,7 +297,7 @@ router.get('/autocomplete', async (req, res) => {
     // Prioridad 3: Nominatim (fallback final)
     if (!predictions || predictions.length === 0) {
       console.log('[Maps] Georef returned 0 matching results, trying Nominatim...')
-      predictions = await geocodificarNominatim(input, ciudad, provincia) || []
+      predictions = await geocodificarNominatim(input, ciudad, provincia, bias) || []
       console.log('[Maps] Nominatim results:', predictions.length)
     }
 
@@ -257,18 +308,75 @@ router.get('/autocomplete', async (req, res) => {
   }
 })
 
+// GET /api/maps/reverse?lat=...&lng=... — coordenadas a dirección
+// (TomTom reverse con fallback a Nominatim)
+router.get('/reverse', async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat)
+    const lng = parseFloat(req.query.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return res.status(400).json({ error: 'lat y lng requeridos' })
+    }
+
+    // TomTom reverse
+    try {
+      const params = new URLSearchParams({ key: TOMTOM_API_KEY, language: 'es-ES' })
+      const resp = await fetch(
+        `https://api.tomtom.com/search/2/reverseGeocode/${lat},${lng}.json?${params}`,
+        { headers: { 'User-Agent': 'BurgerPOS/1.0' } }
+      )
+      const data = await resp.json()
+      const addr = data?.addresses?.[0]?.address
+      if (addr) {
+        const calle = [addr.streetName, addr.streetNumber].filter(Boolean).join(' ')
+        const direccion = addr.freeformAddress || [calle, addr.municipality].filter(Boolean).join(', ')
+        return res.json({
+          direccion,
+          calle: calle || null,
+          localidad: addr.municipality || null,
+          provincia: addr.countrySubdivisionName || null,
+        })
+      }
+    } catch (e) {
+      console.error('[TomTom reverse] error:', e.message)
+    }
+
+    // Fallback: Nominatim reverse
+    const params = new URLSearchParams({
+      lat, lon: lng, format: 'json', 'accept-language': 'es', zoom: '18',
+    })
+    const resp = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?${params}`,
+      { headers: { 'User-Agent': 'BurgerPOS/1.0' } }
+    )
+    const data = await resp.json()
+    const a = data?.address || {}
+    const calle = [a.road, a.house_number].filter(Boolean).join(' ')
+    res.json({
+      direccion: data?.display_name ? [calle, extraerLocalidad(a)].filter(Boolean).join(', ') || data.display_name : null,
+      calle: calle || null,
+      localidad: extraerLocalidad(a) || null,
+      provincia: a.state || null,
+    })
+  } catch (err) {
+    console.error('Maps reverse error:', err)
+    res.status(500).json({ error: 'Error en reverse geocoding' })
+  }
+})
+
 router.get('/details', (req, res) => res.json({ result: null }))
 
-// GET /api/maps/geocode?address=...&ciudad=...&provincia=...
+// GET /api/maps/geocode?address=...&ciudad=...&provincia=...&lat=...&lng=...
 router.get('/geocode', async (req, res) => {
   try {
     const { address, ciudad, provincia } = req.query
     if (!address) return res.status(400).json({ error: 'address required' })
+    const bias = leerBias(req.query)
 
     console.log('[Maps] geocode ->', address)
 
     // Intentar TomTom primero
-    const tomtomResults = await geocodificarTomTom(address, ciudad, provincia)
+    const tomtomResults = await geocodificarTomTom(address, ciudad, provincia, bias)
     if (tomtomResults?.[0]?._coords) {
       const { lat, lng } = tomtomResults[0]._coords
       console.log('[Maps] geocode tomtom result:', lat, lng)

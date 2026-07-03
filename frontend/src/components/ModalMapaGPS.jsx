@@ -61,20 +61,13 @@ export default function ModalMapaGPS({ coords, direccionInicial = '', onConfirm,
     setBuscandoDireccion(true)
     const timeout = setTimeout(async () => {
       try {
-        const resReverse = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${pinCoords.lat}&lon=${pinCoords.lng}&format=json&accept-language=es`,
-          { headers: { 'User-Agent': 'BurgerPOS/1.0' } }
-        )
+        // Reverse geocoding vía el proxy del backend (TomTom con fallback OSM)
+        const resReverse = await fetch(`/api/maps/reverse?lat=${pinCoords.lat}&lng=${pinCoords.lng}`)
         const data = await resReverse.json()
-        if (data?.address) {
-          const addr = data.address
-          const calle = addr.road || addr.pedestrian || addr.path || ''
-          const numero = addr.house_number || ''
-          const barrio = addr.suburb || addr.quarter || ''
-          const dir = [calle, numero].filter(Boolean).join(' ')
-          setDirDetectada([dir, barrio].filter(Boolean).join(' — '))
+        if (data?.direccion || data?.calle) {
+          setDirDetectada([data.calle || data.direccion, data.localidad].filter(Boolean).join(' — '))
         }
-      } catch { }
+      } catch { /* sin detección */ }
       setBuscandoDireccion(false)
     }, 600)
     return () => clearTimeout(timeout)

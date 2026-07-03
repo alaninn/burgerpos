@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import DireccionAutocomplete from '../../components/DireccionAutocomplete'
+import MiniMapaPin from '../../components/MiniMapaPin'
+import { detectarZonaEntrega, calcularCostoZona } from '../../utils/zonas'
 
 function fmt(n) { return Number(n || 0).toLocaleString('es-AR') }
 
@@ -15,12 +17,13 @@ const METODOS_PAGO = [
 
 // ─── Selector de cliente ──────────────────────────────────
 function ClienteSelector({
-  negocioId, ciudad, modalidad,
+  negocioId, ciudad, provincia, negocioCoords, modalidad,
   clienteNombre, setClienteNombre,
   clienteTelefono, setClienteTelefono,
   clienteEmail, setClienteEmail,
   clienteDireccion, setClienteDireccion,
   clienteId, setClienteId,
+  coordsCliente, setCoordsCliente,
   onDescuentoFijo,
 }) {
   const [omitir, setOmitir] = useState(false)
@@ -35,6 +38,25 @@ function ClienteSelector({
   const searchRef = useRef(null)
   const inputRef = useRef(null)
   const wrapRef = useRef(null)
+
+  // Al elegir una sugerencia del autocomplete, guardar sus coordenadas exactas
+  const alElegirDireccion = ({ coords }) => {
+    if (coords && setCoordsCliente) setCoordsCliente(coords)
+  }
+
+  // Geocodificar una dirección guardada (los chips solo tienen texto)
+  const geocodificarDireccion = async (direccion) => {
+    try {
+      const params = new URLSearchParams({ address: direccion })
+      if (ciudad) params.set('ciudad', ciudad)
+      if (provincia) params.set('provincia', provincia)
+      if (negocioCoords) { params.set('lat', negocioCoords.lat); params.set('lng', negocioCoords.lng) }
+      const res = await fetch(`/api/maps/geocode?${params}`)
+      const data = await res.json()
+      const loc = data?.results?.[0]?.geometry?.location
+      if (loc && setCoordsCliente) setCoordsCliente(loc)
+    } catch { /* queda sin pin */ }
+  }
 
   useEffect(() => {
     const handler = (e) => {
@@ -183,7 +205,7 @@ function ClienteSelector({
                   <div className="flex flex-wrap gap-1.5">
                     {direccionesGuardadas.map((d, i) => (
                       <button key={i} type="button"
-                        onClick={() => setClienteDireccion(d)}
+                        onClick={() => { setClienteDireccion(d); geocodificarDireccion(d) }}
                         className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${clienteDireccion === d ? 'bg-violet-600 text-white border-violet-600' : 'border-gray-200 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:border-violet-400'}`}>
                         {d.length > 30 ? d.slice(0, 30) + '…' : d}
                       </button>
@@ -191,12 +213,16 @@ function ClienteSelector({
                   </div>
                 </div>
               )}
-              <DireccionAutocomplete value={clienteDireccion} onChange={setClienteDireccion} ciudad={ciudad} />
+              <DireccionAutocomplete value={clienteDireccion} onChange={setClienteDireccion} onSelect={alElegirDireccion}
+                ciudad={ciudad} provincia={provincia} lat={negocioCoords?.lat} lng={negocioCoords?.lng} />
               {clienteDireccion && !direccionesGuardadas.includes(clienteDireccion) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
                   Dirección nueva — se guardará en el perfil
                 </p>
+              )}
+              {coordsCliente && (
+                <MiniMapaPin coords={coordsCliente} onChange={setCoordsCliente} height={200} />
               )}
             </div>
           )}
@@ -232,13 +258,22 @@ function ClienteSelector({
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-800"
           />
           {modalidad === 'delivery' && (
-            <DireccionAutocomplete
-              value={clienteDireccion}
-              onChange={setClienteDireccion}
-              ciudad={ciudad}
-              placeholder="Dirección de entrega..."
-              rows={1}
-            />
+            <>
+              <DireccionAutocomplete
+                value={clienteDireccion}
+                onChange={setClienteDireccion}
+                onSelect={alElegirDireccion}
+                ciudad={ciudad}
+                provincia={provincia}
+                lat={negocioCoords?.lat}
+                lng={negocioCoords?.lng}
+                placeholder="Dirección de entrega..."
+                rows={1}
+              />
+              {coordsCliente && (
+                <MiniMapaPin coords={coordsCliente} onChange={setCoordsCliente} height={200} />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -702,6 +737,15 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
   const [metodosPagoHabilitados, setMetodosPagoHabilitados] = useState(METODOS_PAGO)
   const [cuitFacturacion, setCuitFacturacion] = useState(pedidoExistente?.cuitFacturacion || '')
   const [ciudad, setCiudad] = useState('') // para contexto de autocomplete
+  const [provincia, setProvincia] = useState('')
+  const [negocioCoords, setNegocioCoords] = useState(null) // coords del local (bias de búsqueda + zonas radio)
+  const [zonasEntrega, setZonasEntrega] = useState([])
+  const [coordsCliente, setCoordsCliente] = useState(
+    pedidoExistente?.clienteLat != null && pedidoExistente?.clienteLng != null
+      ? { lat: Number(pedidoExistente.clienteLat), lng: Number(pedidoExistente.clienteLng) }
+      : null
+  )
+  const [zonaDetectada, setZonaDetectada] = useState(null) // { zona } | 'fuera' | null
 
   const [carrito, setCarrito] = useState(() => {
     if (!pedidoExistente?.items) return []
@@ -790,13 +834,50 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
       setRepartidores((repRes.data.repartidores || []).filter(r => r.activo !== false))
 
       const neg = negRes.data.negocio || {}
-      if (!ciudadProp) setCiudad(neg.ciudad || neg.configuracion?.ciudad || '')
+      const cfg = neg.configuracion || {}
+      if (!ciudadProp) setCiudad(neg.ciudad || cfg.ciudad || '')
+      setProvincia(cfg.provincia || '')
+      setZonasEntrega(Array.isArray(cfg.zonasEntrega) ? cfg.zonasEntrega : [])
       if (!pedidoExistente) {
-        const envio = neg.configuracion?.costoEnvio || 0
+        const envio = cfg.costoEnvio || 0
         setCostoEnvio(envio)
+      }
+
+      // Coordenadas del local: guardadas en config, o geocodificando su dirección
+      if (cfg.lat && cfg.lng) {
+        setNegocioCoords({ lat: Number(cfg.lat), lng: Number(cfg.lng) })
+      } else if (neg.direccion) {
+        const params = new URLSearchParams({ address: neg.direccion })
+        const c = neg.ciudad || cfg.ciudad
+        if (c) params.set('ciudad', c)
+        if (cfg.provincia) params.set('provincia', cfg.provincia)
+        fetch(`/api/maps/geocode?${params}`)
+          .then(r => r.json())
+          .then(d => {
+            const loc = d?.results?.[0]?.geometry?.location
+            if (loc) setNegocioCoords(loc)
+          })
+          .catch(() => { })
       }
     }).catch(() => { }).finally(() => setLoadingProds(false))
   }, [paso, negocioId])
+
+  // Detección de zona de entrega al mover/asignar el pin del cliente
+  useEffect(() => {
+    if (modalidad !== 'delivery' || !coordsCliente || zonasEntrega.length === 0) {
+      setZonaDetectada(null)
+      return
+    }
+    const det = detectarZonaEntrega(coordsCliente, negocioCoords, zonasEntrega)
+    if (det) {
+      setZonaDetectada(det)
+      // Sugerir el costo de envío de la zona (el operador puede pisarlo después)
+      setCostoEnvio(calcularCostoZona(det.zona, coordsCliente, negocioCoords))
+    } else {
+      setZonaDetectada('fuera')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coordsCliente, zonasEntrega, negocioCoords, modalidad])
 
   // Cargar descuentos automáticos cuando cambien modalidad, método de pago o subtotal
   useEffect(() => {
@@ -924,6 +1005,8 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
         modalidad, metodoPago,
         clienteNombre: clienteNombre || 'Cliente',
         clienteTelefono, clienteDireccion, notas,
+        clienteLat: modalidad === 'delivery' ? (coordsCliente?.lat ?? null) : null,
+        clienteLng: modalidad === 'delivery' ? (coordsCliente?.lng ?? null) : null,
         descuento: descuentoTotal,
         costoEnvio: envio,
         propina,
@@ -1249,6 +1332,16 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                     <input type="number" value={costoEnvio} onChange={e => setCostoEnvio(Number(e.target.value))} min={0}
                       className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
                   </div>
+                  {zonaDetectada && zonaDetectada !== 'fuera' && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      ✓ Zona: <b>{zonaDetectada.zona.nombre || 'Zona ' + (zonaDetectada.idx + 1)}</b> — costo sugerido aplicado
+                    </p>
+                  )}
+                  {zonaDetectada === 'fuera' && (
+                    <p className="text-xs text-red-500 mt-1">
+                      ⚠️ La ubicación está fuera de las zonas de entrega configuradas
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1271,12 +1364,15 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
               <ClienteSelector
                 negocioId={negocioId}
                 ciudad={ciudad}
+                provincia={provincia}
+                negocioCoords={negocioCoords}
                 modalidad={modalidad}
                 clienteNombre={clienteNombre} setClienteNombre={setClienteNombre}
                 clienteTelefono={clienteTelefono} setClienteTelefono={setClienteTelefono}
                 clienteEmail={clienteEmail} setClienteEmail={setClienteEmail}
                 clienteDireccion={clienteDireccion} setClienteDireccion={setClienteDireccion}
                 clienteId={clienteId} setClienteId={setClienteId}
+                coordsCliente={coordsCliente} setCoordsCliente={setCoordsCliente}
                 onDescuentoFijo={(pct) => { setDescuento(pct); setDescuentoTipo('porcentaje') }}
               />
 

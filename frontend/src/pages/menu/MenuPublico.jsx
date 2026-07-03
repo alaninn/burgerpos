@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import toast, { Toaster } from 'react-hot-toast'
 import ModalMapaGPS from '../../components/ModalMapaGPS'
+import DireccionAutocomplete from '../../components/DireccionAutocomplete'
+import { detectarZonaEntrega, calcularCostoZona } from '../../utils/zonas'
 
 const api = axios.create({ baseURL: '/api', headers: { 'Content-Type': 'application/json' } })
 
@@ -609,42 +611,8 @@ function estaAbiertoPorHorarios(horarios) {
   })
 }
 
-// ─── Helpers zona entrega ─────────────────────────────────
-function puntoEnPoligono(punto, poligono) {
-  let dentro = false, j = poligono.length - 1
-  for (let i = 0; i < poligono.length; i++) {
-    const xi = poligono[i].lat, yi = poligono[i].lng
-    const xj = poligono[j].lat, yj = poligono[j].lng
-    if ((yi > punto.lng) !== (yj > punto.lng) &&
-      punto.lat < ((xj - xi) * (punto.lng - yi)) / (yj - yi) + xi) dentro = !dentro
-    j = i
-  }
-  return dentro
-}
-function haversineKm(a, b) {
-  const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180
-  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
-}
-function detectarZonaEntrega(punto, negocioCoords, zonas) {
-  for (let i = 0; i < zonas.length; i++) {
-    const z = { tipo: 'poligono', radioKm: 0, coordenadas: [], ...zonas[i] }
-    if (z.tipo === 'radio' && negocioCoords && z.radioKm > 0) {
-      if (haversineKm(punto, negocioCoords) <= z.radioKm) return { idx: i, zona: z }
-    } else if (z.coordenadas?.length >= 3) {
-      if (puntoEnPoligono(punto, z.coordenadas)) return { idx: i, zona: z }
-    }
-  }
-  return null
-}
-function calcularCostoZona(zona, coordsCliente, negocioCoords) {
-  if (!zona) return 0
-  if (zona.tipoCosto === 'variable' && coordsCliente && negocioCoords) {
-    const km = haversineKm(coordsCliente, negocioCoords)
-    return Math.round(Number(zona.costo || 0) + Math.max(0, km - Number(zona.kmGratis || 0)) * Number(zona.precioPorKm || 0))
-  }
-  return Number(zona.costo || 0)
-}
+// Helpers de zona de entrega: ahora compartidos en utils/zonas.js
+// (los usa también el panel de pedidos del admin)
 
 // ─── Modal pedido ─────────────────────────────────────────
 function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, onClose, color }) {
@@ -678,13 +646,29 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
   const [modalMapaDir, setModalMapaDir] = useState(false)
 
   const abrirMapaDireccion = () => {
+    // Prioridad: dirección ya geocodificada → GPS del dispositivo → local → CABA
+    if (coordsCliente) {
+      setModalMapaDir(coordsCliente)
+      return
+    }
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setModalMapaDir({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setModalMapaDir({ lat: -34.6037, lng: -58.3816 })
+        () => setModalMapaDir(negocioCoordsLocal || { lat: -34.6037, lng: -58.3816 })
       )
     } else {
-      setModalMapaDir({ lat: -34.6037, lng: -58.3816 })
+      setModalMapaDir(negocioCoordsLocal || { lat: -34.6037, lng: -58.3816 })
+    }
+  }
+
+  // Al elegir una dirección del autocomplete: coords exactas + detección de zona
+  const alElegirDireccionCheckout = ({ coords }) => {
+    if (!coords) return
+    setCoordsCliente(coords)
+    if (tieneZonasGeo) {
+      const res2 = detectarZonaEntrega(coords, negocioCoordsLocal, zonas)
+      setZonaDetectada(res2 || false)
+      setZonaSeleccionada(res2 ? res2.idx : null)
     }
   }
 
@@ -1005,13 +989,17 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
               <input type="tel" value={telefono} onChange={e => { setTelefono(e.target.value); buscarCliente('telefono', e.target.value) }} placeholder="Teléfono *" className={inputCls} style={inputStyle} />
               {modalidad === 'delivery' && (
                 <div>
-                  {/* Input dirección manual */}
-                  <input
+                  {/* Dirección con autocompletado y coordenadas exactas */}
+                  <DireccionAutocomplete
                     value={direccion}
-                    onChange={e => setDireccion(e.target.value)}
+                    onChange={setDireccion}
+                    onSelect={alElegirDireccionCheckout}
+                    ciudad={negocio?.ciudad || negocio?.configuracion?.ciudad || ''}
+                    provincia={negocio?.configuracion?.provincia || ''}
+                    lat={negocioCoordsLocal?.lat}
+                    lng={negocioCoordsLocal?.lng}
                     placeholder="Dirección de entrega * (calle y número)"
-                    className={inputCls}
-                    style={inputStyle}
+                    rows={1}
                   />
 
                   {/* Botón abrir mapa */}

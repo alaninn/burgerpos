@@ -46,7 +46,7 @@ exports.crear = async (req, res) => {
   let pedidoId = null;
   try {
     const { negocioId } = req.params;
-    const { modalidad, items, clienteNombre, clienteTelefono, clienteDireccion, clienteId, metodoPago, notas, costoEnvio, descuento, propina, cobrado, requiereFactura, cuitFacturacion } = req.body;
+    const { modalidad, items, clienteNombre, clienteTelefono, clienteDireccion, clienteLat, clienteLng, clienteId, metodoPago, notas, costoEnvio, descuento, propina, cobrado, requiereFactura, cuitFacturacion } = req.body;
 
     const ultimo = await Pedido.findOne({ where: { negocioId }, order: [['numero', 'DESC']], transaction: t });
     const numero = (ultimo?.numero || 0) + 1;
@@ -107,6 +107,8 @@ exports.crear = async (req, res) => {
     const pedido = await Pedido.create({
       negocioId, numero, modalidad, clienteNombre, clienteTelefono,
       clienteDireccion, clienteId, metodoPago, notas,
+      clienteLat: clienteLat ?? null,
+      clienteLng: clienteLng ?? null,
       costoEnvio: costoEnvio || 0,
       descuento: descuento || 0,
       propina: propina || 0,

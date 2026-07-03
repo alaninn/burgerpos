@@ -6,9 +6,21 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.2.0'
+export const VERSION_ACTUAL = '1.3.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.3.0',
+    fecha: '2026-07-03',
+    titulo: 'Direcciones exactas para delivery',
+    cambios: [
+      { t: 'Al cargar un pedido de delivery, buscá la dirección y el puntero cae en la ubicación exacta en un mapa, con ajuste fino arrastrándolo.' },
+      { t: 'Las sugerencias de dirección muestran su precisión (✓ exacta / ≈ aproximada) y se acotan a la zona de tu local.' },
+      { t: 'Si tenés zonas de entrega configuradas, el sistema detecta la zona del cliente y sugiere el costo de envío automáticamente.' },
+      { t: 'En la tienda online, la dirección ahora autocompleta y el mapa abre centrado en la dirección escrita.' },
+      { t: 'Los pedidos cargados desde el panel guardan la ubicación y aparecen bien en el mapa de pedidos.' },
+    ],
+  },
   {
     version: '1.2.0',
     fecha: '2026-07-03',
