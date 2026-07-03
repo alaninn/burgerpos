@@ -16,6 +16,7 @@ import Repartidores from './pages/admin/Repartidores'
 import Clientes from './pages/admin/Clientes'
 import Reportes from './pages/admin/Reportes'
 import SoporteNegocio from './pages/admin/Soporte'
+import CentroControl from './pages/admin/CentroControl'
 import Configuraciones from './pages/admin/Configuraciones'
 import Fiscal from './pages/admin/Fiscal'
 import Descuentos from './pages/admin/Descuentos'
@@ -90,6 +91,7 @@ function AppRoutes() {
         <Route path="clientes" element={<Clientes />} />
         <Route path="reportes" element={<Reportes />} />
         <Route path="soporte" element={<SoporteNegocio />} />
+        <Route path="centro-control" element={<CentroControl />} />
         <Route path="configuraciones" element={<Configuraciones />} />
         <Route path="fiscal" element={<Fiscal />} />
         <Route path="gestion/gastos" element={<GastosDiarios />} />

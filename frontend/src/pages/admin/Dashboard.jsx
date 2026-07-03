@@ -94,6 +94,7 @@ export default function Dashboard() {
   const [tendencia, setTendencia] = useState([])
   const [porHora, setPorHora] = useState([])
   const [topDias, setTopDias] = useState([])
+  const [gananciaMes, setGananciaMes] = useState(null) // ganancia real del mes (Centro de Control)
   const [diasComparar, setDiasComparar] = useState(7) // 7, 14, 30 días
   const [loading, setLoading] = useState(true)
 
@@ -109,26 +110,44 @@ export default function Dashboard() {
     haceDias.setDate(haceDias.getDate() - diasComparar)
     const desdeDias = haceDias.toISOString().split('T')[0]
 
+    // Período anterior de la misma longitud (para la comparativa real)
+    const haceDoble = new Date()
+    haceDoble.setDate(haceDoble.getDate() - diasComparar * 2)
+    const desdeAnterior = haceDoble.toISOString().split('T')[0]
+
     const hace30dias = new Date()
     hace30dias.setDate(hace30dias.getDate() - 30)
     const desde30 = hace30dias.toISOString().split('T')[0]
+
+    // Ganancia real del mes en curso (Centro de Control)
+    const h = new Date()
+    const inicioMes = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-01`
 
     Promise.all([
       api.get(`/negocios/${negocioId}/reportes?fechaDesde=${fecha}&fechaHasta=${fecha}`),
       api.get(`/negocios/${negocioId}/reportes?fechaDesde=${fechaAyer}&fechaHasta=${fechaAyer}`),
       api.get(`/negocios/${negocioId}/reportes/tendencia?desde=${desdeDias}`),
       api.get(`/negocios/${negocioId}/pedidos?fechaDesde=${fecha}&fechaHasta=${fecha}`),
-      api.get(`/negocios/${negocioId}/reportes/tendencia?desde=${desde30}`)
+      api.get(`/negocios/${negocioId}/reportes/tendencia?desde=${desde30}`),
+      api.get(`/negocios/${negocioId}/reportes/tendencia?desde=${desdeAnterior}`),
+      api.get(`/negocios/${negocioId}/reportes/centro-control?fechaDesde=${inicioMes}&fechaHasta=${fecha}`).catch(() => null),
     ])
-      .then(([hoyRes, ayerRes, tend7, pedHoy, tend30]) => {
+      .then(([hoyRes, ayerRes, tend7, pedHoy, tend30, tendAnt, ccRes]) => {
         setResumen(hoyRes.data?.resumen || {})
         setResumenAyer(ayerRes.data?.resumen || {})
+        setGananciaMes(ccRes?.data || null)
 
-        // Tendencia 7 días
-        const tendenciaData = (tend7.data || []).map(d => ({
+        // Serie del período anterior (misma longitud), alineada por posición
+        const serieAnterior = (tendAnt?.data || [])
+          .filter(d => d.fecha < desdeDias)
+          .map(d => parseFloat(d.total || 0))
+
+        // Tendencia del período con su comparativa real
+        const tendenciaData = (tend7.data || []).map((d, i) => ({
           fecha: new Date(d.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
           total: parseFloat(d.total || 0),
-          cantidad: parseInt(d.cantidad || 0)
+          cantidad: parseInt(d.cantidad || 0),
+          anterior: serieAnterior[i] ?? null
         }))
         setTendencia(tendenciaData)
 
@@ -175,11 +194,8 @@ export default function Dashboard() {
   const totalAyer = (resumenAyer?.totalFacturado || 0)
   const cambioVsAyer = totalAyer > 0 ? (((resumen?.totalFacturado || 0) - totalAyer) / totalAyer * 100).toFixed(1) : 0
 
-  // Combinar tendencia con comparativa (mismo día semana anterior)
-  const tendenciaComparativa = tendencia.map((d, i) => ({
-    ...d,
-    anterior: i > 0 ? tendencia[i-1].total * 0.85 : 0  // Simulado para demo
-  }))
+  // La comparativa (período anterior real) ya viene incluida en la tendencia
+  const tendenciaComparativa = tendencia
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -241,6 +257,29 @@ export default function Dashboard() {
           gradient="linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
         />
       </div>
+
+      {/* Ganancia real del mes (Centro de Control) */}
+      {gananciaMes && (
+        <button onClick={() => navigate('/admin/centro-control')}
+          className="w-full text-left rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f766e 60%, #155e75 100%)' }}>
+          <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wider">🎯 Ganancia real del mes</p>
+              <p className={`text-3xl font-black mt-1 ${gananciaMes.gananciaNeta < 0 ? 'text-red-300' : 'text-white'}`}>
+                ${fmt(Math.round(gananciaMes.gananciaNeta))}
+              </p>
+              <p className="text-emerald-100/70 text-xs mt-1">
+                Venta ${fmt(Math.round(gananciaMes.ventaProductos))} − costo ${fmt(Math.round(gananciaMes.costoProductos))} − gastos ${fmt(Math.round(gananciaMes.gastosPeriodo))}
+              </p>
+            </div>
+            <span className="text-sm font-semibold bg-white/15 border border-white/20 rounded-xl px-4 py-2">
+              Ver Centro de Control →
+            </span>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-emerald-400/10 blur-2xl" />
+        </button>
+      )}
 
       {/* Gráficos Principales */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,6 +1,112 @@
-const { Pedido, ItemPedido, Cliente, Repartidor } = require('../models');
+const { Pedido, ItemPedido, Cliente, Repartidor, Producto, ProductoVariante, Gasto } = require('../models');
 const { Op } = require('sequelize');
 const xlsx = require('xlsx');
+
+// =============================================
+// Centro de Control: ganancia real del negocio en un período.
+// Venta de productos − costo de lo vendido − gastos registrados.
+// El costo por item sale del precioCosto de la variante vendida
+// (o del producto si no tiene variante).
+// =============================================
+exports.centroControl = async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const { fechaDesde, fechaHasta } = req.query;
+
+    const iniStr = fechaDesde || new Date().toISOString().split('T')[0];
+    const finStr = fechaHasta || new Date().toISOString().split('T')[0];
+    const ini = new Date(iniStr + 'T00:00:00.000Z');
+    const fin = new Date(finStr + 'T23:59:59.999Z');
+    const diasPeriodo = Math.max(1, Math.round((new Date(finStr) - new Date(iniStr)) / 86400000) + 1);
+
+    const pedidos = await Pedido.findAll({
+      where: {
+        negocioId,
+        createdAt: { [Op.between]: [ini, fin] },
+        estado: { [Op.ne]: 'cancelado' }
+      },
+      include: [{
+        model: ItemPedido,
+        as: 'items',
+        include: [{
+          model: Producto,
+          as: 'producto',
+          attributes: ['id', 'precioCosto'],
+          include: [{ model: ProductoVariante, as: 'variantes', attributes: ['nombre', 'precioCosto'] }]
+        }]
+      }]
+    });
+
+    const r = {
+      totalFacturado: 0,
+      ventaProductos: 0,
+      costoProductos: 0,
+      envios: 0,
+      propinas: 0,
+      descuentos: 0,
+      totalPedidos: pedidos.length,
+      porMetodo: {},
+      porModalidad: { delivery: 0, takeaway: 0, salon: 0 },
+      itemsSinCosto: 0, // items vendidos cuyo producto no tiene costo cargado
+    };
+
+    for (const p of pedidos) {
+      const total = parseFloat(p.total) || 0;
+      r.totalFacturado += total;
+      r.ventaProductos += parseFloat(p.subtotal) || 0;
+      r.envios += parseFloat(p.costoEnvio) || 0;
+      r.propinas += parseFloat(p.propina) || 0;
+      r.descuentos += parseFloat(p.descuento) || 0;
+
+      const mp = p.metodoPago || 'efectivo';
+      r.porMetodo[mp] = (r.porMetodo[mp] || 0) + total;
+      if (r.porModalidad[p.modalidad] !== undefined) r.porModalidad[p.modalidad] += total;
+
+      for (const item of p.items || []) {
+        const producto = item.producto;
+        if (!producto) { r.itemsSinCosto += item.cantidad; continue; }
+
+        let costoUnitario = parseFloat(producto.precioCosto) || 0;
+        if (item.varianteNombre && producto.variantes?.length) {
+          const variante = producto.variantes.find(v => v.nombre === item.varianteNombre);
+          if (variante) costoUnitario = parseFloat(variante.precioCosto) || costoUnitario;
+        }
+        if (costoUnitario === 0) r.itemsSinCosto += item.cantidad;
+        r.costoProductos += costoUnitario * (item.cantidad || 1);
+      }
+    }
+
+    // Gastos registrados en el período (módulo de gestión)
+    const gastos = await Gasto.findAll({
+      where: { negocioId, fecha: { [Op.between]: [iniStr, finStr] } },
+      attributes: ['monto', 'categoria']
+    });
+    let gastosPeriodo = 0;
+    const gastosPorCategoria = {};
+    for (const g of gastos) {
+      const monto = parseFloat(g.monto) || 0;
+      gastosPeriodo += monto;
+      gastosPorCategoria[g.categoria] = (gastosPorCategoria[g.categoria] || 0) + monto;
+    }
+
+    const gananciaBruta = r.ventaProductos - r.descuentos - r.costoProductos;
+    const gananciaNeta = gananciaBruta - gastosPeriodo;
+
+    res.json({
+      ...r,
+      diasPeriodo,
+      gastosPeriodo,
+      gastosPorCategoria,
+      cantidadGastos: gastos.length,
+      gananciaBruta,
+      gananciaNeta,
+      ticketPromedio: r.totalPedidos > 0 ? r.totalFacturado / r.totalPedidos : 0,
+    });
+  } catch (err) {
+    console.error('Error en centro de control:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 exports.resumen = async (req, res) => {
   try {

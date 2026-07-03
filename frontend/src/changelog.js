@@ -6,9 +6,20 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.1.0'
+export const VERSION_ACTUAL = '1.2.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.2.0',
+    fecha: '2026-07-03',
+    titulo: 'Centro de Control',
+    cambios: [
+      { t: 'Nuevo Centro de Control: la ganancia real de tu negocio (venta de productos menos costos y gastos), por día, mes o rango de fechas.' },
+      { t: 'Desglose por método de pago y modalidad, con gráficos de composición de la ganancia.' },
+      { t: 'El Dashboard muestra la ganancia real del mes con acceso directo al Centro de Control.' },
+      { t: 'La comparativa del gráfico de ventas ahora usa los datos reales del período anterior.' },
+    ],
+  },
   {
     version: '1.1.0',
     fecha: '2026-07-03',
