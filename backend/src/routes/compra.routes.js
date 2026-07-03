@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
 const { protect, perteneceAlNegocio } = require('../middleware/auth');
+const { checkAcceso } = require('../middleware/checkPlan');
 const compraController = require('../controllers/compra.controller');
 
 // Todas las rutas requieren autenticación y verificación de pertenencia al negocio
-router.use(protect, perteneceAlNegocio);
+router.use(protect, perteneceAlNegocio, checkAcceso('stock'));
 
 router.get('/', compraController.listar);
 router.get('/:id', compraController.obtener);

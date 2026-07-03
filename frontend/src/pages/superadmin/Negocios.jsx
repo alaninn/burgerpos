@@ -5,53 +5,61 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
 // ─── Modal de detalles y estadísticas del negocio ────────
-function ModalDetallesNegocio({ negocio, onClose, onUpdate }) {
+function ModalDetallesNegocio({ negocio, onClose, onUpdate, onEliminar }) {
   const navigate = useNavigate()
   const { gestionarNegocio } = useAuth()
   const [stats, setStats] = useState(null)
+  const [salud, setSalud] = useState(null)
+  const [pagos, setPagos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [diasExtender, setDiasExtender] = useState(30)
+  const [pago, setPago] = useState({ dias: 30, monto: '', metodoPago: 'transferencia', observaciones: '' })
+  const [registrando, setRegistrando] = useState(false)
 
-  useEffect(() => {
-    // Cargar estadísticas del negocio
-    Promise.all([
+  const cargarDetalles = useCallback(() => {
+    Promise.allSettled([
       api.get(`/negocios/${negocio.id}/reportes/resumen`),
-      api.get(`/negocios/${negocio.id}/pedidos?limit=100`)
+      api.get(`/negocios/${negocio.id}/pedidos?limit=100`),
+      api.get(`/negocios/${negocio.id}/salud`),
+      api.get(`/negocios/${negocio.id}/historial-pagos`),
     ])
-      .then(([resumenRes, pedidosRes]) => {
-        setStats({
-          resumen: resumenRes.data.resumen || {},
-          totalPedidos: pedidosRes.data.total || 0,
-          pedidosRecientes: pedidosRes.data.pedidos?.length || 0
-        })
+      .then(([resumenRes, pedidosRes, saludRes, pagosRes]) => {
+        if (resumenRes.status === 'fulfilled' || pedidosRes.status === 'fulfilled') {
+          setStats({
+            resumen: resumenRes.value?.data?.resumen || {},
+            totalPedidos: pedidosRes.value?.data?.total || 0,
+          })
+        }
+        if (saludRes.status === 'fulfilled') setSalud(saludRes.value.data.salud)
+        if (pagosRes.status === 'fulfilled') setPagos(pagosRes.value.data.pagos || [])
       })
-      .catch(() => setStats(null))
       .finally(() => setLoading(false))
   }, [negocio.id])
 
-  const extenderVencimiento = async () => {
-    try {
-      const nuevaFecha = negocio.vencimiento
-        ? new Date(new Date(negocio.vencimiento).getTime() + diasExtender * 24 * 60 * 60 * 1000)
-        : new Date(Date.now() + diasExtender * 24 * 60 * 60 * 1000)
+  useEffect(() => { cargarDetalles() }, [cargarDetalles])
 
-      await api.put(`/negocios/${negocio.id}`, { vencimiento: nuevaFecha.toISOString() })
-      toast.success(`Extendido ${diasExtender} días`)
+  const registrarPago = async () => {
+    setRegistrando(true)
+    try {
+      await api.post(`/negocios/${negocio.id}/renovar`, {
+        dias: pago.dias,
+        monto: parseFloat(pago.monto) || 0,
+        metodoPago: pago.metodoPago,
+        observaciones: pago.observaciones || null,
+      })
+      toast.success(`Pago registrado: +${pago.dias} días`)
+      setPago(p => ({ ...p, monto: '', observaciones: '' }))
+      cargarDetalles()
       onUpdate()
-    } catch {
-      toast.error('Error al extender')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error al registrar el pago')
+    } finally {
+      setRegistrando(false)
     }
   }
 
   const accederComoNegocio = () => {
-    console.log('🔍 Activando modo de gestión para:', negocio.nombre);
-
-    // Establecer el negocio a gestionar
     gestionarNegocio(negocio)
-
-    toast.success(`✅ Modo Superadmin: Gestionando ${negocio.nombre}`)
-
-    // Redirigir al dashboard del negocio
+    toast.success(`Modo Superadmin: gestionando ${negocio.nombre}`)
     navigate('/admin/dashboard')
     onClose()
   }
@@ -108,27 +116,96 @@ function ModalDetallesNegocio({ negocio, onClose, onUpdate }) {
                     </span>
                   </div>
                 )}
-                <div className="pt-2">
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Extender suscripción:</label>
-                  <div className="flex gap-2">
-                    <select value={diasExtender} onChange={e => setDiasExtender(parseInt(e.target.value))}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm">
-                      <option value={7}>7 días</option>
-                      <option value={15}>15 días</option>
-                      <option value={30}>30 días (1 mes)</option>
-                      <option value={90}>90 días (3 meses)</option>
-                      <option value={180}>180 días (6 meses)</option>
-                      <option value={365}>365 días (1 año)</option>
-                    </select>
-                    <button onClick={extenderVencimiento}
-                      className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700">
-                      Extender
-                    </button>
+              </div>
+
+              {/* Registrar pago / renovación */}
+              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-xl">
+                <p className="text-xs font-semibold text-green-800 dark:text-green-300 mb-2">Registrar pago / renovación</p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <select value={pago.dias} onChange={e => setPago(p => ({ ...p, dias: parseInt(e.target.value) }))}
+                    className="px-2.5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800">
+                    <option value={7}>7 días</option>
+                    <option value={15}>15 días</option>
+                    <option value={30}>30 días (1 mes)</option>
+                    <option value={90}>90 días (3 meses)</option>
+                    <option value={180}>180 días (6 meses)</option>
+                    <option value={365}>365 días (1 año)</option>
+                  </select>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                    <input type="number" value={pago.monto} placeholder="Monto"
+                      onChange={e => setPago(p => ({ ...p, monto: e.target.value }))}
+                      className="w-full pl-6 pr-2 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800" />
                   </div>
+                </div>
+                <div className="flex gap-2">
+                  <select value={pago.metodoPago} onChange={e => setPago(p => ({ ...p, metodoPago: e.target.value }))}
+                    className="flex-1 px-2.5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800">
+                    <option value="transferencia">Transferencia</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="mercadopago">MercadoPago</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                  <button onClick={registrarPago} disabled={registrando}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                    {registrando ? '...' : 'Registrar'}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Salud del negocio */}
+          {salud && (
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                Salud del negocio{' '}
+                <span className={`ml-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                  salud.estado === 'activo' ? 'bg-green-100 text-green-700' :
+                  salud.estado === 'inactivo' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {salud.estado === 'activo' ? '🟢 Activo' : salud.estado === 'inactivo' ? '🟡 Inactivo' : 'Nunca usado'}
+                </span>
+              </h4>
+              <div className="grid grid-cols-4 gap-3 text-center">
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                  <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{salud.pedidosHoy}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Pedidos hoy</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                  <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{salud.usuariosActivos24h}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Usuarios activos 24h</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                  <p className={`text-lg font-bold ${salud.errores24h > 0 ? 'text-red-600' : 'text-gray-900 dark:text-gray-100'}`}>{salud.errores24h}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Errores 24h</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                  <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    {salud.diasSinActividad === null ? '—' : salud.diasSinActividad === 0 ? 'Hoy' : `${salud.diasSinActividad}d`}
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Última actividad</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Historial de pagos */}
+          {pagos.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Historial de pagos</h4>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                {pagos.map(p => (
+                  <div key={p.id} className="flex items-center justify-between px-4 py-2 border-b border-gray-50 dark:border-gray-700 last:border-0 text-sm">
+                    <span className="text-xs text-gray-500">{new Date(p.createdAt).toLocaleDateString('es-AR')}</span>
+                    <span className="text-gray-700 dark:text-gray-300">+{p.dias} días</span>
+                    <span className="text-xs text-gray-500">{p.metodoPago || '-'}</span>
+                    <span className="font-semibold text-green-600">${Number(p.monto).toLocaleString('es-AR')}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Estadísticas */}
           {loading ? (
@@ -172,7 +249,12 @@ function ModalDetallesNegocio({ negocio, onClose, onUpdate }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-between gap-3">
+          <button onClick={() => onEliminar(negocio)}
+            className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Eliminar negocio
+          </button>
           <button onClick={accederComoNegocio}
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
@@ -189,7 +271,7 @@ function ModalNegocio({ negocio, onClose, onSaved }) {
   const [form, setForm] = useState({
     nombre: '', slug: '', telefono: '', direccion: '', ciudad: '',
     plan: 'estandar', activo: true,
-    adminNombre: '', adminEmail: '', adminPassword: '',
+    adminNombre: '', adminUsername: '', adminEmail: '', adminPassword: '',
     ...negocio
   })
   const [loading, setLoading] = useState(false)
@@ -198,7 +280,7 @@ function ModalNegocio({ negocio, onClose, onSaved }) {
 
   const guardar = async () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
-    if (!negocio?.id && (!form.adminEmail || !form.adminPassword)) return toast.error('El email y contraseña del admin son obligatorios')
+    if (!negocio?.id && (!form.adminUsername.trim() || !form.adminPassword)) return toast.error('El usuario y contraseña del admin son obligatorios')
     setLoading(true)
     try {
       if (negocio?.id) {
@@ -294,9 +376,16 @@ function ModalNegocio({ negocio, onClose, onSaved }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario (para iniciar sesión) *</label>
+                  <input type="text" value={form.adminUsername} onChange={e => set('adminUsername', e.target.value.toLowerCase())}
+                    placeholder="usuario"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                   <input type="email" value={form.adminEmail} onChange={e => set('adminEmail', e.target.value)}
-                    placeholder="admin@negocio.com"
+                    placeholder="admin@negocio.com (opcional)"
                     className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
@@ -333,24 +422,6 @@ export default function SANegocios() {
   const [editNeg, setEditNeg] = useState(null)
   const [detallesNeg, setDetallesNeg] = useState(null)
 
-  // Verificar que sea superadmin
-  useEffect(() => {
-    console.log('👤 Usuario actual:', usuario);
-    if (usuario && usuario.rol !== 'superadmin') {
-      toast.error('⚠️ Necesitas ser superadmin para acceder a esta página')
-    }
-  }, [usuario])
-
-  // Debug en cada render
-  useEffect(() => {
-    console.log('🔍 Estado actual:', {
-      usuario: usuario?.email,
-      rol: usuario?.rol,
-      negocioId: usuario?.negocioId,
-      token: localStorage.getItem('token') ? 'Presente' : 'Ausente'
-    });
-  })
-
   const cargar = useCallback(() => {
     setLoading(true)
     api.get('/negocios')
@@ -367,6 +438,24 @@ export default function SANegocios() {
       toast.success(neg.activo ? 'Negocio desactivado' : 'Negocio activado')
       cargar()
     } catch { toast.error('Error') }
+  }
+
+  const eliminarNegocio = async (neg) => {
+    const confirmacion = prompt(
+      `⚠️ Esto elimina DEFINITIVAMENTE el negocio "${neg.nombre}" con todos sus pedidos, productos, usuarios e historial. No se puede deshacer.\n\nPara confirmar, escribí el nombre exacto del negocio:`
+    )
+    if (confirmacion === null) return
+    if (confirmacion.trim() !== neg.nombre) {
+      return toast.error('El nombre no coincide, no se eliminó nada')
+    }
+    try {
+      await api.delete(`/negocios/${neg.id}`)
+      toast.success(`Negocio "${neg.nombre}" eliminado`)
+      setDetallesNeg(null)
+      cargar()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error al eliminar el negocio')
+    }
   }
 
   const filtrados = negocios.filter(n =>
@@ -483,6 +572,7 @@ export default function SANegocios() {
           negocio={detallesNeg}
           onClose={() => setDetallesNeg(null)}
           onUpdate={cargar}
+          onEliminar={eliminarNegocio}
         />
       )}
     </div>

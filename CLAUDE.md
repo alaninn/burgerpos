@@ -100,6 +100,9 @@ ssh -o StrictHostKeyChecking=no -p 5041 root@66.97.35.172 \
 
 ## ✍️ Estilo (resumen)
 
+- **Versionado**: en cada feature/fix visible, subir `VERSION_ACTUAL` en
+  `frontend/src/changelog.js` y agregar la entrada nueva ARRIBA, redactada
+  para el usuario. Cambios solo de superadmin → `super: true`.
 - Textos de la interfaz: redactados para el usuario, nunca notas de desarrollador.
 - Comentarios internos del código: sin emojis, texto técnico plano.
 - No crear archivos `.md` sueltos con notas de sesión — este archivo, `README.md`

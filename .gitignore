@@ -45,3 +45,4 @@ out/
 
 # Credenciales del VPS (no versionar)
 .vps-credenciales
+backend/backups/

@@ -15,6 +15,7 @@ import Menu from './pages/admin/Menu'
 import Repartidores from './pages/admin/Repartidores'
 import Clientes from './pages/admin/Clientes'
 import Reportes from './pages/admin/Reportes'
+import SoporteNegocio from './pages/admin/Soporte'
 import Configuraciones from './pages/admin/Configuraciones'
 import Fiscal from './pages/admin/Fiscal'
 import Descuentos from './pages/admin/Descuentos'
@@ -43,6 +44,8 @@ import SAUsuarios from './pages/superadmin/Usuarios'
 import SAPlanes from './pages/superadmin/Planes'
 import SAConfiguracion from './pages/superadmin/ConfiguracionPlataforma'
 import SAErrores from './pages/superadmin/Errores'
+import SAFinanzas from './pages/superadmin/Finanzas'
+import SASoporte from './pages/superadmin/Soporte'
 
 function PrivateRoute({ children, roles }) {
   const { usuario, loading } = useAuth()
@@ -86,6 +89,7 @@ function AppRoutes() {
         <Route path="repartidores" element={<Repartidores />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="reportes" element={<Reportes />} />
+        <Route path="soporte" element={<SoporteNegocio />} />
         <Route path="configuraciones" element={<Configuraciones />} />
         <Route path="fiscal" element={<Fiscal />} />
         <Route path="gestion/gastos" element={<GastosDiarios />} />
@@ -107,6 +111,8 @@ function AppRoutes() {
         <Route path="usuarios" element={<SAUsuarios />} />
         <Route path="planes" element={<SAPlanes />} />
         <Route path="configuracion" element={<SAConfiguracion />} />
+        <Route path="finanzas" element={<SAFinanzas />} />
+        <Route path="soporte" element={<SASoporte />} />
         <Route path="errores" element={<SAErrores />} />
       </Route>
 

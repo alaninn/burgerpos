@@ -97,19 +97,21 @@ export default function PlanBanner() {
         <span style={{ fontSize: '0.75rem', color: '#7c3aed' }}>
           ✦ Upgrade a Premium para límites ilimitados + Cocina + Fiscal + Stock + Descuentos
         </span>
-        <a
-          href="https://wa.me/5491100000000?text=Quiero%20actualizar%20mi%20plan%20BurgerPOS"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            fontSize: '0.75rem', fontWeight: 600,
-            background: '#7c3aed', color: '#fff',
-            padding: '4px 12px', borderRadius: 8,
-            textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
-          }}
-        >
-          Mejorar plan →
-        </a>
+        {uso.contactoWhatsApp && (
+          <a
+            href={`https://wa.me/${uso.contactoWhatsApp}?text=Quiero%20actualizar%20mi%20plan%20BurgerPOS`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontSize: '0.75rem', fontWeight: 600,
+              background: '#7c3aed', color: '#fff',
+              padding: '4px 12px', borderRadius: 8,
+              textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+            }}
+          >
+            Mejorar plan →
+          </a>
+        )}
       </div>
     </div>
   )

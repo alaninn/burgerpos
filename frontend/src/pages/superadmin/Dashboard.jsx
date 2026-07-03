@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../api/axios'
+import toast from 'react-hot-toast'
 
-const PRECIOS = { estandar: 15000, premium: 35000 }
+const SEVERIDAD_COLOR = {
+  critica: 'border-red-300 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400',
+  alta: 'border-amber-300 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400',
+  media: 'border-gray-200 bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300',
+}
 
 function fmt(n) {
   return n?.toLocaleString('es-AR', { minimumFractionDigits: 0 }) ?? '—'
@@ -57,22 +62,32 @@ function PlanBar({ plan, datos, total }) {
 export default function SADashboard() {
   const [metricas, setMetricas] = useState(null)
   const [negocios, setNegocios] = useState([])
+  const [alertas, setAlertas] = useState([])
   const [loading, setLoading] = useState(true)
 
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const [mRes, nRes] = await Promise.all([
+      const [mRes, nRes, aRes] = await Promise.all([
         api.get('/negocios/metricas'),
         api.get('/negocios'),
+        api.get('/superadmin/alertas').catch(() => ({ data: { alertas: [] } })),
       ])
       setMetricas(mRes.data.metricas)
       setNegocios((nRes.data.negocios || []).slice().reverse().slice(0, 5))
+      setAlertas(aRes.data.alertas || [])
     } catch { /* silencioso */ }
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => { cargar() }, [cargar])
+
+  const resolverAlerta = async (id) => {
+    try {
+      await api.put(`/superadmin/alertas/${id}/resolver`)
+      setAlertas(prev => prev.filter(a => a.id !== id))
+    } catch { toast.error('Error al resolver la alerta') }
+  }
 
   const m = metricas
 
@@ -91,6 +106,27 @@ export default function SADashboard() {
           Actualizar
         </button>
       </div>
+
+      {/* Alertas activas */}
+      {alertas.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {alertas.slice(0, 6).map(a => (
+            <div key={a.id} className={`flex items-center justify-between gap-3 border rounded-xl px-4 py-2.5 ${SEVERIDAD_COLOR[a.severidad] || SEVERIDAD_COLOR.media}`}>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{a.titulo}</p>
+                {a.descripcion && <p className="text-xs opacity-80 truncate">{a.descripcion}</p>}
+              </div>
+              <button onClick={() => resolverAlerta(a.id)}
+                className="flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg bg-white/70 dark:bg-gray-800/70 hover:bg-white transition">
+                Resolver
+              </button>
+            </div>
+          ))}
+          {alertas.length > 6 && (
+            <p className="text-xs text-gray-500 text-center">y {alertas.length - 6} alertas más…</p>
+          )}
+        </div>
+      )}
 
       {/* KPIs principales */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -166,12 +202,12 @@ export default function SADashboard() {
             <PlanBar key={plan} plan={plan} datos={datos} total={m.activos} />
           ))}
 
-          {/* Precio por plan */}
+          {/* Precio por plan (desde la definición editable) */}
           <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-3">
-            {Object.entries(PRECIOS).map(([plan, precio]) => (
+            {m?.porPlan && Object.entries(m.porPlan).map(([plan, datos]) => (
               <div key={plan} className="text-center p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-0.5 capitalize">{plan}</p>
-                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">${fmt(precio)}<span className="text-xs font-normal text-gray-600 dark:text-gray-400">/mes</span></p>
+                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">${fmt(datos.precio)}<span className="text-xs font-normal text-gray-600 dark:text-gray-400">/mes</span></p>
               </div>
             ))}
           </div>

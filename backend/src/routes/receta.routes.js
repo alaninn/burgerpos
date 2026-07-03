@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
 const { protect, perteneceAlNegocio } = require('../middleware/auth');
+const { checkAcceso } = require('../middleware/checkPlan');
 const recetaController = require('../controllers/receta.controller');
 
 // Todas las rutas requieren autenticación y verificación de pertenencia al negocio
-router.use(protect, perteneceAlNegocio);
+router.use(protect, perteneceAlNegocio, checkAcceso('stock'));
 
 // GET /api/negocios/:negocioId/recetas - Listar todas las recetas
 router.get('/', recetaController.listar);

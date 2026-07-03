@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+import VersionChangelog from '../VersionChangelog'
 
 function ModalCambiarPassword({ onClose }) {
   const [form, setForm] = useState({ passwordActual: '', passwordNueva: '', confirmar: '' })
@@ -87,7 +88,23 @@ const NAV_ITEMS = [
   { to: '/admin/usuarios', label: 'Usuarios', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
   { to: '/admin/monitor-cocina', label: 'Monitor cocina', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> },
   { to: '/admin/facturacion', label: 'Facturación ARCA', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
+  { to: '/admin/soporte', label: 'Soporte', icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
 ]
+
+// Modulo del plan que habilita cada item del menu (los que no figuran son
+// nucleo y estan siempre disponibles: dashboard, configuraciones, usuarios, soporte)
+const MODULO_POR_RUTA = {
+  '/admin/menu': 'menu',
+  '/admin/panel-pedidos': 'panelPedidos',
+  '/admin/cajas': 'cajas',
+  '/admin/pedidos': 'pedidos',
+  '/admin/repartidores': 'repartidores',
+  '/admin/reportes': 'reportes',
+  '/admin/clientes': 'clientes',
+  '/admin/descuentos': 'descuentos',
+  '/admin/monitor-cocina': 'monitorCocina',
+  '/admin/facturacion': 'facturacion',
+}
 
 const IconLogout = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +113,7 @@ const IconLogout = () => (
 )
 
 export default function AdminLayout() {
-  const { usuario, logout, negocioGestionado, salirDeGestion } = useAuth()
+  const { usuario, logout, negocioGestionado, salirDeGestion, getNegocioId } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
@@ -104,6 +121,27 @@ export default function AdminLayout() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showCambiarPass, setShowCambiarPass] = useState(false)
   const [expandedMenus, setExpandedMenus] = useState({})
+  const [modulosPlan, setModulosPlan] = useState(null) // null = sin cargar (mostrar todo)
+
+  // Modulos habilitados segun el plan del negocio
+  useEffect(() => {
+    const negocioId = getNegocioId?.()
+    if (!negocioId) return
+    api.get(`/negocios/${negocioId}/uso`)
+      .then(({ data }) => {
+        if (Array.isArray(data.modulos) && data.modulos.length > 0) setModulosPlan(data.modulos)
+      })
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario?.negocioId, negocioGestionado?.id])
+
+  // El superadmin ve todo; los negocios solo los modulos de su plan
+  const navVisibles = NAV_ITEMS.filter(item => {
+    if (usuario?.rol === 'superadmin' || modulosPlan === null) return true
+    if (item.submenu) return modulosPlan.includes('gestion')
+    const mod = MODULO_POR_RUTA[item.to]
+    return !mod || modulosPlan.includes(mod)
+  })
   const { darkMode, toggleTheme } = useTheme()
   const menuRef = useRef(null)
   const sidebarRef = useRef(null)
@@ -162,7 +200,7 @@ export default function AdminLayout() {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {NAV_ITEMS.map((item, idx) => {
+          {navVisibles.map((item, idx) => {
             if (item.submenu) {
               // Submenu item
               const isAnySubmenuActive = item.submenu.some(sub => location.pathname.startsWith(sub.to))
@@ -234,6 +272,11 @@ export default function AdminLayout() {
             )
           })}
         </nav>
+
+        {/* Versión y novedades */}
+        <div className="px-3 pb-1">
+          <VersionChangelog esSuperadmin={usuario?.rol === 'superadmin'} />
+        </div>
 
         {/* Usuario + Cerrar sesión */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-3 space-y-1">

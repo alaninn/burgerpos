@@ -1,5 +1,54 @@
-const { Negocio, Producto, Categoria, Repartidor, Usuario } = require('../models');
-const { PLANES } = require('../config/planes');
+const { Negocio, Producto, Categoria, Repartidor, Usuario, PlanConfig } = require('../models');
+const { PLANES, PRECIOS } = require('../config/planes');
+
+// =============================================
+// Planes leidos de la DB (planes_config) con cache en memoria de 60s.
+// Fallback a config/planes.js si la tabla esta vacia o falla la lectura.
+// =============================================
+let cachePlanes = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60 * 1000;
+
+/**
+ * Devuelve { estandar: {nombre, precio, limites, accesos, modulos}, premium: {...} }
+ */
+async function obtenerPlanes() {
+  if (cachePlanes && Date.now() - cacheTimestamp < CACHE_TTL) return cachePlanes;
+
+  try {
+    const filas = await PlanConfig.findAll();
+    if (filas.length > 0) {
+      const planes = {};
+      for (const f of filas) {
+        planes[f.plan] = {
+          nombre: f.nombre,
+          precio: parseFloat(f.precio) || 0,
+          limites: f.limites || {},
+          accesos: f.accesos || {},
+          modulos: f.modulos || []
+        };
+      }
+      cachePlanes = planes;
+      cacheTimestamp = Date.now();
+      return planes;
+    }
+  } catch (err) {
+    console.error('No se pudieron leer los planes de la DB, usando defaults:', err.message);
+  }
+
+  // Fallback: defaults de config/planes.js
+  const planes = {};
+  for (const [key, p] of Object.entries(PLANES)) {
+    planes[key] = { ...p, precio: PRECIOS[key] || 0, modulos: [] };
+  }
+  return planes;
+}
+
+/** Invalida el cache (llamar al editar un plan desde el panel) */
+function invalidarCachePlanes() {
+  cachePlanes = null;
+  cacheTimestamp = 0;
+}
 
 /**
  * Middleware factory que verifica que el negocio no supere los límites de su plan
@@ -19,10 +68,11 @@ const checkLimit = (recurso, countFn) => async (req, res, next) => {
     const negocio = await Negocio.findByPk(negocioId, { attributes: ['id', 'plan'] });
     if (!negocio) return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
 
-    const planData = PLANES[negocio.plan] || PLANES.estandar;
+    const planes = await obtenerPlanes();
+    const planData = planes[negocio.plan] || planes.estandar;
     const limite = planData.limites[recurso];
 
-    if (limite === -1) return next(); // ilimitado
+    if (limite === -1 || limite === undefined) return next(); // ilimitado o sin límite definido
 
     // Contar actuales
     let actual;
@@ -78,7 +128,8 @@ const checkAcceso = (feature) => async (req, res, next) => {
     const negocio = await Negocio.findByPk(negocioId, { attributes: ['id', 'plan'] });
     if (!negocio) return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
 
-    const planData = PLANES[negocio.plan] || PLANES.estandar;
+    const planes = await obtenerPlanes();
+    const planData = planes[negocio.plan] || planes.estandar;
 
     if (!planData.accesos[feature]) {
       return res.status(403).json({
@@ -95,4 +146,4 @@ const checkAcceso = (feature) => async (req, res, next) => {
   }
 };
 
-module.exports = { checkLimit, checkAcceso };
+module.exports = { checkLimit, checkAcceso, obtenerPlanes, invalidarCachePlanes };

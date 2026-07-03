@@ -1,6 +1,120 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+
+// WhatsApp de contacto que ven los negocios para pedir upgrade de plan
+function SeccionContacto() {
+  const [whatsapp, setWhatsapp] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  useEffect(() => {
+    api.get('/superadmin/contacto')
+      .then(({ data }) => setWhatsapp(data.whatsapp || ''))
+      .catch(() => {})
+  }, [])
+
+  const guardar = async () => {
+    setGuardando(true)
+    try {
+      await api.put('/superadmin/contacto', { whatsapp })
+      toast.success('Contacto guardado')
+    } catch { toast.error('Error al guardar') }
+    finally { setGuardando(false) }
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 max-w-2xl border border-gray-200 dark:border-gray-700 mt-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900 rounded-lg flex items-center justify-center text-lg">📱</div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">WhatsApp de contacto</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Los negocios ven este número en el botón "Mejorar plan"</p>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <input type="text" value={whatsapp} onChange={e => setWhatsapp(e.target.value)}
+          placeholder="549XXXXXXXXXX (con código de país, sin + ni espacios)"
+          className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500" />
+        <button onClick={guardar} disabled={guardando}
+          className="px-5 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50">
+          {guardando ? '...' : 'Guardar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Backups de la base de datos: listar, crear ahora y descargar.
+function SeccionBackups() {
+  const [backups, setBackups] = useState([])
+  const [creando, setCreando] = useState(false)
+
+  const cargar = useCallback(() => {
+    api.get('/superadmin/backups')
+      .then(({ data }) => setBackups(data.backups || []))
+      .catch(() => setBackups([]))
+  }, [])
+
+  useEffect(() => { cargar() }, [cargar])
+
+  const crearAhora = async () => {
+    setCreando(true)
+    try {
+      const { data } = await api.post('/superadmin/backups')
+      toast.success(`Backup creado: ${data.archivo}`)
+      cargar()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error al crear el backup')
+    } finally { setCreando(false) }
+  }
+
+  const descargar = async (archivo) => {
+    try {
+      const res = await api.get(`/superadmin/backups/${archivo}/descargar`, { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url; a.download = archivo; a.click()
+      URL.revokeObjectURL(url)
+    } catch { toast.error('Error al descargar') }
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 max-w-2xl border border-gray-200 dark:border-gray-700 mt-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center text-lg">💾</div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Backups de la base de datos</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Se crea uno automático todos los días; también podés crear uno ahora</p>
+          </div>
+        </div>
+        <button onClick={crearAhora} disabled={creando}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+          {creando ? 'Creando…' : 'Crear backup ahora'}
+        </button>
+      </div>
+
+      {backups.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+          Todavía no hay backups. Los automáticos se generan en el servidor cada madrugada.
+        </p>
+      ) : (
+        <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-64 overflow-y-auto">
+          {backups.map(b => (
+            <div key={b.archivo} className="flex items-center justify-between py-2 text-sm">
+              <div className="min-w-0">
+                <p className="font-mono text-xs text-gray-700 dark:text-gray-300 truncate">{b.archivo}</p>
+                <p className="text-xs text-gray-500">{new Date(b.fecha).toLocaleString('es-AR')} · {(b.bytes / 1024 / 1024).toFixed(1)} MB</p>
+              </div>
+              <button onClick={() => descargar(b.archivo)}
+                className="flex-shrink-0 text-xs text-violet-600 hover:underline ml-3">Descargar</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function ConfiguracionPlataforma() {
   const [loading, setLoading] = useState(false)
@@ -167,6 +281,9 @@ export default function ConfiguracionPlataforma() {
           </div>
         </div>
       </div>
+
+      <SeccionContacto />
+      <SeccionBackups />
     </div>
   )
 }

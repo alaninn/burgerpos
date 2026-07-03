@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const arcaController = require('../controllers/arca.controller');
 const { protect } = require('../middleware/auth');
+const { checkAcceso } = require('../middleware/checkPlan');
 
 // Configuración multer para certificados
 const storage = multer.diskStorage({
@@ -32,7 +33,7 @@ const upload = multer({
 });
 
 // Todas las rutas requieren autenticación
-router.use(protect);
+router.use(protect, checkAcceso('fiscal'));
 
 // Certificados
 router.post('/generar-certificados', arcaController.generarCertificados);

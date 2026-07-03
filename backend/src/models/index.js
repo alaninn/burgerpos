@@ -21,6 +21,10 @@ const ComprobanteElectronico = require('./ComprobanteElectronico')(sequelize, Da
 const TicketAccesoWSAA = require('./TicketAccesoWSAA')(sequelize, DataTypes);
 const WhatsAppConfig = require('./WhatsAppConfig')(sequelize, DataTypes);
 const ErrorFrontend  = require('./ErrorFrontend')(sequelize, DataTypes);
+const PlanConfig     = require('./PlanConfig')(sequelize, DataTypes);
+const PagoHistorial  = require('./PagoHistorial')(sequelize, DataTypes);
+const Alerta         = require('./Alerta')(sequelize, DataTypes);
+const TicketSoporte  = require('./TicketSoporte')(sequelize, DataTypes);
 
 // Módulo de Gestión
 const Proveedor      = require('./Proveedor');
@@ -177,6 +181,14 @@ Producto.hasMany(RecetaIngrediente, { foreignKey: 'ingredienteId', as: 'usadoEnR
 ErrorFrontend.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
 ErrorFrontend.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
 
+// ── Plataforma: pagos, alertas y soporte ──────────────────
+PagoHistorial.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+Negocio.hasMany(PagoHistorial,   { foreignKey: 'negocioId', as: 'pagos' });
+Alerta.belongsTo(Negocio,        { foreignKey: 'negocioId', as: 'negocio' });
+TicketSoporte.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+TicketSoporte.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+Negocio.hasMany(TicketSoporte,   { foreignKey: 'negocioId', as: 'tickets' });
+
 // ── Exportar ──────────────────────────────────────────────
 module.exports = {
   sequelize,
@@ -205,5 +217,9 @@ module.exports = {
   CompraItem,
   Receta,
   RecetaIngrediente,
-  ErrorFrontend
+  ErrorFrontend,
+  PlanConfig,
+  PagoHistorial,
+  Alerta,
+  TicketSoporte
 };

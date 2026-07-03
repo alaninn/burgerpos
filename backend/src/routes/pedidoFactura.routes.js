@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router({ mergeParams: true });
 const pedidoFacturaController = require('../controllers/pedidoFactura.controller');
 const { protect } = require('../middleware/auth');
+const { checkAcceso } = require('../middleware/checkPlan');
 
 // Todas las rutas requieren autenticación
-router.use(protect);
+router.use(protect, checkAcceso('fiscal'));
 
 // Emitir factura desde pedido
 router.post('/:pedidoId/emitir-factura', pedidoFacturaController.emitirFacturaDesdePedido);

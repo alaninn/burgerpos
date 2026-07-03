@@ -72,6 +72,16 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limit global sobre la API (protege de abuso/fuerza bruta)
+const rateLimit = require('express-rate-limit');
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Demasiadas solicitudes, esperá unos minutos' }
+}));
+
 // Servir uploads estáticos
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
@@ -109,6 +119,8 @@ app.use('/api/negocios/:negocioId/recetas',     require('./routes/receta.routes'
 app.use('/api/usuarios',     require('./routes/usuario.routes'));
 app.use('/api/salud',        require('./routes/salud.routes'));       // reporte de errores frontend (público)
 app.use('/api/superadmin',   require('./routes/superadminErrores.routes')); // logs y errores (solo superadmin)
+app.use('/api/superadmin',   require('./routes/superadminPlataforma.routes')); // planes, finanzas, alertas, backups, tickets
+app.use('/api/negocios/:negocioId/soporte', require('./routes/soporte.routes'));
 app.use('/api/pagos',        require('./routes/pago.routes'));
 app.use('/api/mercadopago/oauth', require('./routes/mercadoPagoOAuth.routes'));
 app.use('/api/platform-config', require('./routes/platformConfig.routes'));
@@ -140,6 +152,10 @@ sequelize.authenticate()
     console.log('✅ PostgreSQL conectado');
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
+
+    // Tareas programadas de plataforma
+    require('./services/alertasService').iniciarAlertasAutomaticas();
+    require('./services/backupService').iniciarBackupsAutomaticos();
   })
   .catch(err => {
     console.error('❌ Error conectando DB:', err);
