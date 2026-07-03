@@ -16,8 +16,10 @@ export const CHANGELOG = [
     cambios: [
       { t: 'Nuevo Centro de Control: la ganancia real de tu negocio (venta de productos menos costos y gastos), por día, mes o rango de fechas.' },
       { t: 'Desglose por método de pago y modalidad, con gráficos de composición de la ganancia.' },
+      { t: 'Tocá una tarjeta de método de pago en el Centro de Control para ver las ventas de ese método.' },
       { t: 'El Dashboard muestra la ganancia real del mes con acceso directo al Centro de Control.' },
       { t: 'La comparativa del gráfico de ventas ahora usa los datos reales del período anterior.' },
+      { t: 'Superadmin: ranking de negocios por facturación de los últimos 30 días en el Dashboard.', super: true },
     ],
   },
   {

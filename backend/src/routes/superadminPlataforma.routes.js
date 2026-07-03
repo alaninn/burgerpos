@@ -12,6 +12,7 @@ router.put('/planes/:plan', ctrl.actualizarPlan);
 
 // Finanzas / cobros
 router.get('/finanzas', ctrl.finanzas);
+router.get('/top-negocios', ctrl.topNegocios);
 
 // Alertas
 router.get('/alertas', ctrl.listarAlertas);

@@ -63,19 +63,22 @@ export default function SADashboard() {
   const [metricas, setMetricas] = useState(null)
   const [negocios, setNegocios] = useState([])
   const [alertas, setAlertas] = useState([])
+  const [ranking, setRanking] = useState([])
   const [loading, setLoading] = useState(true)
 
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const [mRes, nRes, aRes] = await Promise.all([
+      const [mRes, nRes, aRes, rRes] = await Promise.all([
         api.get('/negocios/metricas'),
         api.get('/negocios'),
         api.get('/superadmin/alertas').catch(() => ({ data: { alertas: [] } })),
+        api.get('/superadmin/top-negocios').catch(() => ({ data: { ranking: [] } })),
       ])
       setMetricas(mRes.data.metricas)
       setNegocios((nRes.data.negocios || []).slice().reverse().slice(0, 5))
       setAlertas(aRes.data.alertas || [])
+      setRanking(rRes.data.ranking || [])
     } catch { /* silencioso */ }
     finally { setLoading(false) }
   }, [])
@@ -264,6 +267,41 @@ export default function SADashboard() {
           </div>
         </div>
       </div>
+
+      {/* Ranking por facturación (últimos 30 días) */}
+      {ranking.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 mt-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">🏆 Top negocios por facturación (últimos 30 días)</h2>
+          <div className="space-y-2">
+            {ranking.map((n, i) => {
+              const max = ranking[0]?.facturado || 1
+              const pct = Math.max(4, (n.facturado / max) * 100)
+              return (
+                <div key={n.negocioId} className="flex items-center gap-3">
+                  <span className={`w-6 text-center text-sm font-bold flex-shrink-0 ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-700' : 'text-gray-500'}`}>
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {n.nombre}
+                        {n.plan === 'premium' && <span className="ml-1.5 text-xs">⭐</span>}
+                      </p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex-shrink-0 ml-3">
+                        ${fmt(Math.round(n.facturado))}
+                        <span className="text-xs font-normal text-gray-500 ml-1.5">{n.pedidos} ped.</span>
+                      </p>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-violet-500 to-purple-400 rounded-full" style={{ width: `${pct}%`, transition: 'width 0.6s' }} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

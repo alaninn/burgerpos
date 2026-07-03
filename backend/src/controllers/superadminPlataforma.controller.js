@@ -4,7 +4,7 @@
 // =============================================
 
 const { Op } = require('sequelize');
-const { PlanConfig, PagoHistorial, Alerta, TicketSoporte, Negocio, Usuario, sequelize } = require('../models');
+const { PlanConfig, PagoHistorial, Alerta, TicketSoporte, Negocio, Usuario, Pedido, sequelize } = require('../models');
 const { invalidarCachePlanes, obtenerPlanes } = require('../middleware/checkPlan');
 const backupService = require('../services/backupService');
 const { generarAlertas } = require('../services/alertasService');
@@ -85,6 +85,45 @@ exports.finanzas = async (req, res) => {
         },
         ultimosPagos
       }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// GET /api/superadmin/top-negocios — ranking por facturación (últimos 30 días)
+exports.topNegocios = async (req, res) => {
+  try {
+    const hace30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const filas = await Pedido.findAll({
+      attributes: [
+        'negocioId',
+        [sequelize.fn('SUM', sequelize.col('total')), 'facturado'],
+        [sequelize.fn('COUNT', sequelize.col('Pedido.id')), 'pedidos'],
+      ],
+      where: { createdAt: { [Op.gte]: hace30 }, estado: { [Op.ne]: 'cancelado' } },
+      group: ['negocioId'],
+      order: [[sequelize.literal('facturado'), 'DESC']],
+      limit: 10,
+      raw: true,
+    });
+
+    const negocios = await Negocio.findAll({
+      where: { id: { [Op.in]: filas.map(f => f.negocioId) } },
+      attributes: ['id', 'nombre', 'plan'],
+      raw: true,
+    });
+    const porId = Object.fromEntries(negocios.map(n => [n.id, n]));
+
+    res.json({
+      success: true,
+      ranking: filas.map(f => ({
+        negocioId: f.negocioId,
+        nombre: porId[f.negocioId]?.nombre || 'Negocio eliminado',
+        plan: porId[f.negocioId]?.plan || null,
+        facturado: parseFloat(f.facturado) || 0,
+        pedidos: parseInt(f.pedidos) || 0,
+      })),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

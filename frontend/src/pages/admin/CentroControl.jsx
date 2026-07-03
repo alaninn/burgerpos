@@ -50,6 +50,72 @@ function Linea({ label, valor }) {
   )
 }
 
+// Modal con las ventas de un método de pago en el período
+function ModalVentasMetodo({ detalle, fechas, onClose }) {
+  const { getNegocioId } = useAuth()
+  const [pedidos, setPedidos] = useState(null)
+
+  useEffect(() => {
+    const negocioId = getNegocioId()
+    const base = `/negocios/${negocioId}/pedidos?fechaDesde=${fechas.desde}&fechaHasta=${fechas.hasta}`
+    // "efectivo" agrupa los dos métodos de efectivo
+    const metodos = detalle.metodo === 'efectivo' ? ['efectivo', 'efectivo_sin_descuento'] : [detalle.metodo]
+    Promise.allSettled(metodos.map(m => api.get(`${base}&metodoPago=${m}`)))
+      .then(resultados => {
+        const todos = resultados
+          .filter(r => r.status === 'fulfilled')
+          .flatMap(r => r.value.data?.pedidos || [])
+          .filter(p => p.estado !== 'cancelado')
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setPedidos(todos)
+      })
+  }, [detalle, fechas, getNegocioId])
+
+  const total = (pedidos || []).reduce((acc, p) => acc + (parseFloat(p.total) || 0), 0)
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{detalle.label} — ventas del período</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {fechas.desde === fechas.hasta ? fechas.desde : `${fechas.desde} → ${fechas.hasta}`}
+              {pedidos && ` · ${pedidos.length} pedido/s · ${fmt(total)}`}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500">✕</button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {pedidos === null ? (
+            <p className="text-center text-gray-400 py-10">Cargando…</p>
+          ) : pedidos.length === 0 ? (
+            <p className="text-center text-gray-400 py-10">Sin ventas con este método en el período</p>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
+              {pedidos.map(p => (
+                <div key={p.id} className="px-6 py-3 flex items-center justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      #{p.numero} · {NOMBRE_MODALIDAD[p.modalidad] || p.modalidad}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {new Date(p.createdAt).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {p.clienteNombre ? ` · ${p.clienteNombre}` : ''}
+                      {p.items?.length ? ` · ${p.items.reduce((a, i) => a + (i.cantidad || 1), 0)} ítem/s` : ''}
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex-shrink-0">{fmt(p.total)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CentroControl() {
   const { getNegocioId } = useAuth()
   const navigate = useNavigate()
@@ -61,6 +127,7 @@ export default function CentroControl() {
   const [datos, setDatos] = useState(null)
   const [cargando, setCargando] = useState(false)
   const [sinAcceso, setSinAcceso] = useState(false)
+  const [detalleMetodo, setDetalleMetodo] = useState(null)
 
   const calcularFechas = useCallback(() => {
     if (periodo === 'hoy') { const h = hoyISO(); return { desde: h, hasta: h } }
@@ -225,13 +292,20 @@ export default function CentroControl() {
             </div>
           </div>
 
-          {/* Por método de pago */}
+          {/* Por método de pago (tocá una tarjeta para ver las ventas) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <CardChica titulo="💵 Efectivo" color="from-emerald-500 to-green-600"
-              valor={fmt((d.porMetodo?.efectivo || 0) + (d.porMetodo?.efectivo_sin_descuento || 0))} />
-            <CardChica titulo="🏦 Transferencia" color="from-amber-500 to-orange-600" valor={fmt(d.porMetodo?.transferencia)} />
-            <CardChica titulo="💳 Tarjeta" color="from-blue-500 to-indigo-600" valor={fmt(d.porMetodo?.tarjeta)} />
-            <CardChica titulo="📱 Mercado Pago" color="from-violet-500 to-purple-600" valor={fmt(d.porMetodo?.mercadopago)} />
+            <CardChica titulo="💵 Efectivo" color="from-emerald-500 to-green-600" sub="tocá para ver las ventas →"
+              valor={fmt((d.porMetodo?.efectivo || 0) + (d.porMetodo?.efectivo_sin_descuento || 0))}
+              onClick={() => setDetalleMetodo({ metodo: 'efectivo', label: '💵 Efectivo' })} />
+            <CardChica titulo="🏦 Transferencia" color="from-amber-500 to-orange-600" sub="tocá para ver las ventas →"
+              valor={fmt(d.porMetodo?.transferencia)}
+              onClick={() => setDetalleMetodo({ metodo: 'transferencia', label: '🏦 Transferencia' })} />
+            <CardChica titulo="💳 Tarjeta" color="from-blue-500 to-indigo-600" sub="tocá para ver las ventas →"
+              valor={fmt(d.porMetodo?.tarjeta)}
+              onClick={() => setDetalleMetodo({ metodo: 'tarjeta', label: '💳 Tarjeta' })} />
+            <CardChica titulo="📱 Mercado Pago" color="from-violet-500 to-purple-600" sub="tocá para ver las ventas →"
+              valor={fmt(d.porMetodo?.mercadopago)}
+              onClick={() => setDetalleMetodo({ metodo: 'mercadopago', label: '📱 Mercado Pago' })} />
           </div>
 
           {/* Por modalidad */}
@@ -277,6 +351,14 @@ export default function CentroControl() {
             </div>
           </div>
         </>
+      )}
+
+      {detalleMetodo && (
+        <ModalVentasMetodo
+          detalle={detalleMetodo}
+          fechas={calcularFechas()}
+          onClose={() => setDetalleMetodo(null)}
+        />
       )}
     </div>
   )
