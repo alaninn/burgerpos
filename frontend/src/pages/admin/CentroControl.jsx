@@ -187,6 +187,10 @@ export default function CentroControl() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
+          <button onClick={() => navigate('/admin/dashboard')}
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-1 flex items-center gap-1">
+            ← Volver al Dashboard
+          </button>
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
             🎯 Centro de Control
           </h1>

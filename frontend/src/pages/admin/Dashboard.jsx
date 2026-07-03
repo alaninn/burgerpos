@@ -258,28 +258,34 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Ganancia real del mes (Centro de Control) */}
-      {gananciaMes && (
-        <button onClick={() => navigate('/admin/centro-control')}
-          className="w-full text-left rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f766e 60%, #155e75 100%)' }}>
-          <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wider">🎯 Ganancia real del mes</p>
-              <p className={`text-3xl font-black mt-1 ${gananciaMes.gananciaNeta < 0 ? 'text-red-300' : 'text-white'}`}>
-                ${fmt(Math.round(gananciaMes.gananciaNeta))}
+      {/* Centro de Control: ganancia real del mes + acceso (siempre visible) */}
+      <button onClick={() => navigate('/admin/centro-control')}
+        className="w-full text-left rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f766e 60%, #155e75 100%)' }}>
+        <div className="relative z-10 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wider">🎯 Centro de Control — Ganancia real del mes</p>
+            {gananciaMes ? (
+              <>
+                <p className={`text-3xl font-black mt-1 ${gananciaMes.gananciaNeta < 0 ? 'text-red-300' : 'text-white'}`}>
+                  ${fmt(Math.round(gananciaMes.gananciaNeta))}
+                </p>
+                <p className="text-emerald-100/70 text-xs mt-1">
+                  Venta ${fmt(Math.round(gananciaMes.ventaProductos))} − costo ${fmt(Math.round(gananciaMes.costoProductos))} − gastos ${fmt(Math.round(gananciaMes.gastosPeriodo))}
+                </p>
+              </>
+            ) : (
+              <p className="text-emerald-100/80 text-sm mt-1">
+                Mirá cuánto ganás de verdad: ventas menos costos y gastos, por día, mes o rango.
               </p>
-              <p className="text-emerald-100/70 text-xs mt-1">
-                Venta ${fmt(Math.round(gananciaMes.ventaProductos))} − costo ${fmt(Math.round(gananciaMes.costoProductos))} − gastos ${fmt(Math.round(gananciaMes.gastosPeriodo))}
-              </p>
-            </div>
-            <span className="text-sm font-semibold bg-white/15 border border-white/20 rounded-xl px-4 py-2">
-              Ver Centro de Control →
-            </span>
+            )}
           </div>
-          <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-emerald-400/10 blur-2xl" />
-        </button>
-      )}
+          <span className="text-sm font-semibold bg-white/15 border border-white/20 rounded-xl px-4 py-2">
+            Abrir Centro de Control →
+          </span>
+        </div>
+        <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-emerald-400/10 blur-2xl" />
+      </button>
 
       {/* Gráficos Principales */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
