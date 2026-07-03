@@ -72,6 +72,10 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Detras de nginx: confiar en el primer proxy para que el rate limit
+// identifique la IP real del cliente (X-Forwarded-For)
+app.set('trust proxy', 1);
+
 // Rate limit global sobre la API (protege de abuso/fuerza bruta)
 const rateLimit = require('express-rate-limit');
 app.use('/api', rateLimit({
