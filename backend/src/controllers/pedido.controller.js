@@ -1,4 +1,4 @@
-const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Receta, RecetaIngrediente, ProductoVariante, sequelize } = require('../models');
+const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Receta, RecetaIngrediente, ProductoVariante, Caja, CajaUsuario, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const whatsappService = require('../services/whatsappService');
 
@@ -104,9 +104,20 @@ exports.crear = async (req, res) => {
 
     const total = subtotal + (parseFloat(costoEnvio) || 0) - (parseFloat(descuento) || 0) + (parseFloat(propina) || 0);
 
+    // Vincular el pedido a la caja abierta del operador (si carga desde el POS)
+    let cajaId = null;
+    if (req.usuario?.id) {
+      const mem = await CajaUsuario.findOne({
+        where: { negocioId, usuarioId: req.usuario.id },
+        include: [{ model: Caja, as: 'caja', where: { estado: 'abierta' }, required: true }],
+        transaction: t
+      });
+      if (mem) cajaId = mem.caja.id;
+    }
+
     const pedido = await Pedido.create({
       negocioId, numero, modalidad, clienteNombre, clienteTelefono,
-      clienteDireccion, clienteId, metodoPago, notas,
+      clienteDireccion, clienteId, metodoPago, notas, cajaId,
       clienteLat: clienteLat ?? null,
       clienteLng: clienteLng ?? null,
       costoEnvio: costoEnvio || 0,

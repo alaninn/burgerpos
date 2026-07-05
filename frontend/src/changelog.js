@@ -6,9 +6,23 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.4.0'
+export const VERSION_ACTUAL = '1.5.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.5.0',
+    fecha: '2026-07-05',
+    titulo: 'Cajas por turno: cajas fijas y varios operadores',
+    destacados: [
+      { titulo: 'Varias cajas abiertas a la vez', detalle: 'Podés tener más de una caja abierta al mismo tiempo (por ejemplo Mañana y Tarde). Cada venta queda registrada en la caja del operador que la cargó.' },
+      { titulo: 'Cajas fijas y turnos compartidos', detalle: 'El administrador define cajas fijas con nombre. Cualquier operador la abre por su nombre, y otros pueden unirse o salir del mismo turno sin cerrarlo.' },
+    ],
+    cambios: [
+      { t: 'Nueva pantalla de Cajas: abrí una caja (libre o fija), unite a una abierta o salí sin cerrarla, y cerrá con arqueo.' },
+      { t: 'Los gastos con origen "caja del turno" ahora se descuentan del efectivo esperado al cerrar la caja.' },
+      { t: 'El historial de cajas muestra el nombre de cada turno y su arqueo completo.' },
+    ],
+  },
   {
     version: '1.4.0',
     fecha: '2026-07-05',

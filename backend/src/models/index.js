@@ -13,6 +13,8 @@ const Repartidor     = require('./Repartidor')(sequelize, DataTypes);
 const Pedido         = require('./Pedido')(sequelize, DataTypes);
 const ItemPedido     = require('./ItemPedido')(sequelize, DataTypes);
 const Caja           = require('./Caja')(sequelize, DataTypes);
+const CajaDefinida   = require('./CajaDefinida')(sequelize, DataTypes);
+const CajaUsuario    = require('./CajaUsuario')(sequelize, DataTypes);
 const Descuento      = require('./Descuento')(sequelize, DataTypes);
 const PlatformConfig = require('./PlatformConfig')(sequelize, DataTypes);
 const MercadoPagoCredential = require('./MercadoPagoCredential')(sequelize, DataTypes);
@@ -106,6 +108,21 @@ Repartidor.hasMany(Pedido,    { foreignKey: 'repartidorId', as: 'pedidos' });
 Negocio.hasMany(Caja,         { foreignKey: 'negocioId', as: 'cajas' });
 Caja.belongsTo(Negocio,       { foreignKey: 'negocioId', as: 'negocio' });
 Caja.belongsTo(Usuario,       { foreignKey: 'usuarioId', as: 'usuario' });
+Caja.belongsTo(Usuario,       { foreignKey: 'usuarioCierreId', as: 'usuarioCierre' });
+
+// ── Cajas fijas y operadores por turno ────────────────────
+Negocio.hasMany(CajaDefinida, { foreignKey: 'negocioId', as: 'cajasDefinidas' });
+CajaDefinida.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+Caja.belongsTo(CajaDefinida,  { foreignKey: 'cajaDefinidaId', as: 'cajaDefinida' });
+CajaDefinida.hasMany(Caja,    { foreignKey: 'cajaDefinidaId', as: 'turnos' });
+
+Caja.hasMany(CajaUsuario,     { foreignKey: 'cajaId', as: 'operadores', onDelete: 'CASCADE' });
+CajaUsuario.belongsTo(Caja,   { foreignKey: 'cajaId', as: 'caja' });
+CajaUsuario.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+
+// ── Pedido → Caja (en qué caja se cargó) ──────────────────
+Pedido.belongsTo(Caja,        { foreignKey: 'cajaId', as: 'caja' });
+Caja.hasMany(Pedido,          { foreignKey: 'cajaId', as: 'pedidos' });
 
 // ── Negocio → Descuento ───────────────────────────────────
 Negocio.hasMany(Descuento,    { foreignKey: 'negocioId', as: 'descuentos' });
@@ -204,6 +221,8 @@ module.exports = {
   Pedido,
   ItemPedido,
   Caja,
+  CajaDefinida,
+  CajaUsuario,
   Descuento,
   PlatformConfig,
   MercadoPagoCredential,

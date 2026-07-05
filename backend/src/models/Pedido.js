@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     clienteLat: { type: DataTypes.FLOAT, allowNull: true, defaultValue: null },
     clienteLng: { type: DataTypes.FLOAT, allowNull: true, defaultValue: null },
     repartidorId: { type: DataTypes.UUID, allowNull: true },
+    cajaId: { type: DataTypes.UUID, allowNull: true },
     subtotal: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     costoEnvio: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     descuento: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
