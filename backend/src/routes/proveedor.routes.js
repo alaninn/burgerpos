@@ -8,8 +8,12 @@ const proveedorController = require('../controllers/proveedor.controller');
 router.use(protect, perteneceAlNegocio, checkAcceso('stock'));
 
 router.get('/', proveedorController.listar);
+router.get('/:id', proveedorController.obtener);
 router.post('/', proveedorController.crear);
+router.post('/:id/pago', proveedorController.registrarPago);
+router.patch('/:id/reactivar', proveedorController.reactivar);
 router.put('/:id', proveedorController.actualizar);
+router.delete('/:id/definitivo', proveedorController.eliminarDefinitivo);
 router.delete('/:id', proveedorController.eliminar);
 
 module.exports = router;

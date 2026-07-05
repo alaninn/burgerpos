@@ -6,9 +6,25 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.3.0'
+export const VERSION_ACTUAL = '1.4.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.4.0',
+    fecha: '2026-07-05',
+    titulo: 'Gastos unificado con proveedores y cuenta corriente',
+    destacados: [
+      { titulo: 'Todo se registra desde Gastos', detalle: 'Gastos, compras y pagos a proveedores ahora viven en una sola pantalla. Cargá un gasto común o un pago a proveedor con el mismo botón, y una compra completa con "Compra avanzada".' },
+      { titulo: 'Cuenta corriente de proveedores', detalle: 'Cada proveedor lleva su saldo: lo que le debemos y lo que nos debe. Registrá pagos y cobros, y mirá la ficha con el historial de movimientos.' },
+    ],
+    cambios: [
+      { t: 'Nuevo panel de Gastos: filtros por hoy, día, mes o rango, y totales por tipo (gasto / compra / pago a proveedor) y por origen del dinero (caja / local / MP).' },
+      { t: 'Al cargar un gasto podés elegir de dónde sale la plata y, si querés, marcarlo como Factura A para sumar el IVA crédito.' },
+      { t: 'Alta rápida de proveedor sin salir del modal de gasto.' },
+      { t: 'La "Compra avanzada" sigue actualizando el stock de tus ingredientes y, si no la pagás, queda como deuda con el proveedor.' },
+      { t: 'La sección Compras se integró dentro de Gastos: una sola pantalla para todo.' },
+    ],
+  },
   {
     version: '1.3.0',
     fecha: '2026-07-03',

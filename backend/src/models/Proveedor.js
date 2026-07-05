@@ -48,6 +48,18 @@ const Proveedor = sequelize.define('Proveedor', {
   activo: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // Cuenta corriente. saldoDeuda = lo que el proveedor NOS debe;
+  // saldoAFavor = lo que NOSOTROS le debemos al proveedor.
+  saldoDeuda: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0
+  },
+  saldoAFavor: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0
   }
 }, {
   tableName: 'proveedores',

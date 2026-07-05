@@ -23,7 +23,6 @@ import Descuentos from './pages/admin/Descuentos'
 // Gestión
 import Stock from './pages/admin/gestion/Stock'
 import GastosDiarios from './pages/admin/gestion/GastosDiarios'
-import Compras from './pages/admin/gestion/Compras'
 import Proveedores from './pages/admin/gestion/Proveedores'
 import Recetas from './pages/admin/gestion/Recetas'
 import Usuarios from './pages/admin/Usuarios'
@@ -95,7 +94,6 @@ function AppRoutes() {
         <Route path="configuraciones" element={<Configuraciones />} />
         <Route path="fiscal" element={<Fiscal />} />
         <Route path="gestion/gastos" element={<GastosDiarios />} />
-        <Route path="gestion/compras" element={<Compras />} />
         <Route path="gestion/stock" element={<Stock />} />
         <Route path="gestion/recetas" element={<Recetas />} />
         <Route path="gestion/proveedores" element={<Proveedores />} />

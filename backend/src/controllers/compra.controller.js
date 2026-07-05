@@ -274,9 +274,17 @@ exports.crear = async (req, res) => {
           monto: total,
           categoria: 'proveedores',
           metodoPago,
+          tipo: 'compra',
           notas: `Gasto generado automáticamente por compra #${compra.id}`
         }, { transaction: t });
       }
+    }
+
+    // Cuenta corriente: una compra no pagada genera deuda nuestra (le debemos)
+    if (!pagado) {
+      await proveedor.update({
+        saldoAFavor: Number(proveedor.saldoAFavor || 0) + total
+      }, { transaction: t });
     }
 
     await t.commit();
@@ -378,8 +386,15 @@ exports.actualizar = async (req, res) => {
         monto: compra.total,
         categoria: 'proveedores',
         metodoPago,
+        tipo: 'compra',
         notas: `Gasto generado automáticamente al marcar compra como pagada`
       }, { transaction: t });
+
+      // Se cancela la deuda que la compra habia generado
+      const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
+      if (prov) {
+        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) - Number(compra.total)) }, { transaction: t });
+      }
     }
 
     await t.commit();
@@ -465,6 +480,14 @@ exports.eliminar = async (req, res) => {
         }, { transaction: t });
 
         console.log(`✓ Stock revertido para ${producto.nombre}: -${cantidadEnUnidadVenta}`);
+      }
+    }
+
+    // Revertir la deuda que una compra no pagada habia generado
+    if (!compra.pagado) {
+      const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
+      if (prov) {
+        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) - Number(compra.total)) }, { transaction: t });
       }
     }
 
