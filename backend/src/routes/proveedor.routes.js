@@ -11,6 +11,8 @@ router.get('/', proveedorController.listar);
 router.get('/:id', proveedorController.obtener);
 router.post('/', proveedorController.crear);
 router.post('/:id/pago', proveedorController.registrarPago);
+router.post('/:id/productos', proveedorController.asignarProducto);
+router.delete('/:id/productos/:productoId', proveedorController.quitarProducto);
 router.patch('/:id/reactivar', proveedorController.reactivar);
 router.put('/:id', proveedorController.actualizar);
 router.delete('/:id/definitivo', proveedorController.eliminarDefinitivo);

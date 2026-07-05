@@ -131,6 +131,8 @@ function ModalPago({ proveedor, tipoPago, onClose, onSave }) {
 // ---- Ficha del proveedor ----
 function FichaProveedor({ proveedorId, negocioId, onClose, onCambio, onEditar, onPago }) {
   const [prov, setProv] = useState(null)
+  const [productosStock, setProductosStock] = useState([])
+  const [aAsignar, setAAsignar] = useState('')
 
   const cargar = async () => {
     try {
@@ -138,9 +140,41 @@ function FichaProveedor({ proveedorId, negocioId, onClose, onCambio, onEditar, o
       setProv(data)
     } catch { toast.error('Error al cargar la ficha') }
   }
-  useEffect(() => { cargar() }, [proveedorId])
+  // Trae los productos de stock del negocio para poder asignarlos al proveedor
+  const cargarProductos = async () => {
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        api.get(`/negocios/${negocioId}/productos`),
+        api.get(`/negocios/${negocioId}/productos/categorias`)
+      ])
+      const stockCats = new Set((catRes.data?.categorias || [])
+        .filter(c => c.tipo === 'ingrediente' || c.tipo === 'producto').map(c => c.id))
+      setProductosStock((prodRes.data?.productos || []).filter(p => p.categoriaId && stockCats.has(p.categoriaId)))
+    } catch { /* opcional */ }
+  }
+  useEffect(() => { cargar(); cargarProductos() }, [proveedorId])
+
+  const asignarProducto = async () => {
+    if (!aAsignar) return
+    try {
+      await api.post(`/negocios/${negocioId}/proveedores/${proveedorId}/productos`, { productoId: aAsignar })
+      toast.success('Producto asignado')
+      setAAsignar('')
+      cargar(); cargarProductos()
+    } catch (e) { toast.error(e.response?.data?.message || 'Error al asignar') }
+  }
+  const quitarProducto = async (productoId) => {
+    try {
+      await api.delete(`/negocios/${negocioId}/proveedores/${proveedorId}/productos/${productoId}`)
+      toast.success('Producto quitado')
+      cargar(); cargarProductos()
+    } catch (e) { toast.error(e.response?.data?.message || 'Error al quitar') }
+  }
 
   if (!prov) return null
+  const asignados = prov.productos || []
+  const asignadosIds = new Set(asignados.map(p => p.id))
+  const disponibles = productosStock.filter(p => !asignadosIds.has(p.id))
   const deuda = Number(prov.saldo_deuda || 0)
   const aFavor = Number(prov.saldo_a_favor || 0)
   const stats = prov.estadisticas || {}
@@ -205,6 +239,36 @@ function FichaProveedor({ proveedorId, negocioId, onClose, onCambio, onEditar, o
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Productos del proveedor: al comprarle, estos cargan su stock */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div className="px-3.5 py-2.5 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-[11px] text-gray-400 uppercase font-semibold">Productos que le compramos</p>
+              <p className="text-[11px] text-gray-400">Al registrar una compra a este proveedor, estos productos cargan su stock</p>
+            </div>
+            <div className="p-3 space-y-2">
+              {asignados.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-2">Sin productos asignados todavía.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {asignados.map(p => (
+                    <div key={p.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40">
+                      <span className="text-sm text-gray-800 dark:text-gray-200">{p.nombre}</span>
+                      <span className="text-[11px] text-gray-400">stock {Number(p.stock) || 0}{p.unidadBase ? ' ' + p.unidadBase : ''}</span>
+                      <button onClick={() => quitarProducto(p.id)} title="Quitar" className="text-red-400 hover:text-red-600 text-xs">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 pt-1">
+                <select value={aAsignar} onChange={e => setAAsignar(e.target.value)} className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white">
+                  <option value="">Agregar un producto...</option>
+                  {disponibles.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select>
+                <button onClick={asignarProducto} disabled={!aAsignar} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white rounded-lg text-sm font-medium">Agregar</button>
+              </div>
+            </div>
           </div>
 
           {prov.notas && (

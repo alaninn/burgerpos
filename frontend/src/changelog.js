@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.7.0'
+export const VERSION_ACTUAL = '1.7.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.7.1',
+    fecha: '2026-07-05',
+    titulo: 'Productos por proveedor desde la ficha',
+    cambios: [
+      { t: 'Desde la ficha de un proveedor podés asignar (y quitar) los productos que le comprás. Al registrar una compra a ese proveedor, esos productos aparecen listos para cargar su stock.' },
+    ],
+  },
   {
     version: '1.7.0',
     fecha: '2026-07-05',

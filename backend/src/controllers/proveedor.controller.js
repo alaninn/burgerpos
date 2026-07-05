@@ -118,6 +118,13 @@ exports.obtener = async (req, res) => {
       .map(([mes, total]) => ({ mes, total }))
       .sort((a, b) => new Date(b.mes) - new Date(a.mes));
 
+    // Productos que compramos a este proveedor (para que una compra cargue su stock)
+    const productos = await Producto.findAll({
+      where: { negocioId, proveedorId: id },
+      attributes: ['id', 'nombre', 'stock', 'unidadBase', 'categoriaId'],
+      order: [['nombre', 'ASC']]
+    });
+
     res.json({
       success: true,
       ...proveedor.toJSON(),
@@ -125,7 +132,8 @@ exports.obtener = async (req, res) => {
       saldo_a_favor: Number(proveedor.saldoAFavor) || 0,
       movimientos,
       estadisticas,
-      estadisticas_por_mes
+      estadisticas_por_mes,
+      productos
     });
   } catch (error) {
     console.error('Error al obtener proveedor:', error);
@@ -250,6 +258,42 @@ exports.registrarPago = async (req, res) => {
     await t.rollback();
     console.error('Error al registrar pago:', error);
     res.status(500).json({ success: false, message: 'Error al registrar el pago', error: error.message });
+  }
+};
+
+// Asignar un producto existente a este proveedor (para comprarle y cargar stock)
+exports.asignarProducto = async (req, res) => {
+  try {
+    const { negocioId, id } = req.params;
+    const { productoId } = req.body;
+
+    const proveedor = await Proveedor.findOne({ where: { id, negocioId } });
+    if (!proveedor) return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
+
+    const producto = await Producto.findOne({ where: { id: productoId, negocioId } });
+    if (!producto) return res.status(404).json({ success: false, message: 'Producto no encontrado' });
+
+    await producto.update({ proveedorId: id });
+    res.json({ success: true, message: 'Producto asignado al proveedor' });
+  } catch (error) {
+    console.error('Error al asignar producto:', error);
+    res.status(500).json({ success: false, message: 'Error al asignar el producto', error: error.message });
+  }
+};
+
+// Quitar un producto de este proveedor (no borra el producto)
+exports.quitarProducto = async (req, res) => {
+  try {
+    const { negocioId, id, productoId } = req.params;
+
+    const producto = await Producto.findOne({ where: { id: productoId, negocioId, proveedorId: id } });
+    if (!producto) return res.status(404).json({ success: false, message: 'Producto no encontrado en este proveedor' });
+
+    await producto.update({ proveedorId: null });
+    res.json({ success: true, message: 'Producto quitado del proveedor' });
+  } catch (error) {
+    console.error('Error al quitar producto:', error);
+    res.status(500).json({ success: false, message: 'Error al quitar el producto', error: error.message });
   }
 };
 
