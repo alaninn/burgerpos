@@ -330,6 +330,7 @@ exports.productos = async (req, res) => {
     const items = await ItemPedido.findAll({
       include: [{
         model: Pedido,
+        as: 'pedido',
         where: {
           negocioId,
           estado: { [Op.ne]: 'cancelado' },
@@ -338,18 +339,18 @@ exports.productos = async (req, res) => {
         attributes: []
       }],
       attributes: [
-        'productoNombre',
+        [col('ItemPedido.nombre'), 'productoNombre'],
         [fn('SUM', col('cantidad')), 'totalVendido'],
-        [fn('SUM', literal('cantidad * "precioVenta"')), 'totalFacturado'],
-        [fn('AVG', col('precioVenta')), 'precioPromedio']
+        [fn('SUM', literal('cantidad * "ItemPedido"."precioUnitario"')), 'totalFacturado'],
+        [fn('AVG', col('precioUnitario')), 'precioPromedio']
       ],
-      group: ['productoNombre'],
+      group: ['ItemPedido.nombre'],
       order: [[fn('SUM', col('cantidad')), 'DESC']],
       limit: 50,
       raw: true
     });
 
-    res.json(items);
+    res.json({ productos: items });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -382,7 +383,7 @@ exports.clientes = async (req, res) => {
       raw: true
     });
 
-    res.json(clientes);
+    res.json({ clientes });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -406,21 +407,23 @@ exports.repartidores = async (req, res) => {
       },
       include: [{
         model: Repartidor,
-        attributes: ['nombre']
+        as: 'repartidor',
+        attributes: []
       }],
       attributes: [
         'repartidorId',
+        [col('repartidor.nombre'), 'repartidorNombre'],
         [fn('COUNT', col('Pedido.id')), 'totalEntregas'],
         [fn('SUM', col('total')), 'totalMonto'],
         [fn('SUM', col('propina')), 'totalPropinas'],
         [fn('AVG', col('total')), 'ticketPromedio']
       ],
-      group: ['repartidorId', 'Repartidor.id', 'Repartidor.nombre'],
+      group: ['repartidorId', 'repartidor.id', 'repartidor.nombre'],
       order: [[fn('COUNT', col('Pedido.id')), 'DESC']],
       raw: true
     });
 
-    res.json(repartidores);
+    res.json({ repartidores });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

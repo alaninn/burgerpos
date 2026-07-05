@@ -565,8 +565,8 @@ export default function Reportes() {
               columnas={[
                 {
                   key: 'nombre', label: 'Repartidor', align: 'left', sortable: true,
-                  getValue: (row) => row.Repartidor?.nombre || 'Sin asignar',
-                  render: (row) => row.Repartidor?.nombre || 'Sin asignar'
+                  getValue: (row) => row.repartidorNombre || 'Sin asignar',
+                  render: (row) => row.repartidorNombre || 'Sin asignar'
                 },
                 {
                   key: 'totalEntregas', label: 'Entregas', align: 'right', sortable: true,
