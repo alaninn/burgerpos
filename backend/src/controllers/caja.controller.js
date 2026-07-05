@@ -260,10 +260,17 @@ exports.cerrar = async (req, res) => {
     if (!caja) return res.status(404).json({ success: false, message: 'Caja no encontrada o ya cerrada' });
 
     const totales = await calcularTotales(caja);
-    const { efectivoReal, notas } = req.body;
+    const { efectivoReal, efectivoRetirado, dineroSiguiente, notas } = req.body;
     // Efectivo esperado = saldo inicial + ventas en efectivo - gastos de la caja
     const efectivoEsperado = parseFloat(caja.saldoInicial) + totales.totalEfectivo - totales.gastosCaja;
-    const diferencia = efectivoReal !== undefined ? parseFloat(efectivoReal) - efectivoEsperado : 0;
+
+    // El efectivo contado al cierre puede declararse como retirado + lo que
+    // queda para el proximo turno (estilo gestionQ24), o como un unico monto.
+    const declaraSplit = efectivoRetirado !== undefined || dineroSiguiente !== undefined;
+    const efectivoContado = declaraSplit
+      ? (Number(efectivoRetirado || 0) + Number(dineroSiguiente || 0))
+      : (efectivoReal !== undefined ? Number(efectivoReal) : null);
+    const diferencia = efectivoContado !== null ? efectivoContado - efectivoEsperado : 0;
 
     await caja.update({
       estado: 'cerrada',
@@ -271,6 +278,8 @@ exports.cerrar = async (req, res) => {
       totalTarjeta: totales.totalTarjeta,
       totalTransferencia: totales.totalTransferencia,
       totalVentas: totales.totalVentas,
+      efectivoRetirado: Number(efectivoRetirado || 0),
+      dineroSiguiente: Number(dineroSiguiente || 0),
       diferencia,
       notas: notas || '',
       cierreAt: new Date(),

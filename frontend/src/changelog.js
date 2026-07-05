@@ -6,9 +6,19 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.5.0'
+export const VERSION_ACTUAL = '1.6.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.6.0',
+    fecha: '2026-07-05',
+    titulo: 'Cierre de caja con arqueo detallado',
+    cambios: [
+      { t: 'Al cerrar una caja declarás cuánto efectivo retirás y cuánto queda para el próximo turno; el sistema calcula la diferencia contra lo esperado.' },
+      { t: 'El arqueo del historial muestra el efectivo retirado y el que quedó para el siguiente turno.' },
+      { t: 'Se corrigieron los reportes de productos más vendidos, clientes y repartidores que no cargaban.', super: true },
+    ],
+  },
   {
     version: '1.5.0',
     fecha: '2026-07-05',

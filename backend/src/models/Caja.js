@@ -12,6 +12,8 @@ module.exports = (sequelize, DataTypes) => {
     totalTarjeta:        { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     totalTransferencia:  { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     totalVentas:         { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+    efectivoRetirado:    { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+    dineroSiguiente:     { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     diferencia:          { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     notas:               { type: DataTypes.TEXT, defaultValue: '' },
     aperturaAt:          { type: DataTypes.DATE, defaultValue: DataTypes.NOW },

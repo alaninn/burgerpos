@@ -55,6 +55,12 @@ function ModalDetalleCaja({ caja, onClose }) {
             <div className="flex justify-between"><span className="text-gray-700 dark:text-gray-300">+ Ventas efectivo</span><span className="font-medium text-green-600 dark:text-green-400">+${fmt(caja.totalEfectivo)}</span></div>
             {Number(caja.gastosCaja) > 0 && <div className="flex justify-between"><span className="text-gray-700 dark:text-gray-300">− Gastos de la caja</span><span className="font-medium text-red-500">−${fmt(caja.gastosCaja)}</span></div>}
             <div className="flex justify-between border-t border-gray-200 dark:border-gray-700 pt-2"><span className="font-medium text-gray-700 dark:text-gray-300">Efectivo esperado</span><span className="font-bold">${fmt(efEsperado)}</span></div>
+            {(Number(caja.efectivoRetirado) > 0 || Number(caja.dineroSiguiente) > 0) && (
+              <>
+                <div className="flex justify-between"><span className="text-gray-700 dark:text-gray-300">Efectivo retirado</span><span className="font-medium text-blue-600 dark:text-blue-400">${fmt(caja.efectivoRetirado)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-700 dark:text-gray-300">Queda para el próximo turno</span><span className="font-medium text-blue-600 dark:text-blue-400">${fmt(caja.dineroSiguiente)}</span></div>
+              </>
+            )}
             <div className={`flex justify-between font-bold p-2 rounded-lg ${diferencia >= 0 ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
               <span>{diferencia >= 0 ? 'Sobrante' : 'Faltante'}</span>
               <span>{diferencia >= 0 ? '+' : ''}${fmt(diferencia)}</span>
@@ -135,17 +141,23 @@ function ModalAbrirCaja({ negocioId, cajasFijas, onClose, onOpened }) {
 }
 
 function ModalCerrarCaja({ negocioId, caja, onClose, onClosed }) {
-  const [efectivoReal, setEfectivoReal] = useState('')
+  const [retirado, setRetirado] = useState('')
+  const [siguiente, setSiguiente] = useState('')
   const [notas, setNotas] = useState('')
   const [loading, setLoading] = useState(false)
   const efExpected = parseFloat(caja.saldoInicial) + parseFloat(caja.totalEfectivo || 0) - parseFloat(caja.gastosCaja || 0)
-  const diferencia = efectivoReal !== '' ? parseFloat(efectivoReal) - efExpected : 0
+  const contado = (retirado !== '' || siguiente !== '') ? (Number(retirado || 0) + Number(siguiente || 0)) : null
+  const diferencia = contado !== null ? contado - efExpected : 0
 
   const cerrar = async () => {
     if (!confirm(`¿Cerrar la caja "${caja.nombre || 'actual'}" ahora?`)) return
     setLoading(true)
     try {
-      await api.patch(`/negocios/${negocioId}/cajas/${caja.id}/cerrar`, { efectivoReal: Number(efectivoReal), notas })
+      await api.patch(`/negocios/${negocioId}/cajas/${caja.id}/cerrar`, {
+        efectivoRetirado: Number(retirado || 0),
+        dineroSiguiente: Number(siguiente || 0),
+        notas
+      })
       toast.success('Caja cerrada correctamente')
       onClosed(); onClose()
     } catch (err) { toast.error(err.response?.data?.message || 'Error') }
@@ -171,14 +183,28 @@ function ModalCerrarCaja({ negocioId, caja, onClose, onClosed }) {
             <div className="border-t border-gray-300 dark:border-gray-700 pt-2 flex justify-between font-bold"><span>Total ventas</span><span className="text-violet-700 dark:text-violet-400">${fmt(caja.totalVentas)}</span></div>
             <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>Efectivo esperado</span><span>${fmt(efExpected)}</span></div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Efectivo real en caja</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-              <input type="number" value={efectivoReal} onChange={e => setEfectivoReal(e.target.value)} placeholder={fmt(efExpected)} className="w-full pl-8 pr-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Efectivo retirado</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input type="number" value={retirado} onChange={e => setRetirado(e.target.value)} placeholder="0" className="w-full pl-8 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white" />
+              </div>
             </div>
-            {efectivoReal !== '' && <p className={`text-xs mt-1 font-medium ${diferencia >= 0 ? 'text-green-600' : 'text-red-500'}`}>{diferencia >= 0 ? 'Sobrante' : 'Faltante'}: ${fmt(Math.abs(diferencia))}</p>}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Queda para el próximo turno</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input type="number" value={siguiente} onChange={e => setSiguiente(e.target.value)} placeholder="0" className="w-full pl-8 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white" />
+              </div>
+            </div>
           </div>
+          {contado !== null && (
+            <div className="flex items-center justify-between text-sm bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2">
+              <span className="text-gray-600 dark:text-gray-400">Contado ${fmt(contado)} vs esperado ${fmt(efExpected)}</span>
+              <span className={`font-bold ${diferencia >= 0 ? 'text-green-600' : 'text-red-500'}`}>{diferencia >= 0 ? 'Sobrante' : 'Faltante'}: ${fmt(Math.abs(diferencia))}</span>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notas del cierre</label>
             <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} placeholder="Observaciones..." className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white resize-none" />
