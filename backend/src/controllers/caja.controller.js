@@ -23,13 +23,14 @@ async function calcularTotales(caja) {
   }
 
   const pedidos = await Pedido.findAll({ where: wherePedidos });
-  let totalEfectivo = 0, totalTarjeta = 0, totalTransferencia = 0, totalVentas = 0;
+  let totalEfectivo = 0, totalTarjeta = 0, totalTransferencia = 0, totalMercadopago = 0, totalVentas = 0;
   pedidos.forEach(p => {
     const t = parseFloat(p.total) || 0;
     totalVentas += t;
     if (p.metodoPago === 'efectivo' || p.metodoPago === 'efectivo_sin_descuento') totalEfectivo += t;
     else if (p.metodoPago === 'tarjeta') totalTarjeta += t;
     else if (p.metodoPago === 'transferencia') totalTransferencia += t;
+    else if (p.metodoPago === 'mercado_pago') totalMercadopago += t;
   });
 
   // Gastos en efectivo que salieron de esta caja
@@ -37,7 +38,7 @@ async function calcularTotales(caja) {
     where: { cajaId: caja.id, origenDinero: 'caja', metodoPago: 'efectivo' }
   }) || 0;
 
-  return { totalEfectivo, totalTarjeta, totalTransferencia, totalVentas, totalPedidos: pedidos.length, gastosCaja: Number(gastosCaja) };
+  return { totalEfectivo, totalTarjeta, totalTransferencia, totalMercadopago, totalVentas, totalPedidos: pedidos.length, gastosCaja: Number(gastosCaja) };
 }
 
 // ── Cajas fijas ───────────────────────────────────────────
@@ -260,26 +261,41 @@ exports.cerrar = async (req, res) => {
     if (!caja) return res.status(404).json({ success: false, message: 'Caja no encontrada o ya cerrada' });
 
     const totales = await calcularTotales(caja);
-    const { efectivoReal, efectivoRetirado, dineroSiguiente, notas } = req.body;
+    const {
+      efectivoReal, efectivoRetirado, dineroSiguiente,
+      tarjetaDeclarada, mercadopagoDeclarada, transferenciaDeclarada, notas
+    } = req.body;
+
     // Efectivo esperado = saldo inicial + ventas en efectivo - gastos de la caja
     const efectivoEsperado = parseFloat(caja.saldoInicial) + totales.totalEfectivo - totales.gastosCaja;
 
     // El efectivo contado al cierre puede declararse como retirado + lo que
     // queda para el proximo turno (estilo gestionQ24), o como un unico monto.
     const declaraSplit = efectivoRetirado !== undefined || dineroSiguiente !== undefined;
-    const efectivoContado = declaraSplit
+    const efectivoDeclarado = declaraSplit
       ? (Number(efectivoRetirado || 0) + Number(dineroSiguiente || 0))
       : (efectivoReal !== undefined ? Number(efectivoReal) : null);
-    const diferencia = efectivoContado !== null ? efectivoContado - efectivoEsperado : 0;
+
+    // Diferencia total: lo declarado (efectivo + metodos virtuales) menos lo
+    // que el sistema esperaba (ventas + saldo inicial - gastos de caja).
+    const totalDeclarado = (efectivoDeclarado || 0)
+      + Number(tarjetaDeclarada || 0) + Number(mercadopagoDeclarada || 0) + Number(transferenciaDeclarada || 0);
+    const totalSistema = totales.totalVentas + parseFloat(caja.saldoInicial) - totales.gastosCaja;
+    const declaroAlgo = declaraSplit || tarjetaDeclarada !== undefined || efectivoReal !== undefined;
+    const diferencia = declaroAlgo ? totalDeclarado - totalSistema : 0;
 
     await caja.update({
       estado: 'cerrada',
       totalEfectivo: totales.totalEfectivo,
       totalTarjeta: totales.totalTarjeta,
       totalTransferencia: totales.totalTransferencia,
+      totalMercadopago: totales.totalMercadopago,
       totalVentas: totales.totalVentas,
       efectivoRetirado: Number(efectivoRetirado || 0),
       dineroSiguiente: Number(dineroSiguiente || 0),
+      tarjetaDeclarada: Number(tarjetaDeclarada || 0),
+      mercadopagoDeclarada: Number(mercadopagoDeclarada || 0),
+      transferenciaDeclarada: Number(transferenciaDeclarada || 0),
       diferencia,
       notas: notas || '',
       cierreAt: new Date(),

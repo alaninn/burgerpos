@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.6.0'
+export const VERSION_ACTUAL = '1.7.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.7.0',
+    fecha: '2026-07-05',
+    titulo: 'Nuevo cierre de caja completo',
+    destacados: [
+      { titulo: 'Cierre de caja como en el POS grande', detalle: 'El cierre ahora tiene resumen del turno con gráfico de pagos, arqueo de efectivo con "contar billetes", declaración de tarjetas / Mercado Pago / transferencias y una pantalla final que compara lo declarado contra lo del sistema, con opción de imprimir.' },
+    ],
+    cambios: [
+      { t: 'Al cerrar declarás el efectivo (a retirar y para el próximo turno) y los totales por tarjeta, Mercado Pago y transferencia; el sistema muestra las diferencias método por método.' },
+      { t: 'Botón "Contar billetes" para sumar el efectivo por denominación.' },
+      { t: 'Se puede imprimir el ticket de cierre.' },
+    ],
+  },
   {
     version: '1.6.0',
     fecha: '2026-07-05',
