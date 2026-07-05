@@ -1,6 +1,7 @@
 const { Receta, RecetaIngrediente, Producto, Categoria, ProductoVariante } = require('../models');
 const { sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { costoPorUnidadBase, persistirCostoReceta } = require('../utils/costoReceta');
 
 exports.listar = async (req, res) => {
   try {
@@ -172,6 +173,9 @@ exports.crear = async (req, res) => {
       }, { transaction });
     }
 
+    // Guardar el costo calculado en el producto del menu / variante
+    await persistirCostoReceta(receta, { transaction });
+
     await transaction.commit();
 
     // Obtener receta completa con includes
@@ -324,6 +328,14 @@ exports.actualizar = async (req, res) => {
       }
     }
 
+    // Recalcular y guardar el costo en el producto del menu / variante.
+    // Se recarga la receta para tomar los ingredientes vigentes.
+    const recetaConIng = await Receta.findByPk(receta.id, {
+      include: [{ model: RecetaIngrediente, as: 'ingredientes', include: [{ model: Producto, as: 'ingrediente' }] }],
+      transaction
+    });
+    await persistirCostoReceta(recetaConIng, { transaction });
+
     await transaction.commit();
 
     // Obtener receta actualizada
@@ -411,20 +423,8 @@ exports.calcularCosto = async (req, res) => {
     for (const item of receta.ingredientes) {
       const ingrediente = item.ingrediente;
 
-      // Calcular precio por unidad base (misma lógica que el frontend)
-      const precioCosto = parseFloat(ingrediente.precioCosto) || 0;
-      const cantidadPorUnidad = parseFloat(ingrediente.cantidadPorUnidadCompra) || 1;
-
-      let cantidadTotalEnUnidadBase = cantidadPorUnidad;
-      if (ingrediente.unidadCompra === 'caja' && ingrediente.unidadContenidoCaja) {
-        const conversiones = { kg_gramo: 1000, litro_litro: 1, kg_kg: 1, gramo_gramo: 1, unidad_unidad: 1 };
-        const factor = conversiones[`${ingrediente.unidadContenidoCaja}_${ingrediente.unidadBase}`] || 1;
-        cantidadTotalEnUnidadBase = cantidadPorUnidad * factor;
-      }
-
-      const precioPorUnidadBase = precioCosto / cantidadTotalEnUnidadBase;
-
-      // Calcular costo de este ingrediente en la receta
+      // Precio por unidad base y costo del ingrediente en la receta (helper unico)
+      const precioPorUnidadBase = costoPorUnidadBase(ingrediente);
       const cantidad = parseFloat(item.cantidad);
       const costoIngrediente = precioPorUnidadBase * cantidad;
 

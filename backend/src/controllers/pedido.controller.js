@@ -195,30 +195,16 @@ exports.crear = async (req, res) => {
         }
 
         if (receta && receta.ingredientes && receta.ingredientes.length > 0) {
-          // Validar que hay stock suficiente de TODOS los ingredientes primero
-          for (const recetaIng of receta.ingredientes) {
-            const ingrediente = recetaIng.ingrediente;
-            const cantidadNecesaria = parseFloat(recetaIng.cantidad) * item.cantidad;
-            const stockActual = parseFloat(ingrediente.stock) || 0;
-
-            if (stockActual < cantidadNecesaria) {
-              throw new Error(
-                `Stock insuficiente de "${ingrediente.nombre}". ` +
-                `Necesario: ${cantidadNecesaria} ${recetaIng.unidad}, ` +
-                `Disponible: ${stockActual} ${ingrediente.unidadBase}`
-              );
-            }
-          }
-
-          // Si hay stock suficiente, descontar
+          // La venta NUNCA se bloquea por falta de stock: se descuenta igual y
+          // el stock puede quedar negativo, para reflejar el faltante real.
           for (const recetaIng of receta.ingredientes) {
             const ingrediente = recetaIng.ingrediente;
             const cantidadADescontar = parseFloat(recetaIng.cantidad) * item.cantidad;
             const nuevoStock = (parseFloat(ingrediente.stock) || 0) - cantidadADescontar;
 
-            // No redondear: el stock puede ser fraccionario (kg, litros)
+            // No redondear ni cortar en 0: el stock es fraccionario y puede ser negativo
             await Producto.update(
-              { stock: Math.max(0, nuevoStock) },
+              { stock: nuevoStock },
               { where: { id: ingrediente.id }, transaction: t }
             );
 

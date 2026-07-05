@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.7.1'
+export const VERSION_ACTUAL = '1.8.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.8.0',
+    fecha: '2026-07-05',
+    titulo: 'Costo real por receta y stock que no frena la venta',
+    destacados: [
+      { titulo: 'El costo de cada producto sale de su receta', detalle: 'El precio de costo de un producto del menú ahora se calcula solo, sumando lo que cuesta cada ingrediente de su receta. Se actualiza al guardar la receta y cada vez que una compra cambia el precio de un ingrediente. Así la ganancia del Centro de Control es real.' },
+    ],
+    cambios: [
+      { t: 'Al vender, el stock de los ingredientes se descuenta según la receta; ahora la venta nunca se frena por falta de stock (el ingrediente puede quedar en negativo para que veas el faltante).' },
+      { t: 'En el producto, el precio de costo se muestra como automático cuando tiene receta.' },
+      { t: 'Comprar un ingrediente recalcula el costo de todos los productos que lo usan.' },
+    ],
+  },
   {
     version: '1.7.1',
     fecha: '2026-07-05',

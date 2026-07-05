@@ -302,18 +302,21 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Precio de Costo
+                Precio de Costo{producto?.receta ? ' (automático)' : ''}
               </label>
               <input
                 type="number"
                 step="0.01"
                 value={form.precioCosto}
                 onChange={e => setForm({ ...form, precioCosto: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
+                disabled={!!producto?.receta}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white ${producto?.receta ? 'opacity-60 cursor-not-allowed' : ''}`}
                 placeholder="0.00"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Se actualiza automáticamente al comprar
+                {producto?.receta
+                  ? 'Se calcula solo desde los ingredientes de su receta'
+                  : 'Se actualiza automáticamente al comprar'}
               </p>
             </div>
 

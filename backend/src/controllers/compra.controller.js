@@ -1,6 +1,7 @@
 const { Compra, CompraItem, Proveedor, Producto, Gasto } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/sequelize');
+const { recalcularPorIngrediente } = require('../utils/costoReceta');
 
 // Función auxiliar para calcular factor de conversión entre unidades
 function calcularFactorConversion(unidadOrigen, unidadDestino) {
@@ -210,11 +211,13 @@ exports.crear = async (req, res) => {
     );
 
     // *** ACTUALIZACIÓN AUTOMÁTICA DE STOCK ***
+    const ingredientesActualizados = new Set();
     for (const item of itemsCreados) {
       if (item.actualizaStock && item.productoId) {
         const producto = await Producto.findByPk(item.productoId, { transaction: t });
 
         if (producto) {
+          ingredientesActualizados.add(producto.id);
           // Calcular cantidad en unidad base
           let cantidadEnUnidadBase;
           const cantidadCompra = Number(item.cantidadCompra);
@@ -243,6 +246,12 @@ exports.crear = async (req, res) => {
           console.log(`✓ Stock actualizado para ${producto.nombre}: +${cantidadEnUnidadBase} ${producto.unidadBase} (${item.cantidadCompra} × ${cantidadPorUnidad})`);
         }
       }
+    }
+
+    // Comprar un ingrediente cambia su costo: recalcular el costo de los
+    // productos del menu cuyas recetas lo usan (para que la ganancia sea real).
+    for (const ingredienteId of ingredientesActualizados) {
+      await recalcularPorIngrediente(ingredienteId, negocioId, { transaction: t });
     }
 
     // Si está marcada como pagada, crear o actualizar gasto

@@ -1,4 +1,4 @@
-const { Producto, Categoria, ProductoVariante, GrupoAdicional, Adicional, Descuento } = require('../models');
+const { Producto, Categoria, ProductoVariante, GrupoAdicional, Adicional, Descuento, Receta } = require('../models');
 
 const includeCompleto = [
   { model: Categoria, as: 'categoria', attributes: ['id', 'nombre', 'tipo'] },
@@ -8,7 +8,9 @@ const includeCompleto = [
     include: [{ model: Adicional, as: 'items', order: [['orden', 'ASC']] }]
   },
   { model: Descuento, as: 'descuento',
-    attributes: ['id', 'codigo', 'tipo', 'valor', 'activo', 'descripcion'] }
+    attributes: ['id', 'codigo', 'tipo', 'valor', 'activo', 'descripcion'] },
+  // Indica si el producto tiene receta (su costo se calcula desde los ingredientes)
+  { model: Receta, as: 'receta', attributes: ['id'] }
 ];
 
 exports.listar = async (req, res) => {
