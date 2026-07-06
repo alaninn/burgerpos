@@ -1,5 +1,5 @@
 const arcaService = require('../services/arcaService');
-const { Pedido, ComprobanteElectronico, ProductoPedido, Producto } = require('../models');
+const { Pedido, ComprobanteElectronico } = require('../models');
 
 /**
  * Emite factura electrónica desde un pedido
@@ -8,19 +8,10 @@ const { Pedido, ComprobanteElectronico, ProductoPedido, Producto } = require('..
 exports.emitirFacturaDesdePedido = async (req, res) => {
   try {
     const { negocioId, pedidoId } = req.params;
-    const { tipoComprobante, tipoDocumento, numeroDocumento, denominacion } = req.body;
+    const { tipoComprobante, tipoDocumento, numeroDocumento, denominacion, condicionIvaReceptor } = req.body;
 
     // Validar que el pedido pertenece al negocio
-    const pedido = await Pedido.findOne({
-      where: { id: pedidoId, negocioId },
-      include: [
-        {
-          model: ProductoPedido,
-          as: 'productos',
-          include: [{ model: Producto, as: 'producto' }]
-        }
-      ]
-    });
+    const pedido = await Pedido.findOne({ where: { id: pedidoId, negocioId } });
 
     if (!pedido) {
       return res.status(404).json({ error: 'Pedido no encontrado' });
@@ -33,16 +24,17 @@ exports.emitirFacturaDesdePedido = async (req, res) => {
 
     // Calcular importes
     const importeTotal = parseFloat(pedido.total);
+    const tipoCmp = parseInt(tipoComprobante);
 
-    // Calcular IVA según tipo de comprobante
+    // IVA según tipo: los comprobantes A y B (emisor Responsable Inscripto)
+    // llevan el IVA discriminado en el pedido a AFIP (en la B no se muestra al
+    // cliente pero AFIP lo exige igual). Los C (monotributo) van sin IVA.
     let importeNeto, importeIVA;
-
-    if (tipoComprobante === 1 || tipoComprobante === 3) {
-      // Factura A / Nota de Crédito A - discrimina IVA
+    if ([1, 2, 3, 6, 7, 8].includes(tipoCmp)) {
       importeNeto = importeTotal / 1.21;
       importeIVA = importeTotal - importeNeto;
     } else {
-      // Factura B/C - no discrimina IVA
+      // Factura C y notas C - sin IVA
       importeNeto = importeTotal;
       importeIVA = 0;
     }
@@ -51,13 +43,14 @@ exports.emitirFacturaDesdePedido = async (req, res) => {
     const resultado = await arcaService.emitirComprobante({
       negocioId,
       pedidoId,
-      tipoComprobante: parseInt(tipoComprobante),
-      tipoDocumento: parseInt(tipoDocumento),
+      tipoComprobante: tipoCmp,
+      tipoDocumento: parseInt(tipoDocumento) || 99,
       numeroDocumento: numeroDocumento || '0',
-      denominacion: denominacion || pedido.nombreCliente || 'Consumidor Final',
+      denominacion: denominacion || pedido.clienteNombre || 'Consumidor Final',
       importeTotal: parseFloat(importeTotal.toFixed(2)),
       importeNeto: parseFloat(importeNeto.toFixed(2)),
-      importeIVA: parseFloat(importeIVA.toFixed(2))
+      importeIVA: parseFloat(importeIVA.toFixed(2)),
+      condicionIvaReceptor
     });
 
     if (!resultado.exito) {
@@ -78,7 +71,7 @@ exports.emitirFacturaDesdePedido = async (req, res) => {
 
     res.json({
       exito: true,
-      mensaje: `Comprobante emitido - CAE: ${resultado.cae}`,
+      mensaje: `Comprobante emitido - CAE: ${resultado.comprobante?.cae || ''}`,
       comprobante: resultado.comprobante,
       pedido: pedidoActualizado
     });
@@ -148,42 +141,16 @@ exports.anularComprobante = async (req, res) => {
       return res.status(400).json({ error: 'Este comprobante ya fue anulado' });
     }
 
-    // Determinar tipo de Nota de Crédito según tipo original
-    let tipoNotaCredito;
-    switch (pedido.comprobante.tipoComprobante) {
-      case 1: tipoNotaCredito = 3; break;  // Factura A → Nota Crédito A
-      case 6: tipoNotaCredito = 8; break;  // Factura B → Nota Crédito B
-      case 11: tipoNotaCredito = 13; break; // Factura C → Nota Crédito C
-      default:
-        return res.status(400).json({ error: 'Tipo de comprobante no soportado para anulación' });
-    }
-
-    // Emitir Nota de Crédito
-    const resultado = await arcaService.emitirComprobante({
-      negocioId,
-      pedidoId: null, // La NC no se asocia al pedido
-      tipoComprobante: tipoNotaCredito,
-      tipoDocumento: pedido.comprobante.tipoDocumento,
-      numeroDocumento: pedido.comprobante.numeroDocumento,
-      denominacion: pedido.comprobante.denominacionComprador,
-      importeTotal: pedido.comprobante.importeTotal,
-      importeNeto: pedido.comprobante.importeNeto,
-      importeIVA: pedido.comprobante.importeIVA,
-      comprobanteAsociado: {
-        tipo: pedido.comprobante.tipoComprobante,
-        puntoVenta: pedido.comprobante.puntoVenta,
-        numero: pedido.comprobante.numeroComprobante
-      }
-    });
+    // Emitir la Nota de Crédito referenciando el comprobante original
+    // (CbtesAsoc, obligatorio para AFIP) — logica portada de gestionQ24.
+    const resultado = await arcaService.emitirNotaCredito({ negocioId, pedidoId });
 
     if (!resultado.exito) {
-      return res.status(500).json({ error: resultado.error || 'Error al emitir Nota de Crédito' });
+      return res.status(400).json({ error: resultado.error || 'Error al emitir Nota de Crédito' });
     }
 
     // Marcar el comprobante original como anulado
-    await pedido.comprobante.update({
-      estado: 'anulado'
-    });
+    await pedido.comprobante.update({ estado: 'anulado' });
 
     res.json({
       exito: true,

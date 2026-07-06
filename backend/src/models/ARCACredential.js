@@ -19,6 +19,9 @@ module.exports = (sequelize, DataTypes) => {
 
     activo: { type: DataTypes.BOOLEAN, defaultValue: true },
     entornoProduccion: { type: DataTypes.BOOLEAN, defaultValue: false },
+    // 'propio' = certificado del negocio · 'delegado' = web service delegado al
+    // CUIT del proveedor (se firma con el certificado del servidor, sin archivos)
+    modo: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'propio' },
     fechaVencimiento: { type: DataTypes.DATE },
 
     // Metadatos fiscales

@@ -115,6 +115,29 @@ function firmarTRA(tra, certPath, keyPath) {
  * @param {string} servicio - Servicio solicitado (default: 'wsfe')
  * @returns {Object} { token, sign, expirationTime }
  */
+// =============================================
+// MODO DELEGADO (portado de gestionQ24)
+// El negocio delego el web service de facturacion al CUIT del proveedor.
+// Se usa UN solo certificado (el del proveedor, configurado por variables de
+// entorno) para autenticar, y cada factura sale con el CUIT del negocio.
+// =============================================
+function obtenerCertDelegado() {
+    const cuit = process.env.ARCA_DELEGADO_CUIT;
+    const certRel = process.env.ARCA_DELEGADO_CERT;   // ej: certificados/delegado.crt (relativo a uploads/)
+    const keyRel = process.env.ARCA_DELEGADO_KEY;     // ej: certificados/delegado.key
+
+    if (!cuit || !certRel || !keyRel) return { disponible: false, error: 'La conexión delegada no está configurada en el servidor' };
+
+    const certDir = path.join(__dirname, '../../uploads');
+    const certPath = path.join(certDir, certRel);
+    const keyPath = path.join(certDir, keyRel);
+
+    if (!fs.existsSync(certPath)) return { disponible: false, error: `Certificado del proveedor no encontrado: ${certRel}` };
+    if (!fs.existsSync(keyPath)) return { disponible: false, error: `Clave del proveedor no encontrada: ${keyRel}` };
+
+    return { disponible: true, cuit, certPath, keyPath };
+}
+
 async function solicitarTicketAcceso(negocioId, servicio = 'wsfe') {
     try {
         // Obtener certificado activo del negocio
@@ -126,28 +149,37 @@ async function solicitarTicketAcceso(negocioId, servicio = 'wsfe') {
             throw new Error('No hay certificado activo configurado');
         }
 
-        // Desencriptar paths
-        if (!certificado.certPath) {
-            throw new Error('El certificado no tiene una ruta definida (certPath es null)');
-        }
+        let certPath, keyPath;
+        if (certificado.modo === 'delegado') {
+            // Modo delegado: se firma con el certificado del proveedor
+            const delegado = obtenerCertDelegado();
+            if (!delegado.disponible) throw new Error(delegado.error);
+            certPath = delegado.certPath;
+            keyPath = delegado.keyPath;
+        } else {
+            // Modo propio: certificado del negocio (paths encriptados)
+            if (!certificado.certPath) {
+                throw new Error('El certificado no tiene una ruta definida (certPath es null)');
+            }
 
-        if (!certificado.keyPath) {
-            throw new Error('La clave privada no tiene una ruta definida (keyPath es null)');
-        }
+            if (!certificado.keyPath) {
+                throw new Error('La clave privada no tiene una ruta definida (keyPath es null)');
+            }
 
-        const certPathRel = encryptionService.decrypt(certificado.certPath);
-        const keyPathRel = encryptionService.decrypt(certificado.keyPath);
+            const certPathRel = encryptionService.decrypt(certificado.certPath);
+            const keyPathRel = encryptionService.decrypt(certificado.keyPath);
 
-        const certDir = path.join(__dirname, '../../uploads');
-        const certPath = path.join(certDir, certPathRel);
-        const keyPath = path.join(certDir, keyPathRel);
+            const certDir = path.join(__dirname, '../../uploads');
+            certPath = path.join(certDir, certPathRel);
+            keyPath = path.join(certDir, keyPathRel);
 
-        if (!fs.existsSync(certPath)) {
-            throw new Error(`Certificado no encontrado en: ${certPath}`);
-        }
+            if (!fs.existsSync(certPath)) {
+                throw new Error(`Certificado no encontrado en: ${certPath}`);
+            }
 
-        if (!fs.existsSync(keyPath)) {
-            throw new Error(`Clave privada no encontrada en: ${keyPath}`);
+            if (!fs.existsSync(keyPath)) {
+                throw new Error(`Clave privada no encontrada en: ${keyPath}`);
+            }
         }
 
         // Obtener entorno configurado
@@ -175,6 +207,18 @@ async function solicitarTicketAcceso(negocioId, servicio = 'wsfe') {
 </soapenv:Envelope>`;
         
         // 4. Enviar solicitud al WSAA
+        // AFIP responde HTTP 500 con un SOAP Fault cuando rechaza el CMS
+        // (cert vencido, no autorizado, ya hay un TA vigente, etc.): hay que
+        // extraer el faultstring para que el error sea diagnosticable.
+        const extraerFault = (err) => {
+            const data = err?.response?.data;
+            if (typeof data === 'string') {
+                const m = data.match(/<faultstring>([\s\S]*?)<\/faultstring>/i);
+                if (m) return m[1].trim();
+            }
+            return null;
+        };
+
         let response;
         try {
             response = await axios.post(wsaaUrl, soapEnvelope, {
@@ -185,15 +229,23 @@ async function solicitarTicketAcceso(negocioId, servicio = 'wsfe') {
                 timeout: 30000
             });
         } catch (axiosError) {
+            const fault = extraerFault(axiosError);
+            if (fault) throw new Error(`WSAA rechazó la autenticación: ${fault}`);
             // Intentar con URL alternativa
             console.log('⚠️ Primera URL falló, intentando alternativa...');
-            response = await axios.post(WSAA_URLS_ALT[entorno], soapEnvelope, {
-                headers: {
-                    'Content-Type': 'text/xml; charset=utf-8',
-                    'SOAPAction': ''
-                },
-                timeout: 30000
-            });
+            try {
+                response = await axios.post(WSAA_URLS_ALT[entorno], soapEnvelope, {
+                    headers: {
+                        'Content-Type': 'text/xml; charset=utf-8',
+                        'SOAPAction': ''
+                    },
+                    timeout: 30000
+                });
+            } catch (altError) {
+                const faultAlt = extraerFault(altError);
+                if (faultAlt) throw new Error(`WSAA rechazó la autenticación: ${faultAlt}`);
+                throw altError;
+            }
         }
         
         // 5. Parsear respuesta XML
@@ -267,14 +319,17 @@ const header = loginTicketResponse.loginTicketResponse.header;
  * @param {string} servicio - Servicio
  * @returns {Object|null} Ticket válido o null
  */
-async function obtenerTicketValido(negocioId, servicio = 'wsfe') {
+async function obtenerTicketValido(negocioId, servicio = 'wsfe', compartido = false) {
     try {
+        // En modo delegado el ticket lo firma SIEMPRE el mismo certificado (el
+        // del proveedor), asi que es compartido entre todos los negocios
+        // delegados. ARCA rechaza pedir un ticket nuevo si ya hay uno vigente
+        // para el mismo certificado, por eso es clave reutilizarlo.
+        const where = compartido
+            ? { servicio, expiracion: { [Op.gt]: new Date() } }
+            : { negocioId, servicio, expiracion: { [Op.gt]: new Date() } };
         const ticket = await TicketAccesoWSAA.findOne({
-            where: {
-                negocioId,
-                servicio,
-                expiracion: { [Op.gt]: new Date() }
-            },
+            where,
             order: [['createdAt', 'DESC']]
         });
 
@@ -319,8 +374,18 @@ async function almacenarTicket(negocioId, servicio, ticket) {
  * @returns {Object} { token, sign }
  */
 async function obtenerTicketAcceso(negocioId, servicio = 'wsfe') {
+    // Detectar si el negocio usa conexion delegada (ticket compartido)
+    let esDelegado = false;
+    try {
+        const cred = await ARCACredential.findOne({ where: { negocioId, activo: true }, attributes: ['modo'] });
+        esDelegado = cred?.modo === 'delegado';
+    } catch (e) { /* si falla, sigue como propio */ }
+
+    // En delegado se usa un servicio de cache propio para no mezclar con tickets de certificados propios
+    const servicioCache = esDelegado ? `${servicio}-delegado` : servicio;
+
     // Intentar obtener ticket válido del cache
-    const ticketValido = await obtenerTicketValido(negocioId, servicio);
+    const ticketValido = await obtenerTicketValido(negocioId, servicioCache, esDelegado);
 
     if (ticketValido) {
         console.log('✅ Usando ticket de acceso cacheado');
@@ -331,8 +396,8 @@ async function obtenerTicketAcceso(negocioId, servicio = 'wsfe') {
     const nuevoTicket = await solicitarTicketAcceso(negocioId, servicio);
 
     // Almacenar en cache
-    await almacenarTicket(negocioId, servicio, nuevoTicket);
-    
+    await almacenarTicket(negocioId, servicioCache, nuevoTicket);
+
     return {
         token: nuevoTicket.token,
         sign: nuevoTicket.sign
@@ -343,6 +408,7 @@ module.exports = {
     solicitarTicketAcceso,
     obtenerTicketAcceso,
     obtenerTicketValido,
+    obtenerCertDelegado,
     firmarTRA,
     crearTRA,
     WSAA_URLS

@@ -47,6 +47,38 @@ function FacturacionElectronica() {
   const [testConectando, setTestConectando] = useState(false);
   const [resultadoTest, setResultadoTest] = useState(null);
 
+  // Conexión delegada (web service delegado al CUIT del proveedor)
+  const [delegacionInfo, setDelegacionInfo] = useState(null);
+  const [formDelegacion, setFormDelegacion] = useState({ cuit: '', puntoVenta: 1, regimenFiscal: 'responsable_inscripto' });
+  const [activandoDelegacion, setActivandoDelegacion] = useState(false);
+
+  useEffect(() => {
+    if (!negocioId) return;
+    api.get(`/negocios/${negocioId}/arca/delegacion-info`)
+      .then(({ data }) => setDelegacionInfo(data))
+      .catch(() => setDelegacionInfo({ disponible: false }));
+  }, [negocioId]);
+
+  const activarDelegacion = async () => {
+    setError(''); setExito('');
+    const cuitLimpio = String(formDelegacion.cuit || '').replace(/[-\s]/g, '');
+    if (!/^\d{11}$/.test(cuitLimpio)) { setError('Ingresá un CUIT válido de 11 dígitos'); return; }
+    setActivandoDelegacion(true);
+    try {
+      await api.post(`/negocios/${negocioId}/arca/activar-delegacion`, {
+        cuit: cuitLimpio,
+        puntoVenta: formDelegacion.puntoVenta,
+        regimenFiscal: formDelegacion.regimenFiscal
+      });
+      setExito('✅ Conexión delegada activada. Probá la conexión para confirmar que la delegación en ARCA esté hecha.');
+      cargarDatosSecundarios();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al activar la conexión delegada');
+    } finally {
+      setActivandoDelegacion(false);
+    }
+  };
+
   useEffect(() => {
     if (!negocioId) return;
     api.get(`/negocios/${negocioId}`)
@@ -782,6 +814,56 @@ function FacturacionElectronica() {
       {/* PASO 2: CERTIFICADOS */}
       {paso === 2 && (
         <div className="space-y-6">
+          {/* Conexión delegada: la forma más simple de facturar (sin certificado propio) */}
+          {delegacionInfo?.disponible && (
+            <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-2xl border-2 border-violet-200 p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">⚡</span>
+                <div>
+                  <h4 className="font-bold text-gray-800">Conexión rápida (delegada) — recomendada</h4>
+                  <p className="text-sm text-gray-500">Facturá sin generar certificados: delegás el web service al proveedor.</p>
+                </div>
+              </div>
+              <ol className="text-sm text-gray-600 list-decimal ml-5 mb-4 space-y-1">
+                <li>Entrá a ARCA con tu clave fiscal → <b>Administrador de Relaciones de Clave Fiscal</b>.</li>
+                <li>Nueva relación → servicio <b>"Facturación Electrónica" (wsfe)</b> → delegalo al CUIT <b>{delegacionInfo.cuitProveedor}</b>.</li>
+                <li>Completá tus datos acá y activá.</li>
+              </ol>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  value={formDelegacion.cuit}
+                  onChange={(e) => setFormDelegacion(p => ({ ...p, cuit: e.target.value }))}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  placeholder="Tu CUIT (11 dígitos)"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={formDelegacion.puntoVenta}
+                  onChange={(e) => setFormDelegacion(p => ({ ...p, puntoVenta: e.target.value }))}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  placeholder="Punto de venta"
+                />
+                <select
+                  value={formDelegacion.regimenFiscal}
+                  onChange={(e) => setFormDelegacion(p => ({ ...p, regimenFiscal: e.target.value }))}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                >
+                  <option value="responsable_inscripto">Responsable Inscripto (Factura A/B)</option>
+                  <option value="monotributista">Monotributista (Factura C)</option>
+                </select>
+              </div>
+              <button
+                onClick={activarDelegacion}
+                disabled={activandoDelegacion}
+                className="mt-3 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold disabled:opacity-50"
+              >
+                {activandoDelegacion ? 'Activando...' : '⚡ Activar conexión delegada'}
+              </button>
+            </div>
+          )}
+
           {/* Estado del certificado */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h4 className="font-bold text-gray-800 mb-4">🔐 Estado de Certificados</h4>

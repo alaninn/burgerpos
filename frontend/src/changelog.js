@@ -6,9 +6,25 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.9.0'
+export const VERSION_ACTUAL = '1.10.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.10.0',
+    fecha: '2026-07-06',
+    titulo: 'Facturación electrónica lista para todas las categorías',
+    destacados: [
+      { titulo: 'Conexión rápida sin certificados', detalle: 'Ahora podés facturar delegando el web service de ARCA al proveedor: entrás a ARCA, delegás "Facturación Electrónica" al CUIT indicado, cargás tu CUIT y punto de venta, y listo. Sin generar ni subir certificados. Sirve para Monotributo (Factura C) y Responsable Inscripto (Factura A y B).' },
+    ],
+    cambios: [
+      { t: 'Anular una factura ahora emite la Nota de Crédito correcta ante ARCA (referenciando la factura original, como exige AFIP).' },
+      { t: 'Las facturas salen con la fecha correcta de Argentina (antes, de noche podían salir con fecha del día siguiente).' },
+      { t: 'Se agregó la condición frente al IVA del receptor (obligatoria por la RG 5616): consumidor final, monotributista o responsable inscripto.' },
+      { t: 'La Factura B ahora informa el IVA a ARCA como corresponde.' },
+      { t: 'Si ARCA rechaza una factura, el motivo exacto se muestra completo para poder resolverlo.' },
+      { t: 'Se corrigió la verificación de certificados que fallaba siempre por una ruta incorrecta.' },
+    ],
+  },
   {
     version: '1.9.0',
     fecha: '2026-07-06',

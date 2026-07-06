@@ -27,6 +27,65 @@ if (!fs.existsSync(CERT_DIR)) {
     fs.mkdirSync(CERT_DIR, { recursive: true });
 }
 
+// =============================================
+// FECHAS PARA AFIP (CbteFch) — portado de gestionQ24
+// AFIP valida el rango de fechas (Concepto 1: N±5 días) contra SU reloj, que
+// está en horario de Argentina. Por eso la fecha del comprobante se calcula en
+// hora AR y NO en UTC: de noche (21:00–23:59 AR) UTC ya es el día siguiente y
+// la factura saldría con la fecha equivocada (un día adelantada).
+// =============================================
+function fechaArgYYYYMMDD(d = new Date()) {
+    const p = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(d).reduce((acc, x) => { acc[x.type] = x.value; return acc; }, {});
+    return `${p.year}${p.month}${p.day}`;
+}
+
+// Consulta a AFIP la fecha (CbteFch, YYYYMMDD) de un comprobante YA autorizado.
+// Sirve para no emitir una factura con fecha anterior a la del último
+// autorizado: la regla de AFIP es CbteFch >= fecha del último comprobante de
+// ese PtoVta/CbteTipo; si es menor, AFIP rechaza con el error 10016.
+async function consultarFechaComprobante({ wsfeUrl, token, sign, cuit, puntoVenta, tipoComprobante, cbteNro }) {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ar="http://ar.gov.afip.dif.FEV1/">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <ar:FECompConsultar>
+            <ar:Auth>
+                <ar:Token>${token}</ar:Token>
+                <ar:Sign>${sign}</ar:Sign>
+                <ar:Cuit>${cuit}</ar:Cuit>
+            </ar:Auth>
+            <ar:FeCompConsReq>
+                <ar:CbteTipo>${tipoComprobante}</ar:CbteTipo>
+                <ar:CbteNro>${cbteNro}</ar:CbteNro>
+                <ar:PtoVta>${puntoVenta}</ar:PtoVta>
+            </ar:FeCompConsReq>
+        </ar:FECompConsultar>
+    </soapenv:Body>
+</soapenv:Envelope>`;
+    const resp = await axios.post(wsfeUrl, xml, {
+        headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': 'http://ar.gov.afip.dif.FEV1/FECompConsultar' },
+        timeout: 30000,
+        httpsAgent,
+    });
+    const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: true });
+    const r = await parser.parseStringPromise(resp.data);
+    const env = r['soap:Envelope'] || r['soapenv:Envelope'];
+    const body = env['soap:Body'] || env['soapenv:Body'];
+    const result = body['FECompConsultarResponse']?.FECompConsultarResult
+        || body['ns1:FECompConsultarResponse']?.FECompConsultarResult;
+    return result?.ResultGet?.CbteFch || null;
+}
+
+// Helper: extrae "Code: Msg | Code: Msg" de Obs/Err/Evt (vengan como objeto o array)
+const extraerMsgs = (x) => {
+    if (!x) return '';
+    const arr = Array.isArray(x) ? x : [x];
+    return arr.map(o => `${o?.Code ?? '?'}: ${o?.Msg ?? ''}`).join(' | ');
+};
+
 /**
  * Genera un par de claves RSA y un CSR (Certificate Signing Request)
  * @param {string} cuit - CUIT del negocio
@@ -114,7 +173,8 @@ function guardarCertificado(certBuffer, cuit) {
  */
 function verificarCertificado(certPath) {
     try {
-        const fullPath = path.join(__dirname, '../uploads', certPath);
+        // Los certificados viven en backend/uploads (dos niveles arriba de src/services)
+        const fullPath = path.isAbsolute(certPath) ? certPath : path.join(__dirname, '../../uploads', certPath);
         
         if (!fs.existsSync(fullPath)) {
             return { valido: false, error: 'Certificado no encontrado' };
@@ -146,9 +206,11 @@ function verificarCertificado(certPath) {
  */
 function obtenerTiposComprobante(regimenFiscal) {
     const tipos = {
+        // Factura B primero: es la habitual (consumidor final). La A es solo
+        // para ventas a otros Responsables Inscriptos y se elige a mano.
         responsable_inscripto: [
-            { codigo: 1, nombre: 'Factura A', descripcion: 'Para Responsables Inscriptos', emoji: '📄' },
             { codigo: 6, nombre: 'Factura B', descripcion: 'Para consumidores finales', emoji: '📄' },
+            { codigo: 1, nombre: 'Factura A', descripcion: 'Para Responsables Inscriptos', emoji: '📄' },
             { codigo: 3, nombre: 'Nota de Crédito A', descripcion: 'Devolución Factura A', emoji: '📝' },
             { codigo: 8, nombre: 'Nota de Crédito B', descripcion: 'Devolución Factura B', emoji: '📝' },
             { codigo: 2, nombre: 'Nota de Débito A', descripcion: 'Ajuste Factura A', emoji: '📋' },
@@ -192,8 +254,23 @@ async function emitirComprobante(datos) {
         denominacion,
         importeTotal,
         importeNeto,
-        importeIVA
+        importeIVA,
+        condicionIvaReceptor
     } = datos;
+
+    // Condición frente al IVA del receptor (RG 5616 — obligatorio en WSFEv1):
+    // 1=Resp. Inscripto, 4=Exento, 5=Consumidor Final, 6=Resp. Monotributo,
+    // 7=Sujeto No Categorizado, 13=Monotributista Social, 15=IVA No Alcanzado.
+    // Si no la mandan, se infiere: comprobantes A → RI; con CUIT → Monotributista;
+    // resto → Consumidor Final.
+    const tipoCmp = parseInt(tipoComprobante);
+    const docTipo = parseInt(tipoDocumento) || 99;
+    let condIvaReceptor = parseInt(condicionIvaReceptor) || 0;
+    if (!condIvaReceptor) {
+        if ([1, 2, 3].includes(tipoCmp)) condIvaReceptor = 1;
+        else if (docTipo === 80) condIvaReceptor = 6;
+        else condIvaReceptor = 5;
+    }
 
     let xmlEnviado = null;
     let xmlRespuesta = null;
@@ -209,14 +286,23 @@ async function emitirComprobante(datos) {
             throw new Error('No hay certificado activo configurado');
         }
 
-        // 2. Desencriptar paths de certificados
-        const certPath = encryptionService.decrypt(certificado.certPath);
-        const keyPath = encryptionService.decrypt(certificado.keyPath);
-
-        // 3. Verificar que el certificado no esté vencido
-        const verificacion = verificarCertificado(certPath);
-        if (!verificacion.valido) {
-            throw new Error('El certificado está vencido o no es válido');
+        // 2-3. Verificar el certificado segun el modo
+        if (certificado.modo === 'delegado') {
+            // Modo delegado: se verifica el certificado del proveedor (del servidor)
+            const delegado = wsaaService.obtenerCertDelegado();
+            if (!delegado.disponible) {
+                throw new Error(delegado.error);
+            }
+            const verifDelegado = verificarCertificado(delegado.certPath);
+            if (!verifDelegado.valido) {
+                throw new Error('El certificado del proveedor está vencido o no es válido. Contactá a soporte.');
+            }
+        } else {
+            const certPath = encryptionService.decrypt(certificado.certPath);
+            const verificacion = verificarCertificado(certPath);
+            if (!verificacion.valido) {
+                throw new Error('El certificado está vencido o no es válido');
+            }
         }
 
         // 4. Obtener ticket de acceso del WSAA
@@ -273,9 +359,27 @@ const ultResp = bodyU['FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoR
         // 7. Calcular importes
         const importeNetoCalculado = parseFloat(importeNeto) || parseFloat(importeTotal);
         const importeIvaCalculado = parseFloat(importeIVA) || 0;
-        
+
         // 8. Crear XML para WSFEv1 (CAESolicitar)
-        const fechaEmision = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        // Fecha del comprobante (CbteFch) en HORA DE ARGENTINA (no UTC).
+        let fechaEmision = fechaArgYYYYMMDD();
+        // Piso de seguridad: nunca emitir con fecha anterior a la del último
+        // comprobante autorizado (regla AFIP; si no, error 10016 y se traba la
+        // facturación de ese punto de venta).
+        if (ultimoNro > 0) {
+            try {
+                const ultimaFch = await consultarFechaComprobante({
+                    wsfeUrl: wsfeUrl2, token: ticket.token, sign: ticket.sign, cuit: cuitEmisor,
+                    puntoVenta: parseInt(punto_venta), tipoComprobante: tipoCmp, cbteNro: ultimoNro,
+                });
+                if (ultimaFch && /^\d{8}$/.test(ultimaFch) && ultimaFch > fechaEmision) {
+                    console.log(`📅 CbteFch ajustada de ${fechaEmision} a ${ultimaFch} (fecha del último autorizado)`);
+                    fechaEmision = ultimaFch;
+                }
+            } catch (e) {
+                console.warn('⚠️ No se pudo consultar la fecha del último comprobante; uso la fecha de hoy (AR):', e.message);
+            }
+        }
 
         xmlEnviado = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ar="http://ar.gov.afip.dif.FEV1/">
@@ -296,8 +400,8 @@ const ultResp = bodyU['FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoR
                 <ar:FeDetReq>
                     <ar:FECAEDetRequest>
                         <ar:Concepto>1</ar:Concepto>
-                        <ar:DocTipo>${tipoDocumento || 99}</ar:DocTipo>
-                        <ar:DocNro>${tipoDocumento === 99 ? 0 : (numeroDocumento || 0)}</ar:DocNro>
+                        <ar:DocTipo>${docTipo}</ar:DocTipo>
+                        <ar:DocNro>${docTipo === 99 ? 0 : (String(numeroDocumento || '').replace(/[-\s.]/g, '') || 0)}</ar:DocNro>
                         <ar:CbteDesde>${numeroComprobante}</ar:CbteDesde>
                         <ar:CbteHasta>${numeroComprobante}</ar:CbteHasta>
                         <ar:CbteFch>${fechaEmision}</ar:CbteFch>
@@ -312,6 +416,7 @@ const ultResp = bodyU['FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoR
                         <ar:FchVtoPago></ar:FchVtoPago>
                         <ar:MonId>PES</ar:MonId>
                         <ar:MonCotiz>1.000</ar:MonCotiz>
+                        <ar:CondicionIVAReceptorId>${condIvaReceptor}</ar:CondicionIVAReceptorId>
                         ${importeIvaCalculado > 0 ? `
                         <ar:Iva>
                             <ar:AlicIva>
@@ -326,7 +431,7 @@ const ultResp = bodyU['FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoR
         </ar:FECAESolicitar>
     </soapenv:Body>
 </soapenv:Envelope>`;
-        
+
         // 8. Determinar URL del WSFEv1 según entorno
         const wsfeUrl = entorno === 'produccion'
             ? 'https://servicios1.afip.gov.ar/wsfev1/service.asmx'
@@ -365,31 +470,33 @@ const ultResp = bodyU['FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoR
         }
         
         const feDetResp = feCAESolicitarResult.FeDetResp?.FECAEDetResponse;
-        const cabecera = feCAESolicitarResult.FeCabResp;
-        
+
+        const erroresResult = extraerMsgs(feCAESolicitarResult.Errors?.Err);
+        const eventosResult = extraerMsgs(feCAESolicitarResult.Events?.Evt);
+
         // 11. Verificar resultado
         if (!feDetResp) {
-            const errores = feCAESolicitarResult.Errors?.Err;
-            const mensajeError = Array.isArray(errores) 
-                ? errores.map(e => `${e.Code}: ${e.Msg}`).join(', ')
-                : (errores ? `${errores.Code}: ${errores.Msg}` : 'Error desconocido');
-            throw new Error(`Error WSFEv1: ${mensajeError}`);
+            const detalle = [erroresResult && `Errores: ${erroresResult}`, eventosResult && `Eventos: ${eventosResult}`]
+                .filter(Boolean).join(' · ') || 'Error desconocido';
+            throw new Error(`Error WSFEv1: ${detalle}`);
         }
-        
+
         const cae = feDetResp.CAE;
         const caeVencimiento = feDetResp.CAEFchVto;
         const resultadoOperacion = feDetResp.Resultado;
-        
-        // Verificar si el CAE fue aprobado
-       // Verificar si el CAE fue aprobado
-if (resultadoOperacion !== 'A') {
-   
-    const observaciones = feDetResp.Observaciones?.Obs;
-    const mensajeObs = Array.isArray(observaciones)
-        ? observaciones.map(o => `${o.Code}: ${o.Msg}`).join(', ')
-        : (observaciones ? `${observaciones.Code}: ${observaciones.Msg}` : '');
-    throw new Error(`CAE no aprobado: ${mensajeObs}`);
-}
+
+        // Verificar si el CAE fue aprobado. Si no, capturar TODO el detalle de
+        // AFIP (observaciones + errores + eventos) para diagnosticar el motivo.
+        if (resultadoOperacion !== 'A') {
+            const obs = extraerMsgs(feDetResp.Observaciones?.Obs);
+            const detalle = [
+                `Resultado=${resultadoOperacion || '?'}`,
+                obs && `Obs: ${obs}`,
+                erroresResult && `Errores: ${erroresResult}`,
+                eventosResult && `Eventos: ${eventosResult}`,
+            ].filter(Boolean).join(' · ');
+            throw new Error(`CAE no aprobado — ${detalle}`);
+        }
         
         // 12. Guardar comprobante en BD con CAE real
         const caeVencimientoDate = new Date(
@@ -423,6 +530,8 @@ if (resultadoOperacion !== 'A') {
             importeTotal: importeTotal,
             importeNeto: importeNetoCalculado,
             importeIVA: importeIvaCalculado,
+            cbteFecha: fechaEmision,
+            condicionIvaReceptor: condIvaReceptor,
             xmlEnviado,
             xmlRespuesta,
             estado: 'emitido'
@@ -452,12 +561,12 @@ if (resultadoOperacion !== 'A') {
                 negocioId,
                 pedidoId: pedidoId || null,
                 cae: null,
-                caeVencimiento: new Date(),
+                caeVencimiento: null,
                 numeroComprobante: numeroComprobante || 0,
-                puntoVenta: punto_venta || 1,
-                tipoComprobante: tipo_comprobante,
+                puntoVenta: puntoVenta || 1,
+                tipoComprobante: tipoCmp,
                 letraComprobante: '',
-                tipoDocumento: tipoDocumento || 99,
+                tipoDocumento: docTipo,
                 numeroDocumento: numeroDocumento || null,
                 denominacionComprador: denominacion || 'Consumidor Final',
                 importeTotal: importeTotal,
@@ -598,6 +707,220 @@ async function guardarCertificadoNegocio(negocioId, certPath, keyPath, csrPath, 
     }
 }
 
+/**
+ * Emite una NOTA DE CRÉDITO electrónica (WSFEv1) que anula/acredita una factura
+ * ya emitida. Mapea el tipo (A→3, B→8, C→13), referencia el comprobante original
+ * con CbtesAsoc (obligatorio para AFIP) y usa los mismos importes.
+ * Portado de gestionQ24 (probado en producción).
+ * @param {Object} datos - { negocioId, pedidoId }
+ */
+async function emitirNotaCredito({ negocioId, pedidoId }) {
+    if (!pedidoId) return { exito: false, error: 'pedidoId requerido' };
+
+    // 1. Buscar la factura original del pedido
+    const orig = await ComprobanteElectronico.findOne({
+        where: {
+            pedidoId, negocioId, estado: 'emitido',
+            tipoComprobante: { [Op.in]: [1, 2, 3, 6, 7, 8, 11, 12, 13] }
+        },
+        order: [['createdAt', 'DESC']]
+    });
+    if (!orig) {
+        return { exito: false, error: 'El pedido no tiene una factura electrónica emitida' };
+    }
+
+    // Mapear factura/ND → nota de crédito (A=3, B=8, C=13)
+    const mapNC = { 1: 3, 2: 3, 3: 3, 6: 8, 7: 8, 8: 8, 11: 13, 12: 13, 13: 13 };
+    const origTipo = parseInt(orig.tipoComprobante);
+    const ncTipo = mapNC[origTipo];
+    if (!ncTipo) return { exito: false, error: 'Tipo de comprobante no soportado para nota de crédito' };
+
+    // Evitar duplicar la nota de crédito
+    const yaNC = await ComprobanteElectronico.findOne({
+        where: { pedidoId, negocioId, estado: 'emitido', tipoComprobante: { [Op.in]: [3, 8, 13] } }
+    });
+    if (yaNC) return { exito: false, error: 'Este pedido ya tiene una nota de crédito emitida' };
+
+    const punto_venta = parseInt(orig.puntoVenta);
+    const docTipo = parseInt(orig.tipoDocumento) || 99;
+    const condIvaReceptor = parseInt(orig.condicionIvaReceptor) || (origTipo === 1 ? 1 : (docTipo === 80 ? 6 : 5));
+    const importeTotal = parseFloat(orig.importeTotal);
+    const importeNeto = parseFloat(orig.importeNeto) || importeTotal;
+    const importeIva = parseFloat(orig.importeIVA) || 0;
+    const origNro = parseInt(orig.numeroComprobante);
+    const origFch = (orig.cbteFecha && /^\d{8}$/.test(String(orig.cbteFecha)))
+        ? String(orig.cbteFecha)
+        : fechaArgYYYYMMDD(orig.fechaEmision ? new Date(orig.fechaEmision) : new Date());
+
+    let xmlEnviado = null, xmlRespuesta = null, numeroComprobante = 0;
+    try {
+        // Certificado + ticket WSAA (mismo flujo que emitirComprobante)
+        const certificado = await ARCACredential.findOne({ where: { negocioId, activo: true } });
+        if (!certificado) throw new Error('No hay certificado activo configurado');
+        if (certificado.modo === 'delegado') {
+            const delegado = wsaaService.obtenerCertDelegado();
+            if (!delegado.disponible) throw new Error(delegado.error);
+            const verifDelegado = verificarCertificado(delegado.certPath);
+            if (!verifDelegado.valido) throw new Error('El certificado del proveedor está vencido o no es válido. Contactá a soporte.');
+        } else {
+            const certPath = encryptionService.decrypt(certificado.certPath);
+            const verificacion = verificarCertificado(certPath);
+            if (!verificacion.valido) throw new Error('El certificado está vencido o no es válido');
+        }
+
+        console.log('🔐 Obteniendo ticket de acceso WSAA (nota de crédito)...');
+        const ticket = await wsaaService.obtenerTicketAcceso(negocioId, 'wsfe');
+
+        const cuitEmisor = certificado.cuit.replace(/[-\s]/g, '');
+        const entorno = certificado.entornoProduccion ? 'produccion' : 'homologacion';
+        const wsfeUrl = entorno === 'produccion'
+            ? 'https://servicios1.afip.gov.ar/wsfev1/service.asmx'
+            : 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx';
+
+        // Último número de NC autorizado para este PtoVta/Tipo
+        const xmlUltimo = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ar="http://ar.gov.afip.dif.FEV1/">
+    <soapenv:Header/><soapenv:Body>
+        <ar:FECompUltimoAutorizado>
+            <ar:Auth><ar:Token>${ticket.token}</ar:Token><ar:Sign>${ticket.sign}</ar:Sign><ar:Cuit>${cuitEmisor}</ar:Cuit></ar:Auth>
+            <ar:PtoVta>${punto_venta}</ar:PtoVta><ar:CbteTipo>${ncTipo}</ar:CbteTipo>
+        </ar:FECompUltimoAutorizado>
+    </soapenv:Body></soapenv:Envelope>`;
+        const respUltimo = await axios.post(wsfeUrl, xmlUltimo, {
+            headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': 'http://ar.gov.afip.dif.FEV1/FECompUltimoAutorizado' },
+            timeout: 30000, httpsAgent
+        });
+        const parserU = new xml2js.Parser({ explicitArray: false, ignoreAttrs: true });
+        const resU = await parserU.parseStringPromise(respUltimo.data);
+        const envU = resU['soap:Envelope'] || resU['soapenv:Envelope'];
+        const bodyU = envU['soap:Body'] || envU['soapenv:Body'];
+        const ultResp = bodyU['FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoResult || bodyU['ns1:FECompUltimoAutorizadoResponse']?.FECompUltimoAutorizadoResult;
+        const ultimoNro = parseInt(ultResp?.CbteNro || '0');
+        numeroComprobante = ultimoNro + 1;
+        console.log(`📋 Última NC AFIP: ${ultimoNro}, próxima: ${numeroComprobante}`);
+
+        // Fecha (AR) con piso de seguridad respecto del último autorizado
+        let fechaEmision = fechaArgYYYYMMDD();
+        if (ultimoNro > 0) {
+            try {
+                const ultimaFch = await consultarFechaComprobante({
+                    wsfeUrl, token: ticket.token, sign: ticket.sign, cuit: cuitEmisor,
+                    puntoVenta: punto_venta, tipoComprobante: ncTipo, cbteNro: ultimoNro,
+                });
+                if (ultimaFch && /^\d{8}$/.test(ultimaFch) && ultimaFch > fechaEmision) fechaEmision = ultimaFch;
+            } catch (e) { console.warn('⚠️ No se pudo consultar la fecha de la última NC:', e.message); }
+        }
+
+        xmlEnviado = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ar="http://ar.gov.afip.dif.FEV1/">
+    <soapenv:Header/><soapenv:Body>
+        <ar:FECAESolicitar>
+            <ar:Auth><ar:Token>${ticket.token}</ar:Token><ar:Sign>${ticket.sign}</ar:Sign><ar:Cuit>${cuitEmisor}</ar:Cuit></ar:Auth>
+            <ar:FeCAEReq>
+                <ar:FeCabReq><ar:CantReg>1</ar:CantReg><ar:PtoVta>${punto_venta}</ar:PtoVta><ar:CbteTipo>${ncTipo}</ar:CbteTipo></ar:FeCabReq>
+                <ar:FeDetReq>
+                    <ar:FECAEDetRequest>
+                        <ar:Concepto>1</ar:Concepto>
+                        <ar:DocTipo>${docTipo}</ar:DocTipo>
+                        <ar:DocNro>${docTipo === 99 ? 0 : (String(orig.numeroDocumento || '').replace(/[-\s.]/g, '') || 0)}</ar:DocNro>
+                        <ar:CbteDesde>${numeroComprobante}</ar:CbteDesde>
+                        <ar:CbteHasta>${numeroComprobante}</ar:CbteHasta>
+                        <ar:CbteFch>${fechaEmision}</ar:CbteFch>
+                        <ar:ImpTotal>${importeTotal.toFixed(2)}</ar:ImpTotal>
+                        <ar:ImpTotConc>0.00</ar:ImpTotConc>
+                        <ar:ImpNeto>${importeNeto.toFixed(2)}</ar:ImpNeto>
+                        <ar:ImpOpEx>0.00</ar:ImpOpEx>
+                        <ar:ImpIVA>${importeIva.toFixed(2)}</ar:ImpIVA>
+                        <ar:ImpTrib>0.00</ar:ImpTrib>
+                        <ar:MonId>PES</ar:MonId>
+                        <ar:MonCotiz>1.000</ar:MonCotiz>
+                        <ar:CondicionIVAReceptorId>${condIvaReceptor}</ar:CondicionIVAReceptorId>
+                        <ar:CbtesAsoc>
+                            <ar:CbteAsoc>
+                                <ar:Tipo>${origTipo}</ar:Tipo>
+                                <ar:PtoVta>${punto_venta}</ar:PtoVta>
+                                <ar:Nro>${origNro}</ar:Nro>
+                                <ar:Cuit>${cuitEmisor}</ar:Cuit>
+                                <ar:CbteFch>${origFch}</ar:CbteFch>
+                            </ar:CbteAsoc>
+                        </ar:CbtesAsoc>
+                        ${importeIva > 0 ? `
+                        <ar:Iva>
+                            <ar:AlicIva><ar:Id>5</ar:Id><ar:BaseImp>${importeNeto.toFixed(2)}</ar:BaseImp><ar:Importe>${importeIva.toFixed(2)}</ar:Importe></ar:AlicIva>
+                        </ar:Iva>` : ''}
+                    </ar:FECAEDetRequest>
+                </ar:FeDetReq>
+            </ar:FeCAEReq>
+        </ar:FECAESolicitar>
+    </soapenv:Body></soapenv:Envelope>`;
+
+        console.log(`🧾 Enviando nota de crédito a WSFEv1 (${entorno})...`);
+        const response = await axios.post(wsfeUrl, xmlEnviado, {
+            headers: { 'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': 'http://ar.gov.afip.dif.FEV1/FECAESolicitar' },
+            timeout: 60000, httpsAgent
+        });
+        xmlRespuesta = response.data;
+
+        const parser = new xml2js.Parser({ explicitArray: false, ignoreAttrs: true });
+        const resultado = await parser.parseStringPromise(response.data);
+        const soapBody = resultado['soap:Envelope'] || resultado['soapenv:Envelope'];
+        const body = soapBody['soap:Body'] || soapBody['soapenv:Body'];
+        const feResult = body['FECAESolicitarResponse']?.FECAESolicitarResult || body['ns1:FECAESolicitarResponse']?.FECAESolicitarResult;
+        if (!feResult) throw new Error('Respuesta inválida del WSFEv1');
+        const feDetResp = feResult.FeDetResp?.FECAEDetResponse;
+        const erroresResult = extraerMsgs(feResult.Errors?.Err);
+        if (!feDetResp) throw new Error(`Error WSFEv1: ${erroresResult || 'desconocido'}`);
+        const cae = feDetResp.CAE;
+        const caeVencimiento = feDetResp.CAEFchVto;
+        if (feDetResp.Resultado !== 'A') {
+            const obs = extraerMsgs(feDetResp.Observaciones?.Obs);
+            throw new Error(`NC no aprobada — Resultado=${feDetResp.Resultado || '?'}${obs ? ' · Obs: ' + obs : ''}${erroresResult ? ' · Errores: ' + erroresResult : ''}`);
+        }
+
+        const caeVtoDate = new Date(caeVencimiento.substring(0, 4), parseInt(caeVencimiento.substring(4, 6)) - 1, caeVencimiento.substring(6, 8));
+        const letras = { 3: 'A', 8: 'B', 13: 'C' };
+        const notaCredito = await ComprobanteElectronico.create({
+            negocioId,
+            pedidoId,
+            cae,
+            caeVencimiento: caeVtoDate,
+            numeroComprobante,
+            puntoVenta: punto_venta,
+            tipoComprobante: ncTipo,
+            letraComprobante: letras[ncTipo] || '',
+            tipoDocumento: docTipo,
+            numeroDocumento: orig.numeroDocumento || null,
+            denominacionComprador: orig.denominacionComprador || 'Consumidor Final',
+            importeTotal,
+            importeNeto,
+            importeIVA: importeIva,
+            cbteFecha: fechaEmision,
+            condicionIvaReceptor: condIvaReceptor,
+            xmlEnviado,
+            xmlRespuesta,
+            estado: 'emitido'
+        });
+
+        console.log(`✅ Nota de crédito emitida con CAE real: ${cae} - Número ${numeroComprobante}`);
+        return { exito: true, cae, comprobante: notaCredito.toJSON(), comprobanteOriginal: orig, mensaje: 'Nota de crédito emitida correctamente' };
+    } catch (error) {
+        console.error('❌ Error emitiendo nota de crédito:', error.message);
+        try {
+            await ComprobanteElectronico.create({
+                negocioId, pedidoId, cae: null, caeVencimiento: null,
+                numeroComprobante: numeroComprobante || 0,
+                puntoVenta: punto_venta, tipoComprobante: ncTipo,
+                letraComprobante: '', tipoDocumento: docTipo,
+                numeroDocumento: orig.numeroDocumento || null,
+                denominacionComprador: orig.denominacionComprador || 'Consumidor Final',
+                importeTotal, importeNeto, importeIVA: importeIva,
+                xmlEnviado, xmlRespuesta, estado: 'error'
+            });
+        } catch (dbError) { console.error('Error guardando NC con error:', dbError.message); }
+        return { exito: false, error: error.message };
+    }
+}
+
 module.exports = {
     generarCertificados,
     guardarCertificado,
@@ -605,8 +928,11 @@ module.exports = {
     obtenerTiposComprobante,
     obtenerTiposDocumento,
     emitirComprobante,
+    emitirNotaCredito,
     obtenerComprobantes,
     obtenerUltimoNumero,
     guardarCertificadoNegocio,
+    fechaArgYYYYMMDD,
+    consultarFechaComprobante,
     CERT_DIR
 };

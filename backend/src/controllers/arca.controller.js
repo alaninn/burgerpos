@@ -358,3 +358,86 @@ exports.vincularAutomatico = async (req, res) => {
     });
   }
 };
+
+/**
+ * Info de la conexión delegada: disponible en este servidor y a qué CUIT delegar
+ * GET /api/negocios/:negocioId/arca/delegacion-info
+ */
+exports.delegacionInfo = async (req, res) => {
+  const delegado = wsaaService.obtenerCertDelegado();
+  res.json({
+    disponible: delegado.disponible,
+    cuitProveedor: delegado.disponible ? delegado.cuit : null,
+    error: delegado.disponible ? null : delegado.error
+  });
+};
+
+/**
+ * Activa la conexión delegada: el negocio delegó el web service de facturación
+ * (wsfe) al CUIT del proveedor desde la web de ARCA, y factura sin certificado
+ * propio. Portado de gestionQ24.
+ * POST /api/negocios/:negocioId/arca/activar-delegacion
+ */
+exports.activarDelegacion = async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+
+    if (req.usuario.negocioId !== negocioId && req.usuario.rol !== 'superadmin') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const delegado = wsaaService.obtenerCertDelegado();
+    if (!delegado.disponible) {
+      return res.status(400).json({ error: 'La conexión delegada no está disponible en este servidor. Contactá a soporte.' });
+    }
+
+    const { cuit, puntoVenta, regimenFiscal, razonSocial } = req.body;
+    const cuitLimpio = String(cuit || '').replace(/[-\s]/g, '');
+    if (!/^\d{11}$/.test(cuitLimpio)) {
+      return res.status(400).json({ error: 'Ingresá un CUIT válido de 11 dígitos' });
+    }
+
+    const { ARCACredential, TicketAccesoWSAA } = require('../models');
+
+    // Reemplazar cualquier configuración anterior (certificado propio o delegación vieja)
+    const [credential, created] = await ARCACredential.findOrCreate({
+      where: { negocioId },
+      defaults: {
+        cuit: cuitLimpio,
+        puntoVenta: parseInt(puntoVenta) || 1,
+        regimenFiscal: regimenFiscal || 'responsable_inscripto',
+        razonSocial: razonSocial || null,
+        activo: true,
+        modo: 'delegado',
+        entornoProduccion: true
+      }
+    });
+
+    if (!created) {
+      await credential.update({
+        cuit: cuitLimpio,
+        puntoVenta: parseInt(puntoVenta) || 1,
+        regimenFiscal: regimenFiscal || 'responsable_inscripto',
+        razonSocial: razonSocial || credential.razonSocial,
+        activo: true,
+        modo: 'delegado',
+        entornoProduccion: true,
+        certPath: null,
+        keyPath: null,
+        csrPath: null
+      });
+    }
+
+    // Invalidar tickets cacheados del negocio (por si venía de modo propio)
+    await TicketAccesoWSAA.destroy({ where: { negocioId } });
+
+    res.json({
+      exito: true,
+      mensaje: 'Conexión delegada activada. Probá la conexión para confirmar que la delegación en ARCA esté hecha.',
+      certificado: credential.toJSON()
+    });
+  } catch (error) {
+    console.error('❌ Error activando delegación:', error);
+    res.status(500).json({ error: 'Error al activar la conexión delegada' });
+  }
+};

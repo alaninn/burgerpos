@@ -4,11 +4,16 @@ module.exports = (sequelize, DataTypes) => {
     negocioId: { type: DataTypes.UUID, allowNull: false },
     pedidoId: { type: DataTypes.UUID, allowNull: true }, // Puede ser null si es nota de crédito independiente
 
-    // Datos AFIP
-    cae: { type: DataTypes.STRING(50), allowNull: false, unique: true },
-    caeVencimiento: { type: DataTypes.DATE, allowNull: false },
+    // Datos AFIP (cae/vencimiento nulos cuando el intento quedo en estado 'error')
+    cae: { type: DataTypes.STRING(50), allowNull: true },
+    caeVencimiento: { type: DataTypes.DATE, allowNull: true },
     numeroComprobante: { type: DataTypes.INTEGER, allowNull: false },
     puntoVenta: { type: DataTypes.INTEGER, allowNull: false },
+    // Fecha del comprobante enviada a AFIP (CbteFch, YYYYMMDD) — necesaria para
+    // referenciar el original al emitir una nota de credito
+    cbteFecha: { type: DataTypes.STRING(8), allowNull: true },
+    // Condicion IVA del receptor (RG 5616): 1=RI, 4=Exento, 5=Cons. Final, 6=Monotributo
+    condicionIvaReceptor: { type: DataTypes.INTEGER, allowNull: true },
 
     // Tipos ARCA: 1=Factura A, 6=Factura B, 11=Factura C, 3/8/13=Notas Crédito
     tipoComprobante: { type: DataTypes.INTEGER, allowNull: false },
@@ -40,7 +45,6 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       { fields: ['negocioId'] },
       { fields: ['pedidoId'] },
-      { fields: ['cae'], unique: true },
       { fields: ['estado'] },
       { fields: ['fechaEmision'] }
     ]
