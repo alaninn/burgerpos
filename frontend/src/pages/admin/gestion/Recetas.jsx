@@ -168,7 +168,13 @@ export default function Recetas() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Object.values(recetasAgrupadas).map(grupo => {
             const tieneVariantes = grupo.recetas.length > 1 && grupo.recetas.some(r => r.variante)
-            const costoTotal = grupo.recetas.reduce((sum, r) => sum + calcularCosto(r), 0) / grupo.recetas.length
+            // Costo real: si hay variantes con costos distintos se muestra el rango
+            const costos = grupo.recetas.map(r => calcularCosto(r))
+            const costoMin = Math.min(...costos)
+            const costoMax = Math.max(...costos)
+            const costoTexto = costoMax - costoMin < 0.01
+              ? `$${costoMin.toFixed(2)}`
+              : `$${costoMin.toFixed(0)}–$${costoMax.toFixed(0)}`
 
             return (
               <div
@@ -226,9 +232,9 @@ export default function Recetas() {
                     </p>
                   </div>
                   <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <p className="text-xs text-green-700 dark:text-green-400 mb-1">Costo prom.</p>
+                    <p className="text-xs text-green-700 dark:text-green-400 mb-1">Costo</p>
                     <p className="text-xl font-bold text-green-700 dark:text-green-400">
-                      ${costoTotal.toFixed(2)}
+                      {costoTexto}
                     </p>
                   </div>
                 </div>
@@ -289,11 +295,10 @@ export default function Recetas() {
             setModalEditar(true)
           }}
           onEliminar={async (recetaId) => {
-            if (confirm('¿Eliminar esta receta?')) {
-              await handleEliminar(recetaId)
-              setModalDetalle(false)
-              setGrupoSeleccionado(null)
-            }
+            // handleEliminar ya pide confirmación (evita el doble confirm)
+            await handleEliminar(recetaId)
+            setModalDetalle(false)
+            setGrupoSeleccionado(null)
           }}
         />
       )}

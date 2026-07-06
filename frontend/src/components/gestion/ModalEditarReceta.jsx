@@ -26,16 +26,19 @@ export default function ModalEditarReceta({ receta, productosMenu, ingredientes,
   }
 
   const actualizarIngrediente = (index, field, value) => {
-    const nuevos = [...form.ingredientes]
-    nuevos[index][field] = value
-
-    // Auto-completar unidad basada en el ingrediente seleccionado
-    if (field === 'ingredienteId') {
-      const ing = ingredientes.find(i => i.id === value)
-      nuevos[index].unidad = ing?.unidadBase || ''
-    }
-
-    setForm({ ...form, ingredientes: nuevos })
+    // Actualizacion inmutable; al elegir ingrediente se autocompleta la unidad
+    setForm(prev => ({
+      ...prev,
+      ingredientes: prev.ingredientes.map((fila, i) => {
+        if (i !== index) return fila
+        const nueva = { ...fila, [field]: value }
+        if (field === 'ingredienteId') {
+          const ing = ingredientes.find(x => x.id === value)
+          nueva.unidad = ing?.unidadBase || ''
+        }
+        return nueva
+      })
+    }))
   }
 
   const eliminarIngrediente = (index) => {

@@ -67,39 +67,31 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
   }
 
   const actualizarIngrediente = (index, field, value) => {
-    if (varianteActiva) {
-      // Con variantes
-      const nuevos = [...(form.recetasPorVariante[varianteActiva]?.ingredientes || [])]
-      nuevos[index][field] = value
-
-      // Auto-completar unidad basada en el ingrediente seleccionado
+    // Actualizacion inmutable de la fila (sin mutar el estado anterior).
+    // Al elegir el ingrediente se autocompleta la unidad con su unidad base.
+    const actualizarFila = (filas) => filas.map((fila, i) => {
+      if (i !== index) return fila
+      const nueva = { ...fila, [field]: value }
       if (field === 'ingredienteId') {
-        const ing = ingredientes.find(i => i.id === value)
-        nuevos[index].unidad = ing?.unidadBase || ''
+        const ing = ingredientes.find(x => x.id === value)
+        nueva.unidad = ing?.unidadBase || ''
       }
+      return nueva
+    })
 
-      setForm({
-        ...form,
+    if (varianteActiva) {
+      setForm(prev => ({
+        ...prev,
         recetasPorVariante: {
-          ...form.recetasPorVariante,
+          ...prev.recetasPorVariante,
           [varianteActiva]: {
-            ...form.recetasPorVariante[varianteActiva],
-            ingredientes: nuevos
+            ...prev.recetasPorVariante[varianteActiva],
+            ingredientes: actualizarFila(prev.recetasPorVariante[varianteActiva]?.ingredientes || [])
           }
         }
-      })
+      }))
     } else {
-      // Sin variantes
-      const nuevos = [...form.ingredientes]
-      nuevos[index][field] = value
-
-      // Auto-completar unidad basada en el ingrediente seleccionado
-      if (field === 'ingredienteId') {
-        const ing = ingredientes.find(i => i.id === value)
-        nuevos[index].unidad = ing?.unidadBase || ''
-      }
-
-      setForm({ ...form, ingredientes: nuevos })
+      setForm(prev => ({ ...prev, ingredientes: actualizarFila(prev.ingredientes) }))
     }
   }
 
@@ -151,32 +143,44 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
       const negocioId = getNegocioId()
 
       if (productoSeleccionado?.variantes?.length > 0) {
-        // Crear múltiples recetas (una por variante)
-        const promesas = []
+        // Con variantes: cada variante es OPCIONAL. Solo se crean recetas para
+        // las variantes que tengan ingredientes cargados; las vacías se saltean
+        // (esa variante queda sin receta y no descuenta stock hasta que la cargues).
+        const variantesConIngredientes = productoSeleccionado.variantes.filter(v =>
+          (form.recetasPorVariante[v.id]?.ingredientes || []).length > 0
+        )
 
-        for (const variante of productoSeleccionado.variantes) {
+        if (variantesConIngredientes.length === 0) {
+          setLoading(false)
+          return toast.error('Agregá ingredientes en al menos una variante')
+        }
+
+        // Validar solo las variantes que tienen filas cargadas
+        for (const variante of variantesConIngredientes) {
           const recetaVariante = form.recetasPorVariante[variante.id]
-
-          if (!recetaVariante?.ingredientes?.length) {
-            setLoading(false)
-            return toast.error(`Falta agregar ingredientes para ${variante.nombre}`)
-          }
-
-          // Validar ingredientes
           for (let i = 0; i < recetaVariante.ingredientes.length; i++) {
             const ing = recetaVariante.ingredientes[i]
             if (!ing.ingredienteId) {
               setLoading(false)
+              setVarianteActiva(variante.id)
               return toast.error(`${variante.nombre}: Seleccioná un ingrediente en la fila ${i + 1}`)
             }
             if (!ing.cantidad || parseFloat(ing.cantidad) <= 0) {
               setLoading(false)
+              setVarianteActiva(variante.id)
               return toast.error(`${variante.nombre}: La cantidad debe ser mayor a 0 en la fila ${i + 1}`)
             }
           }
+        }
 
-          promesas.push(
-            api.post(`/negocios/${negocioId}/recetas`, {
+        // Guardado SECUENCIAL: si una variante falla, las demás igual se crean,
+        // y las que ya existían se saltean sin romper todo.
+        let creadas = 0
+        const problemas = []
+        for (const variante of variantesConIngredientes) {
+          const recetaVariante = form.recetasPorVariante[variante.id]
+          try {
+            await api.post(`/negocios/${negocioId}/recetas`, {
               nombre: `${form.nombre} - ${variante.nombre}`,
               productoMenuId: form.productoMenuId,
               varianteId: variante.id,
@@ -187,11 +191,23 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
               })),
               notas: recetaVariante.notas || form.notas || null
             })
-          )
+            creadas++
+          } catch (err) {
+            const msg = err.response?.data?.error || err.message
+            if (/ya existe/i.test(msg)) {
+              problemas.push(`${variante.nombre}: ya tenía una receta (editala desde la lista)`)
+            } else {
+              problemas.push(`${variante.nombre}: ${msg}`)
+            }
+          }
         }
 
-        await Promise.all(promesas)
-        toast.success(`${promesas.length} recetas creadas correctamente`)
+        if (creadas === 0) {
+          setLoading(false)
+          return toast.error(problemas.join(' · ') || 'No se pudo crear ninguna receta')
+        }
+        toast.success(`${creadas} receta(s) creada(s)`)
+        if (problemas.length > 0) toast(`⚠️ ${problemas.join(' · ')}`, { duration: 6000 })
       } else {
         // Receta simple sin variantes (sistema actual)
         if (!form.ingredientes.length) {
@@ -305,7 +321,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
           {productoSeleccionado?.variantes?.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Variantes del Producto
+                Variantes del Producto <span className="text-gray-400 font-normal">(cada una es opcional)</span>
               </label>
               <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
                 {productoSeleccionado.variantes.map(variante => {
@@ -334,7 +350,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
                 })}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Definí los ingredientes específicos para cada variante del producto
+                Cargá solo las variantes que quieras: las que dejes vacías se saltean y podés agregarlas después. Se crea una receta por cada variante con ingredientes.
               </p>
             </div>
           )}
@@ -350,15 +366,43 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
                   </span>
                 )}
               </h4>
-              <button
-                onClick={agregarIngrediente}
-                className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition text-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Agregar
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Copiar los ingredientes de otra variante ya cargada (ej: de Simple a Doble) */}
+                {varianteActiva && (() => {
+                  const origen = productoSeleccionado?.variantes?.find(v =>
+                    v.id !== varianteActiva && (form.recetasPorVariante[v.id]?.ingredientes || []).length > 0
+                  )
+                  const destinoVacio = (form.recetasPorVariante[varianteActiva]?.ingredientes || []).length === 0
+                  if (!origen || !destinoVacio) return null
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const copia = (form.recetasPorVariante[origen.id].ingredientes || []).map(ing => ({ ...ing }))
+                        setForm(prev => ({
+                          ...prev,
+                          recetasPorVariante: {
+                            ...prev.recetasPorVariante,
+                            [varianteActiva]: { ...prev.recetasPorVariante[varianteActiva], ingredientes: copia }
+                          }
+                        }))
+                      }}
+                      className="px-3 py-1.5 border border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 transition text-sm"
+                    >
+                      📋 Copiar de {origen.nombre}
+                    </button>
+                  )
+                })()}
+                <button
+                  onClick={agregarIngrediente}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Agregar
+                </button>
+              </div>
             </div>
 
             {((varianteActiva ? form.recetasPorVariante[varianteActiva]?.ingredientes : form.ingredientes) || []).length === 0 ? (

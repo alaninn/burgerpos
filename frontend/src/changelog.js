@@ -6,9 +6,20 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.10.0'
+export const VERSION_ACTUAL = '1.10.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.10.1',
+    fecha: '2026-07-06',
+    titulo: 'Recetas por variante, ahora opcionales',
+    cambios: [
+      { t: 'Al crear la receta de un producto con variantes (simple/doble/triple), ya no es obligatorio cargar todas: se crean solo las variantes que completes y las demás quedan para después.' },
+      { t: 'Nuevo botón "Copiar de..." para duplicar los ingredientes de una variante a otra y solo ajustar las cantidades.' },
+      { t: 'Si una variante falla al guardar, las demás se crean igual y se avisa cuál quedó pendiente (antes un error frenaba todo).' },
+      { t: 'Las tarjetas de recetas muestran el rango de costo real entre variantes (antes un promedio confuso), y se eliminó la doble confirmación al borrar.' },
+    ],
+  },
   {
     version: '1.10.0',
     fecha: '2026-07-06',
