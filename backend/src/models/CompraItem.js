@@ -36,7 +36,7 @@ const CompraItem = sequelize.define('CompraItem', {
     }
   },
   unidadCompra: {
-    type: DataTypes.ENUM('caja', 'kg', 'gramos', 'unidad', 'litro', 'ml'),
+    type: DataTypes.ENUM('caja', 'kg', 'gramos', 'unidad', 'litro', 'ml', 'gramo'),
     allowNull: false,
     defaultValue: 'unidad'
   },

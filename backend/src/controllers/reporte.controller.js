@@ -1,6 +1,7 @@
-const { Pedido, ItemPedido, Cliente, Repartidor, Producto, ProductoVariante, Gasto } = require('../models');
-const { Op } = require('sequelize');
+const { Pedido, ItemPedido, Cliente, Repartidor, Producto, ProductoVariante, Gasto, StockMovimiento } = require('../models');
+const { Op, fn, col } = require('sequelize');
 const xlsx = require('xlsx');
+const { costoPorUnidadBase } = require('../utils/costoReceta');
 
 // =============================================
 // Centro de Control: ganancia real del negocio en un período.
@@ -49,6 +50,7 @@ exports.centroControl = async (req, res) => {
       porModalidad: { delivery: 0, takeaway: 0, salon: 0 },
       itemsSinCosto: 0, // items vendidos cuyo producto no tiene costo cargado
     };
+    const porProducto = {}; // desglose de productos vendidos
 
     for (const p of pedidos) {
       const total = parseFloat(p.total) || 0;
@@ -64,15 +66,28 @@ exports.centroControl = async (req, res) => {
 
       for (const item of p.items || []) {
         const producto = item.producto;
-        if (!producto) { r.itemsSinCosto += item.cantidad; continue; }
+        const cantidad = item.cantidad || 1;
+        const venta = parseFloat(item.subtotal) || (parseFloat(item.precioUnitario) || 0) * cantidad;
 
-        let costoUnitario = parseFloat(producto.precioCosto) || 0;
-        if (item.varianteNombre && producto.variantes?.length) {
-          const variante = producto.variantes.find(v => v.nombre === item.varianteNombre);
-          if (variante) costoUnitario = parseFloat(variante.precioCosto) || costoUnitario;
+        let costoUnitario = 0;
+        if (!producto) {
+          r.itemsSinCosto += cantidad;
+        } else {
+          costoUnitario = parseFloat(producto.precioCosto) || 0;
+          if (item.varianteNombre && producto.variantes?.length) {
+            const variante = producto.variantes.find(v => v.nombre === item.varianteNombre);
+            if (variante) costoUnitario = parseFloat(variante.precioCosto) || costoUnitario;
+          }
+          if (costoUnitario === 0) r.itemsSinCosto += cantidad;
+          r.costoProductos += costoUnitario * cantidad;
         }
-        if (costoUnitario === 0) r.itemsSinCosto += item.cantidad;
-        r.costoProductos += costoUnitario * (item.cantidad || 1);
+
+        // Desglose por producto vendido (cantidad, venta, costo, ganancia)
+        const clave = `${item.nombre}${item.varianteNombre ? ' — ' + item.varianteNombre : ''}`;
+        if (!porProducto[clave]) porProducto[clave] = { nombre: item.nombre, variante: item.varianteNombre || null, cantidad: 0, venta: 0, costo: 0 };
+        porProducto[clave].cantidad += cantidad;
+        porProducto[clave].venta += venta;
+        porProducto[clave].costo += costoUnitario * cantidad;
       }
     }
 
@@ -92,6 +107,37 @@ exports.centroControl = async (req, res) => {
     const gananciaBruta = r.ventaProductos - r.descuentos - r.costoProductos;
     const gananciaNeta = gananciaBruta - gastosPeriodo;
 
+    // Ingredientes consumidos en el periodo (historial exacto de movimientos
+    // de stock tipo 'venta'), con su costo estimado al precio actual.
+    let ingredientesConsumidos = [];
+    try {
+      const consumos = await StockMovimiento.findAll({
+        where: { negocioId, tipo: 'venta', createdAt: { [Op.between]: [ini, fin] } },
+        attributes: ['productoId', [fn('SUM', col('cantidad')), 'totalCantidad']],
+        include: [{ model: Producto, as: 'producto', attributes: ['id', 'nombre', 'unidadBase', 'precioCosto', 'unidadCompra', 'unidadContenidoCaja', 'cantidadPorUnidadCompra', 'stock'] }],
+        group: ['productoId', 'producto.id'],
+        order: [[fn('SUM', col('cantidad')), 'DESC']]
+      });
+      ingredientesConsumidos = consumos.map(m => {
+        const ing = m.producto;
+        const cantidad = parseFloat(m.get('totalCantidad')) || 0;
+        return {
+          nombre: ing?.nombre || 'Ingrediente',
+          unidadBase: ing?.unidadBase || 'unidad',
+          cantidad: Number(cantidad.toFixed(3)),
+          costo: ing ? Number((costoPorUnidadBase(ing) * cantidad).toFixed(2)) : 0,
+          stockActual: ing?.stock != null ? Number(ing.stock) : null
+        };
+      });
+    } catch (e) {
+      console.error('Error al calcular ingredientes consumidos:', e.message);
+    }
+
+    // Desglose de productos vendidos, ordenado por ganancia
+    const productosVendidos = Object.values(porProducto)
+      .map(p => ({ ...p, ganancia: p.venta - p.costo }))
+      .sort((a, b) => b.ganancia - a.ganancia);
+
     res.json({
       ...r,
       diasPeriodo,
@@ -101,6 +147,8 @@ exports.centroControl = async (req, res) => {
       gananciaBruta,
       gananciaNeta,
       ticketPromedio: r.totalPedidos > 0 ? r.totalFacturado / r.totalPedidos : 0,
+      porProducto: productosVendidos,
+      ingredientesConsumidos,
     });
   } catch (err) {
     console.error('Error en centro de control:', err);

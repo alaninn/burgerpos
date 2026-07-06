@@ -5,12 +5,28 @@
 
 const { Receta, RecetaIngrediente, Producto, ProductoVariante } = require('../models');
 
-// Conversion de la unidad de contenido de la caja a la unidad base del ingrediente.
+// Conversion entre unidades de masa/volumen, bidireccional.
+// kg <-> gramo y litro <-> ml; misma unidad = 1.
 function factorConversion(origen, destino) {
   const conversiones = {
-    kg_gramo: 1000, litro_litro: 1, kg_kg: 1, gramo_gramo: 1, unidad_unidad: 1
+    kg_gramo: 1000, gramo_kg: 0.001,
+    litro_ml: 1000, ml_litro: 0.001,
+    kg_kg: 1, gramo_gramo: 1, litro_litro: 1, ml_ml: 1, unidad_unidad: 1
   };
   return conversiones[`${origen}_${destino}`] || 1;
+}
+
+// Convierte una cantidad de una unidad a otra compatible (0.2 kg -> 200 gramo).
+function convertir(cantidad, de, a) {
+  return (parseFloat(cantidad) || 0) * factorConversion(de, a);
+}
+
+// Unidades en las que se puede expresar una receta segun la unidad base del
+// ingrediente (el usuario elige, ej. 0.2 kg en vez de 200 gramo).
+function unidadesCompatibles(unidadBase) {
+  if (unidadBase === 'gramo' || unidadBase === 'kg') return ['gramo', 'kg'];
+  if (unidadBase === 'litro' || unidadBase === 'ml') return ['litro', 'ml'];
+  return ['unidad'];
 }
 
 // Precio de una unidad base del ingrediente (ej: $/gramo) a partir de su
@@ -28,13 +44,16 @@ function costoPorUnidadBase(ing) {
 
 // Costo total de fabricar el producto de la receta (suma de sus ingredientes).
 // La receta debe venir con `ingredientes` incluidos y cada uno con `ingrediente`.
+// La cantidad de cada ingrediente puede estar en una unidad compatible distinta
+// de la base (ej. 0.2 kg con base gramo): se convierte antes de costear.
 function costoDeReceta(receta) {
   if (!receta?.ingredientes?.length) return 0;
   let total = 0;
   for (const item of receta.ingredientes) {
     const ing = item.ingrediente;
     if (!ing) continue;
-    total += costoPorUnidadBase(ing) * (parseFloat(item.cantidad) || 0);
+    const cantidadEnBase = convertir(item.cantidad, item.unidad || ing.unidadBase, ing.unidadBase);
+    total += costoPorUnidadBase(ing) * cantidadEnBase;
   }
   return Number(total.toFixed(2));
 }
@@ -84,4 +103,4 @@ async function recalcularPorIngrediente(ingredienteId, negocioId, { transaction 
   return recetaIds.length;
 }
 
-module.exports = { factorConversion, costoPorUnidadBase, costoDeReceta, persistirCostoReceta, recalcularPorIngrediente };
+module.exports = { factorConversion, convertir, unidadesCompatibles, costoPorUnidadBase, costoDeReceta, persistirCostoReceta, recalcularPorIngrediente };

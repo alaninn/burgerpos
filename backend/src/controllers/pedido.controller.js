@@ -1,5 +1,6 @@
-const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Receta, RecetaIngrediente, ProductoVariante, Caja, CajaUsuario, sequelize } = require('../models');
+const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Receta, RecetaIngrediente, ProductoVariante, Caja, CajaUsuario, StockMovimiento, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { convertir } = require('../utils/costoReceta');
 const whatsappService = require('../services/whatsappService');
 
 exports.listar = async (req, res) => {
@@ -199,7 +200,10 @@ exports.crear = async (req, res) => {
           // el stock puede quedar negativo, para reflejar el faltante real.
           for (const recetaIng of receta.ingredientes) {
             const ingrediente = recetaIng.ingrediente;
-            const cantidadADescontar = parseFloat(recetaIng.cantidad) * item.cantidad;
+            // La receta puede estar en una unidad compatible distinta de la base
+            // (ej: 0.2 kg con base gramo): se convierte antes de descontar.
+            const cantidadEnBase = convertir(recetaIng.cantidad, recetaIng.unidad || ingrediente.unidadBase, ingrediente.unidadBase);
+            const cantidadADescontar = cantidadEnBase * item.cantidad;
             const nuevoStock = (parseFloat(ingrediente.stock) || 0) - cantidadADescontar;
 
             // No redondear ni cortar en 0: el stock es fraccionario y puede ser negativo
@@ -208,8 +212,17 @@ exports.crear = async (req, res) => {
               { where: { id: ingrediente.id }, transaction: t }
             );
 
+            // Registro historico del consumo (para el desglose de ingredientes)
+            await StockMovimiento.create({
+              negocioId,
+              productoId: ingrediente.id,
+              tipo: 'venta',
+              cantidad: cantidadADescontar,
+              pedidoId: pedido.id
+            }, { transaction: t });
+
             console.log(
-              `✓ Stock descontado: ${ingrediente.nombre} -${cantidadADescontar} ${recetaIng.unidad} ` +
+              `✓ Stock descontado: ${ingrediente.nombre} -${cantidadADescontar} ${ingrediente.unidadBase} ` +
               `(Receta: ${receta.nombre}, Pedido: ${item.nombre} x${item.cantidad})`
             );
           }

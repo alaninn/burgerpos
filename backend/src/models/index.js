@@ -35,6 +35,7 @@ const Compra         = require('./Compra');
 const CompraItem     = require('./CompraItem');
 const Receta         = require('./Receta');
 const RecetaIngrediente = require('./RecetaIngrediente');
+const StockMovimiento = require('./StockMovimiento');
 
 // ── Negocio → Usuario ─────────────────────────────────────
 Negocio.hasMany(Usuario,      { foreignKey: 'negocioId', as: 'usuarios' });
@@ -194,6 +195,11 @@ RecetaIngrediente.belongsTo(Receta, { foreignKey: 'recetaId', as: 'receta' });
 RecetaIngrediente.belongsTo(Producto, { foreignKey: 'ingredienteId', as: 'ingrediente' });
 Producto.hasMany(RecetaIngrediente, { foreignKey: 'ingredienteId', as: 'usadoEnRecetas' });
 
+// ── Movimientos de stock (venta/compra/reversion) ─────────
+StockMovimiento.belongsTo(Producto, { foreignKey: 'productoId', as: 'producto' });
+Producto.hasMany(StockMovimiento, { foreignKey: 'productoId', as: 'movimientosStock' });
+StockMovimiento.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
+
 // ── ErrorFrontend → Negocio / Usuario (panel de errores) ──
 ErrorFrontend.belongsTo(Negocio, { foreignKey: 'negocioId', as: 'negocio' });
 ErrorFrontend.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
@@ -236,6 +242,7 @@ module.exports = {
   CompraItem,
   Receta,
   RecetaIngrediente,
+  StockMovimiento,
   ErrorFrontend,
   PlanConfig,
   PagoHistorial,

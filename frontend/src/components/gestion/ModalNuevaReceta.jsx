@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+import { costoDeIngredientes, unidadesCompatibles, convertir } from '../../utils/unidades'
 
 export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose, onSave }) {
   const { getNegocioId } = useAuth()
@@ -123,49 +124,21 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
     }
   }
 
+  // Costo estimado: convierte la unidad elegida (ej. kg) a la base del ingrediente
   const calcularCostoEstimado = () => {
-    let total = 0
-
-    // Obtener ingredientes según si hay variante activa o no
     const ingredientesActivos = varianteActiva
       ? (form.recetasPorVariante[varianteActiva]?.ingredientes || [])
       : form.ingredientes
 
-    for (const ing of ingredientesActivos) {
-      if (!ing.ingredienteId || !ing.cantidad) continue
-
-      const ingrediente = ingredientes.find(i => i.id === ing.ingredienteId)
-      if (!ingrediente) continue
-
-      const precioCosto = parseFloat(ingrediente.precioCosto) || 0
-      const cantidadPorUnidad = parseFloat(ingrediente.cantidadPorUnidadCompra) || 1
-
-      // Calcular cantidad total en unidad base
-      let cantidadTotalEnUnidadBase = cantidadPorUnidad
-      if (ingrediente.unidadCompra === 'caja' && ingrediente.unidadContenidoCaja) {
-        const factorConversion = calcularFactorConversion(ingrediente.unidadContenidoCaja, ingrediente.unidadBase)
-        cantidadTotalEnUnidadBase = cantidadPorUnidad * factorConversion
-      }
-
-      const precioPorUnidadBase = precioCosto / cantidadTotalEnUnidadBase
-      const cantidad = parseFloat(ing.cantidad) || 0
-
-      total += precioPorUnidadBase * cantidad
-    }
-
-    return total
-  }
-
-  const calcularFactorConversion = (unidadOrigen, unidadDestino) => {
-    const conversiones = {
-      'kg_gramo': 1000,
-      'litro_litro': 1,
-      'kg_kg': 1,
-      'gramo_gramo': 1,
-      'unidad_unidad': 1
-    }
-    const key = `${unidadOrigen}_${unidadDestino}`
-    return conversiones[key] || 1
+    return costoDeIngredientes(
+      ingredientesActivos
+        .filter(ing => ing.ingredienteId && ing.cantidad)
+        .map(ing => ({
+          cantidad: ing.cantidad,
+          unidad: ing.unidad,
+          ingrediente: ingredientes.find(i => i.id === ing.ingredienteId)
+        }))
+    )
   }
 
   const handleSubmit = async () => {
@@ -434,12 +407,28 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
 
                     <div className="col-span-2">
                       <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Unidad</label>
-                      <input
-                        type="text"
-                        value={ing.unidad}
-                        disabled
-                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400"
-                      />
+                      {(() => {
+                        const ingObj = ingredientes.find(i => i.id === ing.ingredienteId)
+                        const opciones = ingObj ? unidadesCompatibles(ingObj.unidadBase) : []
+                        const equivale = ingObj && ing.cantidad && ing.unidad && ing.unidad !== ingObj.unidadBase
+                          ? convertir(ing.cantidad, ing.unidad, ingObj.unidadBase) : null
+                        return (
+                          <>
+                            <select
+                              value={ing.unidad}
+                              onChange={e => actualizarIngrediente(idx, 'unidad', e.target.value)}
+                              disabled={!ing.ingredienteId}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-900"
+                            >
+                              {opciones.length === 0 && <option value="">—</option>}
+                              {opciones.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                            {equivale !== null && (
+                              <p className="text-[10px] text-violet-600 dark:text-violet-400 mt-0.5">= {equivale} {ingObj.unidadBase}</p>
+                            )}
+                          </>
+                        )
+                      })()}
                     </div>
 
                     <div className="col-span-1 flex justify-center">
@@ -459,22 +448,35 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
             )}
           </div>
 
-          {/* Costo estimado */}
-          {((varianteActiva ? form.recetasPorVariante[varianteActiva]?.ingredientes : form.ingredientes) || []).length > 0 && (
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  💰 Costo Estimado:
-                </span>
-                <span className="text-2xl font-bold text-green-700 dark:text-green-400">
-                  ${costoEstimado.toFixed(2)}
-                </span>
+          {/* Costo estimado + margen contra el precio de venta */}
+          {((varianteActiva ? form.recetasPorVariante[varianteActiva]?.ingredientes : form.ingredientes) || []).length > 0 && (() => {
+            const varianteObj = varianteActiva ? productoSeleccionado?.variantes?.find(v => v.id === varianteActiva) : null
+            const precioVenta = parseFloat(varianteObj?.precioVenta ?? productoSeleccionado?.precioVenta) || 0
+            const margen = precioVenta - costoEstimado
+            return (
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    💰 Costo Estimado:
+                  </span>
+                  <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                    ${costoEstimado.toFixed(2)}
+                  </span>
+                </div>
+                {precioVenta > 0 && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-green-200 dark:border-green-800 text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Precio de venta: ${precioVenta.toFixed(2)}</span>
+                    <span className={`font-bold ${margen >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600'}`}>
+                      Ganancia: ${margen.toFixed(2)} ({precioVenta > 0 ? Math.round((margen / precioVenta) * 100) : 0}%)
+                    </span>
+                  </div>
+                )}
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Basado en los precios de costo actuales de los ingredientes
+                </p>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                Basado en los precios de costo actuales de los ingredientes
-              </p>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Notas */}
           <div>

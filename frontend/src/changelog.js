@@ -6,9 +6,26 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.8.0'
+export const VERSION_ACTUAL = '1.9.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.9.0',
+    fecha: '2026-07-06',
+    titulo: 'Recetas en kg o gramos y desglose de ventas e ingredientes',
+    destacados: [
+      { titulo: 'Cargá las recetas en la unidad que te quede cómoda', detalle: 'Si un ingrediente se mide en gramos, ahora podés cargar la receta en gramos O en kilos (0.2 kg = 200 g, el sistema convierte solo). Lo mismo con litros y ml. Y al comprar por caja, la equivalencia se muestra en el momento: "2 cajas = 30 kg = 30000 gramos".' },
+      { titulo: 'El Centro de Control desglosa todo', detalle: 'Ahora ves cada producto vendido con su cantidad, facturado, costo y ganancia, y cuánto se consumió de cada ingrediente en el período (con su costo y el stock que queda).' },
+    ],
+    cambios: [
+      { t: 'En la receta, el margen aparece al lado del costo: precio de venta, ganancia y porcentaje.' },
+      { t: 'Cada venta y cada compra dejan un registro de movimiento de stock: el consumo del período es exacto aunque después cambies las recetas.' },
+      { t: 'Podés definir un stock mínimo por ingrediente para la alerta de stock bajo (antes era un valor fijo).' },
+      { t: 'El stock negativo (faltante por ventas sin stock) ahora se ve en rojo con su propia alerta.' },
+      { t: 'Se corrigió la eliminación de compras: ahora revierte el stock exacto que había sumado.' },
+      { t: 'El stock ya no se redondea al comprar: se respetan los decimales (ej. 0.5 kg).' },
+    ],
+  },
   {
     version: '1.8.0',
     fecha: '2026-07-05',

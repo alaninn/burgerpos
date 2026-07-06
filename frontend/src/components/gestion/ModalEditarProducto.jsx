@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+import { factorConversion } from '../../utils/unidades'
 
 const UNIDADES_COMPRA = [
   { value: 'caja', label: 'Caja' },
@@ -32,7 +33,8 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
     cantidadPorUnidadCompra: Number(producto.cantidadPorUnidadCompra) || 1,
     unidadBase: producto.unidadBase || 'unidad',
     precioCosto: producto.precioCosto || '',
-    stock: producto.stock || 0
+    stock: producto.stock || 0,
+    stockMinimo: producto.stockMinimo ?? ''
   })
 
   useEffect(() => {
@@ -82,7 +84,8 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
         unidadBase: form.unidadBase,
         cantidadPorUnidadCompra: Number(form.cantidadPorUnidadCompra),
         precioCosto: Number(form.precioCosto) || 0,
-        stock: Number(form.stock) || 0
+        stock: Number(form.stock) || 0,
+        stockMinimo: form.stockMinimo !== '' ? Number(form.stockMinimo) : null
       })
 
       toast.success('Producto actualizado correctamente')
@@ -111,17 +114,8 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
   }
 
   // Calcular factor de conversión entre unidades
-  const calcularFactorConversion = (unidadOrigen, unidadDestino) => {
-    const conversiones = {
-      'kg_gramo': 1000,
-      'litro_litro': 1,
-      'kg_kg': 1,
-      'gramo_gramo': 1,
-      'unidad_unidad': 1
-    }
-    const key = `${unidadOrigen}_${unidadDestino}`
-    return conversiones[key] || 1
-  }
+  // Conversion de unidades: fuente unica en utils/unidades.js
+  const calcularFactorConversion = (unidadOrigen, unidadDestino) => factorConversion(unidadOrigen, unidadDestino)
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -326,7 +320,7 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
               </label>
               <input
                 type="number"
-                step="1"
+                step="0.001"
                 value={form.stock}
                 onChange={e => setForm({ ...form, stock: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
@@ -336,6 +330,25 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
                 En {form.unidadBase}s
               </p>
             </div>
+          </div>
+
+          {/* Alerta de stock bajo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Stock mínimo (alerta)
+            </label>
+            <input
+              type="number"
+              step="0.001"
+              min="0"
+              value={form.stockMinimo}
+              onChange={e => setForm({ ...form, stockMinimo: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
+              placeholder={`Ej: 5000 (${form.unidadBase}s)`}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Cuando el stock baje de este valor, aparece la alerta de stock bajo. Vacío = sin alerta personalizada.
+            </p>
           </div>
 
           <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">

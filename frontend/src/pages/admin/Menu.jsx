@@ -4,6 +4,7 @@ import Adicionales from './Adicionales'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'
+import { costoDeIngredientes } from '../../utils/unidades'
 
 // ─── Utilidad: margen ─────────────────────────────────────
 function margenPct(pv, pc) {
@@ -20,25 +21,9 @@ function MargenBadge({ pv, pc }) {
 }
 
 // ─── Utilidad: costo de una receta desde sus ingredientes ─
+// (fuente unica de conversion en utils/unidades.js)
 function costoDeReceta(receta) {
-  let total = 0
-  for (const ing of receta?.ingredientes || []) {
-    const ingrediente = ing.ingrediente
-    if (!ingrediente) continue
-
-    const precioCosto = parseFloat(ingrediente.precioCosto) || 0
-    const cantidadPorUnidad = parseFloat(ingrediente.cantidadPorUnidadCompra) || 1
-
-    let cantidadTotalEnUnidadBase = cantidadPorUnidad
-    if (ingrediente.unidadCompra === 'caja' && ingrediente.unidadContenidoCaja) {
-      const conversiones = { kg_gramo: 1000, litro_litro: 1, kg_kg: 1, gramo_gramo: 1, unidad_unidad: 1 }
-      const factor = conversiones[`${ingrediente.unidadContenidoCaja}_${ingrediente.unidadBase}`] || 1
-      cantidadTotalEnUnidadBase = cantidadPorUnidad * factor
-    }
-
-    total += (precioCosto / cantidadTotalEnUnidadBase) * (parseFloat(ing.cantidad) || 0)
-  }
-  return total
+  return costoDeIngredientes(receta?.ingredientes)
 }
 
 // ─── Exportar menú a Excel ────────────────────────────────

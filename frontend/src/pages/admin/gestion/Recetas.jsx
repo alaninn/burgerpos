@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import ModalNuevaReceta from '../../../components/gestion/ModalNuevaReceta'
 import ModalEditarReceta from '../../../components/gestion/ModalEditarReceta'
 import ModalDetalleRecetas from '../../../components/gestion/ModalDetalleRecetas'
+import { costoDeIngredientes } from '../../../utils/unidades'
 
 export default function Recetas() {
   const { getNegocioId } = useAuth()
@@ -67,46 +68,8 @@ export default function Recetas() {
     }
   }
 
-  const calcularCosto = (receta) => {
-    if (!receta.ingredientes || receta.ingredientes.length === 0) return 0
-
-    let total = 0
-    for (const ing of receta.ingredientes) {
-      const ingrediente = ing.ingrediente
-      if (!ingrediente) continue
-
-      const precioCosto = parseFloat(ingrediente.precioCosto) || 0
-      const cantidadPorUnidad = parseFloat(ingrediente.cantidadPorUnidadCompra) || 1
-
-      // Calcular cantidad total en unidad base
-      let cantidadTotalEnUnidadBase = cantidadPorUnidad
-      if (ingrediente.unidadCompra === 'caja' && ingrediente.unidadContenidoCaja) {
-        // Si es caja, convertir: ej 15 kg → 15000 gramos
-        const factorConversion = calcularFactorConversion(ingrediente.unidadContenidoCaja, ingrediente.unidadBase)
-        cantidadTotalEnUnidadBase = cantidadPorUnidad * factorConversion
-      }
-
-      const precioPorUnidadBase = precioCosto / cantidadTotalEnUnidadBase
-      const cantidad = parseFloat(ing.cantidad) || 0
-
-      total += precioPorUnidadBase * cantidad
-    }
-
-    return total
-  }
-
-  // Función auxiliar para calcular factor de conversión
-  const calcularFactorConversion = (unidadOrigen, unidadDestino) => {
-    const conversiones = {
-      'kg_gramo': 1000,
-      'litro_litro': 1,
-      'kg_kg': 1,
-      'gramo_gramo': 1,
-      'unidad_unidad': 1
-    }
-    const key = `${unidadOrigen}_${unidadDestino}`
-    return conversiones[key] || 1
-  }
+  // Costo de la receta (convierte la unidad elegida, ej. kg, a la base del ingrediente)
+  const calcularCosto = (receta) => costoDeIngredientes(receta.ingredientes)
 
   const recetasFiltradas = recetas.filter(r =>
     r.nombre.toLowerCase().includes(busqueda.toLowerCase())

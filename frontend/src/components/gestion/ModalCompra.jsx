@@ -2,6 +2,21 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+import { factorConversion } from '../../utils/unidades'
+
+// Cuanto suma al stock una compra de N unidades de compra del producto,
+// en su unidad base (ej: 2 cajas de 15 kg, base gramo -> 30000 gramo).
+function equivalenciaCompra(producto, cantidad) {
+  const n = Number(cantidad) || 0
+  const porUnidad = Number(producto?.cantidadPorUnidadCompra) || 1
+  if (producto?.unidadCompra === 'caja' && producto?.unidadContenidoCaja) {
+    const enContenido = n * porUnidad
+    const enBase = enContenido * factorConversion(producto.unidadContenidoCaja, producto.unidadBase)
+    return { texto: `${n} caja${n !== 1 ? 's' : ''} = ${enContenido} ${producto.unidadContenidoCaja} = ${enBase} ${producto.unidadBase}`, enBase }
+  }
+  const enBase = n * porUnidad
+  return { texto: `${n} ${producto?.unidadCompra || 'unidad'} = ${enBase} ${producto?.unidadBase || 'unidad'}`, enBase }
+}
 
 // Compra avanzada (boleta completa): carga items que actualizan el stock de
 // ingredientes y, opcionalmente, deja deuda con el proveedor. Se abre desde Gastos.
@@ -64,7 +79,11 @@ export default function ModalCompra({ onClose, onGuardado }) {
     nuevosItems[index][campo] = valor
     if (campo === 'productoId' && valor) {
       const producto = productos.find(p => p.id === valor)
-      if (producto) nuevosItems[index].descripcion = producto.nombre
+      if (producto) {
+        nuevosItems[index].descripcion = producto.nombre
+        // La unidad la define el fraccionamiento configurado en el producto
+        nuevosItems[index].unidadCompra = producto.unidadCompra || 'unidad'
+      }
     }
     setForm({ ...form, items: nuevosItems })
   }
@@ -171,9 +190,25 @@ export default function ModalCompra({ onClose, onGuardado }) {
                       <td className="px-3 py-2"><input type="text" value={item.descripcion} onChange={e => actualizarItem(idx, 'descripcion', e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="Descripción" /></td>
                       <td className="px-3 py-2"><input type="number" value={item.cantidadCompra} min="0" step="0.001" onChange={e => actualizarItem(idx, 'cantidadCompra', e.target.value)} className="w-24 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="0" /></td>
                       <td className="px-3 py-2">
-                        <select value={item.unidadCompra} onChange={e => actualizarItem(idx, 'unidadCompra', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white">
-                          {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
+                        {(() => {
+                          const prod = item.productoId ? todosProductos.find(p => p.id === item.productoId) : null
+                          if (prod) {
+                            const eq = equivalenciaCompra(prod, item.cantidadCompra)
+                            return (
+                              <div className="w-36">
+                                <span className="inline-block px-2 py-1.5 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 capitalize">{prod.unidadCompra}</span>
+                                {Number(item.cantidadCompra) > 0 && (
+                                  <p className="text-[10px] text-violet-600 dark:text-violet-400 mt-0.5 leading-tight">{eq.texto}</p>
+                                )}
+                              </div>
+                            )
+                          }
+                          return (
+                            <select value={item.unidadCompra} onChange={e => actualizarItem(idx, 'unidadCompra', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white">
+                              {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          )
+                        })()}
                       </td>
                       <td className="px-3 py-2"><input type="number" value={item.precioUnitario} min="0" step="0.01" onChange={e => actualizarItem(idx, 'precioUnitario', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="0.00" /></td>
                       <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${calcularSubtotal(item).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>

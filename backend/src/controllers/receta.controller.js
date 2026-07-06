@@ -1,7 +1,7 @@
 const { Receta, RecetaIngrediente, Producto, Categoria, ProductoVariante } = require('../models');
 const { sequelize } = require('../models');
 const { Op } = require('sequelize');
-const { costoPorUnidadBase, persistirCostoReceta } = require('../utils/costoReceta');
+const { costoPorUnidadBase, persistirCostoReceta, unidadesCompatibles } = require('../utils/costoReceta');
 
 exports.listar = async (req, res) => {
   try {
@@ -139,11 +139,12 @@ exports.crear = async (req, res) => {
         });
       }
 
-      // Validar que la unidad coincida con unidadBase
-      if (ing.unidad !== producto.unidadBase) {
+      // La unidad puede ser cualquiera compatible con la base del ingrediente
+      // (ej: 0.2 kg para un ingrediente con base gramo); se convierte al usarla.
+      if (!unidadesCompatibles(producto.unidadBase).includes(ing.unidad)) {
         await transaction.rollback();
         return res.status(400).json({
-          error: `La unidad "${ing.unidad}" no coincide con la unidad base "${producto.unidadBase}" del ingrediente "${producto.nombre}"`
+          error: `La unidad "${ing.unidad}" no es compatible con la unidad base "${producto.unidadBase}" del ingrediente "${producto.nombre}"`
         });
       }
 
@@ -286,10 +287,10 @@ exports.actualizar = async (req, res) => {
           });
         }
 
-        if (ing.unidad !== producto.unidadBase) {
+        if (!unidadesCompatibles(producto.unidadBase).includes(ing.unidad)) {
           await transaction.rollback();
           return res.status(400).json({
-            error: `La unidad "${ing.unidad}" no coincide con la unidad base "${producto.unidadBase}" del ingrediente "${producto.nombre}"`
+            error: `La unidad "${ing.unidad}" no es compatible con la unidad base "${producto.unidadBase}" del ingrediente "${producto.nombre}"`
           });
         }
 

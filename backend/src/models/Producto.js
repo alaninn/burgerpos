@@ -14,6 +14,8 @@ module.exports = (sequelize, DataTypes) => {
     sugerido:    { type: DataTypes.BOOLEAN, defaultValue: false },
     modalidades: { type: DataTypes.JSONB, defaultValue: { delivery: true, takeaway: true, salon: true } },
     stock:       { type: DataTypes.DECIMAL(12, 3), allowNull: true },
+    // Umbral de alerta de stock bajo, en la unidad base del producto
+    stockMinimo: { type: DataTypes.DECIMAL(12, 3), allowNull: true },
     orden:       { type: DataTypes.INTEGER, defaultValue: 0 },
     // Campos de gestión de compras y stock
     unidadCompra:           { type: DataTypes.ENUM('caja', 'kg', 'litro', 'gramo', 'unidad'), defaultValue: 'unidad' },

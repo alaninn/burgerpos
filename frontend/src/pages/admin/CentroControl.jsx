@@ -354,6 +354,83 @@ export default function CentroControl() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Desglose de productos vendidos */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100">🍔 Productos vendidos</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Cantidad, facturado, costo y ganancia de cada producto del período</p>
+            </div>
+            {(d.porProducto || []).length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8">Sin ventas en el período</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-900/50">
+                    <tr>
+                      {['Producto', 'Cant.', 'Facturado', 'Costo', 'Ganancia', 'Margen'].map((h, i) => (
+                        <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {d.porProducto.map((p, i) => {
+                      const pct = p.venta > 0 ? Math.round((p.ganancia / p.venta) * 100) : 0
+                      return (
+                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                          <td className="px-4 py-2.5 text-gray-800 dark:text-gray-100 font-medium">
+                            {p.nombre}{p.variante && <span className="text-gray-400 font-normal"> — {p.variante}</span>}
+                            {p.costo === 0 && <span className="ml-2 text-[10px] text-amber-500" title="Sin costo cargado">⚠️ sin costo</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-gray-600 dark:text-gray-300 tabular-nums">{p.cantidad}</td>
+                          <td className="px-4 py-2.5 text-right text-gray-800 dark:text-gray-100 tabular-nums">{fmt(p.venta)}</td>
+                          <td className="px-4 py-2.5 text-right text-red-500 tabular-nums">− {fmt(p.costo)}</td>
+                          <td className={`px-4 py-2.5 text-right font-bold tabular-nums ${p.ganancia >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{fmt(p.ganancia)}</td>
+                          <td className={`px-4 py-2.5 text-right tabular-nums ${pct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{pct}%</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Desglose de ingredientes consumidos */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="font-bold text-gray-800 dark:text-gray-100">🥔 Ingredientes consumidos</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Lo que se usó del stock por las ventas del período (según las recetas)</p>
+            </div>
+            {(d.ingredientesConsumidos || []).length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8">Sin consumo registrado en el período. Los consumos se registran al vender productos con receta.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-900/50">
+                    <tr>
+                      {['Ingrediente', 'Consumido', 'Costo', 'Stock actual'].map((h, i) => (
+                        <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {d.ingredientesConsumidos.map((ing, i) => (
+                      <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                        <td className="px-4 py-2.5 text-gray-800 dark:text-gray-100 font-medium">{ing.nombre}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-800 dark:text-gray-100 tabular-nums">{Number(ing.cantidad).toLocaleString('es-AR')} {ing.unidadBase}{ing.unidadBase === 'unidad' ? 'es' : ''}</td>
+                        <td className="px-4 py-2.5 text-right text-red-500 tabular-nums">{fmt(ing.costo)}</td>
+                        <td className={`px-4 py-2.5 text-right tabular-nums ${Number(ing.stockActual) < 0 ? 'text-red-600 font-bold' : 'text-gray-600 dark:text-gray-300'}`}>
+                          {ing.stockActual != null ? `${Number(ing.stockActual).toLocaleString('es-AR')} ${ing.unidadBase}` : '—'}
+                          {Number(ing.stockActual) < 0 && ' ⚠️'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
 

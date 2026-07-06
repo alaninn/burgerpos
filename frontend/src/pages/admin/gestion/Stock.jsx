@@ -6,6 +6,7 @@ import ModalNuevoProducto from '../../../components/gestion/ModalNuevoProducto'
 import ModalEditarProducto from '../../../components/gestion/ModalEditarProducto'
 import ModalNuevaCategoria from '../../../components/gestion/ModalNuevaCategoria'
 import ModalGestionarCategorias from '../../../components/gestion/ModalGestionarCategorias'
+import { factorConversion } from '../../../utils/unidades'
 
 export default function Stock() {
   const { usuario } = useAuth()
@@ -24,46 +25,46 @@ export default function Stock() {
   const [productoEditar, setProductoEditar] = useState(null)
 
   // Función para calcular factor de conversión
-  const calcularFactorConversion = (unidadOrigen, unidadDestino) => {
-    const conversiones = {
-      'kg_gramo': 1000,
-      'litro_litro': 1,
-      'kg_kg': 1,
-      'gramo_gramo': 1,
-      'unidad_unidad': 1
-    }
-    const key = `${unidadOrigen}_${unidadDestino}`
-    return conversiones[key] || 1
+  // Conversion de unidades: fuente unica en utils/unidades.js
+  const calcularFactorConversion = (unidadOrigen, unidadDestino) => factorConversion(unidadOrigen, unidadDestino)
+
+  // Estado del stock: 'faltante' (negativo, se vendio sin stock), 'sinstock',
+  // 'bajo' (por debajo del stockMinimo del producto, o 5 si no definio uno) u 'ok'.
+  const estadoStock = (prod) => {
+    if (prod.stock === null || prod.stock === undefined) return 'sindato'
+    const stockNum = Number(prod.stock)
+    if (stockNum < 0) return 'faltante'
+    if (stockNum === 0) return 'sinstock'
+    const umbral = prod.stockMinimo != null ? Number(prod.stockMinimo) : 5
+    if (stockNum < umbral) return 'bajo'
+    return 'ok'
+  }
+
+  const COLOR_ESTADO = {
+    faltante: 'text-red-600 font-bold',
+    sinstock: 'text-red-500 font-semibold',
+    bajo: 'text-yellow-600 font-semibold',
+    ok: 'text-green-600 font-semibold',
+    sindato: 'text-gray-400'
   }
 
   // Función para formatear el stock según la unidad de compra
   const formatearStock = (prod) => {
-    const stockNum = prod.stock
-
-    if (stockNum === null || stockNum === undefined) {
-      return { texto: '—', color: 'text-gray-400' }
-    }
+    const estado = estadoStock(prod)
+    if (estado === 'sindato') return { texto: '—', color: COLOR_ESTADO.sindato }
+    const stockNum = Number(prod.stock)
+    const color = COLOR_ESTADO[estado]
 
     // Si es caja con unidadContenidoCaja, mostrar en cajas
     if (prod.unidadCompra === 'caja' && prod.unidadContenidoCaja && prod.cantidadPorUnidadCompra) {
       const factor = calcularFactorConversion(prod.unidadContenidoCaja, prod.unidadBase)
       const cantidadPorCaja = (parseFloat(prod.cantidadPorUnidadCompra) || 1) * factor
       const cajas = stockNum / cantidadPorCaja
-
-      const color = stockNum === 0 ? 'text-red-500 font-semibold' :
-                   cajas < 1 ? 'text-yellow-600 font-semibold' :
-                   'text-green-600 font-semibold'
-
       return {
-        texto: `${cajas.toFixed(2)} ${cajas === 1 ? 'caja' : 'cajas'}`,
+        texto: `${cajas.toFixed(2)} ${cajas === 1 ? 'caja' : 'cajas'}${estado === 'faltante' ? ' ⚠️' : ''}`,
         color
       }
     }
-
-    // Para otros casos, mostrar en unidad base
-    const color = stockNum === 0 ? 'text-red-500 font-semibold' :
-                 stockNum < 5 ? 'text-yellow-600 font-semibold' :
-                 'text-green-600 font-semibold'
 
     const unidad = prod.unidadBase === 'unidad' ? 'unidades' :
                   prod.unidadBase === 'gramo' ? 'gramos' :
@@ -71,7 +72,7 @@ export default function Stock() {
                   prod.unidadBase === 'litro' ? 'litros' : 'ud.'
 
     return {
-      texto: `${stockNum} ${unidad}`,
+      texto: `${stockNum} ${unidad}${estado === 'faltante' ? ' ⚠️' : ''}`,
       color
     }
   }
@@ -143,13 +144,14 @@ export default function Stock() {
 
   const filtrados = productos.filter(p => {
     if (catFiltro && p.categoriaId !== catFiltro) return false
-    if (filtro === 'bajo') return p.stock !== null && p.stock < 5 && p.stock > 0
-    if (filtro === 'sinstock') return p.stock !== null && p.stock === 0
+    if (filtro === 'bajo') return estadoStock(p) === 'bajo'
+    if (filtro === 'sinstock') return ['sinstock', 'faltante'].includes(estadoStock(p))
     return true
   })
 
-  const sinStock = productos.filter(p => p.stock !== null && p.stock === 0).length
-  const stockBajo = productos.filter(p => p.stock !== null && p.stock > 0 && p.stock < 5).length
+  const faltantes = productos.filter(p => estadoStock(p) === 'faltante').length
+  const sinStock = productos.filter(p => estadoStock(p) === 'sinstock').length
+  const stockBajo = productos.filter(p => estadoStock(p) === 'bajo').length
 
   return (
     <div className="p-6">
@@ -159,8 +161,14 @@ export default function Stock() {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Gestioná el inventario de ingredientes e insumos</p>
         </div>
         <div className="flex items-center gap-3">
-          {(sinStock > 0 || stockBajo > 0) && (
+          {(sinStock > 0 || stockBajo > 0 || faltantes > 0) && (
             <>
+              {faltantes > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700 rounded-lg text-xs font-bold text-red-700 dark:text-red-300">
+                  <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+                  {faltantes} faltante{faltantes !== 1 ? 's' : ''} (negativo)
+                </div>
+              )}
               {sinStock > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-xs font-medium text-red-600 dark:text-red-400">
                   <div className="w-2 h-2 bg-red-500 rounded-full" />

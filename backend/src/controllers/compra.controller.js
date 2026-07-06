@@ -1,19 +1,19 @@
-const { Compra, CompraItem, Proveedor, Producto, Gasto } = require('../models');
+const { Compra, CompraItem, Proveedor, Producto, Gasto, StockMovimiento } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/sequelize');
-const { recalcularPorIngrediente } = require('../utils/costoReceta');
+const { recalcularPorIngrediente, factorConversion } = require('../utils/costoReceta');
 
-// Función auxiliar para calcular factor de conversión entre unidades
-function calcularFactorConversion(unidadOrigen, unidadDestino) {
-  const conversiones = {
-    'kg_gramo': 1000,
-    'litro_litro': 1,
-    'kg_kg': 1,
-    'gramo_gramo': 1,
-    'unidad_unidad': 1
-  };
-  const key = `${unidadOrigen}_${unidadDestino}`;
-  return conversiones[key] || 1;
+// Cantidad que una compra suma al stock, en la unidad base del producto,
+// segun la configuracion de fraccionamiento del producto (ej: 2 cajas de
+// 15 kg con base gramo = 2 * 15 * 1000 = 30000 g). La usa la creacion y la
+// reversion, para que sumen y resten exactamente lo mismo.
+function cantidadCompradaEnUnidadBase(producto, cantidadCompra) {
+  const cantidad = Number(cantidadCompra) || 0;
+  const cantidadPorUnidad = Number(producto.cantidadPorUnidadCompra) || 1;
+  if (producto.unidadCompra === 'caja' && producto.unidadContenidoCaja) {
+    return cantidad * cantidadPorUnidad * factorConversion(producto.unidadContenidoCaja, producto.unidadBase);
+  }
+  return cantidad * cantidadPorUnidad;
 }
 
 // Listar compras
@@ -218,32 +218,32 @@ exports.crear = async (req, res) => {
 
         if (producto) {
           ingredientesActualizados.add(producto.id);
-          // Calcular cantidad en unidad base
-          let cantidadEnUnidadBase;
-          const cantidadCompra = Number(item.cantidadCompra);
-          const cantidadPorUnidad = Number(producto.cantidadPorUnidadCompra) || 1;
-
-          // Si es caja y tiene unidadContenidoCaja, hacer conversión
-          if (producto.unidadCompra === 'caja' && producto.unidadContenidoCaja) {
-            const factorConversion = calcularFactorConversion(producto.unidadContenidoCaja, producto.unidadBase);
-            cantidadEnUnidadBase = cantidadCompra * cantidadPorUnidad * factorConversion;
-          } else {
-            cantidadEnUnidadBase = cantidadCompra * cantidadPorUnidad;
-          }
-
+          // Cantidad en unidad base segun el fraccionamiento del producto
+          // (ej: 2 cajas de 15 kg, base gramo -> 30000 g)
+          const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
           const nuevoStock = (Number(producto.stock) || 0) + cantidadEnUnidadBase;
 
-          // Actualizar producto
+          // No redondear: el stock es decimal (kg, litros). La unidad de compra
+          // configurada en el producto NO se pisa con la del item: la config de
+          // fraccionamiento del producto es la fuente de verdad.
           await producto.update({
-            stock: Math.round(nuevoStock),
+            stock: nuevoStock,
             precioCosto: item.precioUnitario,
             ultimaCompraFecha: compra.fecha,
             ultimoCompraPrecio: item.precioUnitario,
-            unidadCompra: item.unidadCompra,
             proveedorId: compra.proveedorId
           }, { transaction: t });
 
-          console.log(`✓ Stock actualizado para ${producto.nombre}: +${cantidadEnUnidadBase} ${producto.unidadBase} (${item.cantidadCompra} × ${cantidadPorUnidad})`);
+          // Registro historico del movimiento (entrada por compra)
+          await StockMovimiento.create({
+            negocioId,
+            productoId: producto.id,
+            tipo: 'compra',
+            cantidad: cantidadEnUnidadBase,
+            compraId: compra.id
+          }, { transaction: t });
+
+          console.log(`✓ Stock actualizado para ${producto.nombre}: +${cantidadEnUnidadBase} ${producto.unidadBase}`);
         }
       }
     }
@@ -477,18 +477,25 @@ exports.eliminar = async (req, res) => {
     }
 
     // *** REVERSIÓN DE STOCK ***
+    // Resta exactamente lo que la compra habia sumado (misma conversion que al
+    // crear). Sin redondeo y puede quedar negativo si ya se consumio.
     for (const item of compra.items) {
       if (item.actualizaStock && item.productoId && item.producto) {
         const producto = item.producto;
-        const factorConversion = Number(producto.factorConversion) || 1;
-        const cantidadEnUnidadVenta = Number(item.cantidadCompra) * factorConversion;
-        const nuevoStock = Math.max(0, (Number(producto.stock) || 0) - cantidadEnUnidadVenta);
+        const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+        const nuevoStock = (Number(producto.stock) || 0) - cantidadEnUnidadBase;
 
-        await producto.update({
-          stock: Math.round(nuevoStock)
+        await producto.update({ stock: nuevoStock }, { transaction: t });
+
+        await StockMovimiento.create({
+          negocioId,
+          productoId: producto.id,
+          tipo: 'reversion_compra',
+          cantidad: cantidadEnUnidadBase,
+          compraId: compra.id
         }, { transaction: t });
 
-        console.log(`✓ Stock revertido para ${producto.nombre}: -${cantidadEnUnidadVenta}`);
+        console.log(`✓ Stock revertido para ${producto.nombre}: -${cantidadEnUnidadBase} ${producto.unidadBase}`);
       }
     }
 
