@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import AdminLayout from './components/layout/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import PanelPedidos from './pages/admin/PanelPedidos'
+import POS from './pages/admin/POS'
 import Pedidos from './pages/admin/Pedidos'
 import Menu from './pages/admin/Menu'
 import Repartidores from './pages/admin/Repartidores'
@@ -64,7 +65,8 @@ function PublicRoute({ children }) {
   if (loading) return null
   if (usuario) {
     if (usuario.rol === 'superadmin') return <Navigate to="/superadmin" replace />
-    return <Navigate to="/admin/panel-pedidos" replace />
+    // Los operadores y admins entran directo al Punto de Venta
+    return <Navigate to="/pos" replace />
   }
   return children
 }
@@ -80,8 +82,11 @@ function AppRoutes() {
       <Route path="/menu/:slug/pago-pendiente" element={<PagoPendiente />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
+      {/* Punto de Venta: pantalla de venta separada del panel administrativo */}
+      <Route path="/pos" element={<PrivateRoute roles={['superadmin', 'admin', 'operador']}><POS /></PrivateRoute>} />
+
       <Route path="/admin" element={<PrivateRoute roles={['superadmin', 'admin', 'operador']}><AdminLayout /></PrivateRoute>}>
-        <Route index element={<Navigate to="panel-pedidos" replace />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="panel-pedidos" element={<PanelPedidos />} />
         <Route path="pedidos" element={<Pedidos />} />

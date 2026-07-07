@@ -22,16 +22,43 @@
   }
 
   .dark {
-    --bg-main: #0a0f1e;
-    --bg-card: #121b2e;
-    --bg-hover: #1a2842;
-    --bg-secondary: #1a2842;
-    --border: #1e3a5f;
-    --text-primary: #f1f5f9;
-    --text-secondary: #a1a1aa;
-    --text-muted: #71717a;
-    --shadow: rgba(10, 15, 30, 0.5);
+    --bg-main: #0d0d16;
+    --bg-card: #1c1c2b;
+    --bg-hover: #26263a;
+    --bg-secondary: #22222f;
+    --border: #2b2b3f;
+    --text-primary: #f1f0f7;
+    --text-secondary: #a5a5bd;
+    --text-muted: #7a7a94;
+    --shadow: rgba(8, 8, 16, 0.5);
   }
+}
+
+/* =====================================================================
+   MODO OSCURO — paleta cálida con tinte violeta (estética gestionQ24+)
+   Tailwind v4 resuelve las utilidades gray-* desde estas variables, así
+   que redefinirlas SOLO dentro de .dark re-pinta todo el panel oscuro
+   sin tocar una sola clase ni afectar el modo claro.
+   ===================================================================== */
+.dark {
+  --color-gray-50:  #f4f3fa;
+  --color-gray-100: #e9e8f2;
+  --color-gray-200: #cfcede;
+  --color-gray-300: #aeadc4;
+  --color-gray-400: #8b8aa6;
+  --color-gray-500: #6b6a86;
+  --color-gray-600: #43425c;
+  --color-gray-700: #2d2c41;
+  --color-gray-800: #1d1c2c;
+  --color-gray-900: #131320;
+  --color-gray-950: #0d0d16;
+}
+
+/* Fondo profundo con un brillo violeta sutil arriba (solo oscuro) */
+.dark body {
+  background-color: #0d0d16;
+  background-image: radial-gradient(1100px 500px at 15% -10%, rgba(124, 58, 237, 0.10), transparent 60%);
+  background-attachment: fixed;
 }
 
 * {
@@ -58,9 +85,13 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
 
 /* Scrollbar modo oscuro */
-.dark ::-webkit-scrollbar-track { background: #0a0f1e; }
-.dark ::-webkit-scrollbar-thumb { background: #1e3a5f; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #2d4a7c; }
+.dark ::-webkit-scrollbar { width: 8px; height: 8px; }
+.dark ::-webkit-scrollbar-track { background: #131320; }
+.dark ::-webkit-scrollbar-thumb { background: #2d2c41; border-radius: 6px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #7c3aed; }
+
+/* Selección de texto y focos en oscuro */
+.dark ::selection { background: rgba(124, 58, 237, 0.45); color: #fff; }
 
 /* Leaflet z-index fix */
 .leaflet-container {

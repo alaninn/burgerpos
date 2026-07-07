@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.11.0'
+export const VERSION_ACTUAL = '1.12.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.12.0',
+    fecha: '2026-07-06',
+    titulo: 'Punto de Venta separado y nuevo modo oscuro',
+    destacados: [
+      { titulo: 'Punto de Venta a pantalla completa', detalle: 'La toma de pedidos ahora es una pantalla propia, separada del panel administrativo: barra superior con estado de caja en vivo, reloj y accesos rápidos (cocina, historial), sin menú lateral. Al iniciar sesión entrás directo al Punto de Venta, y desde ahí el admin salta al panel administrativo con un botón.' },
+      { titulo: 'Modo oscuro renovado', detalle: 'Todo el panel oscuro tiene una nueva paleta cálida con tinte violeta: fondos profundos, bordes suaves, brillos en los botones y menú lateral con resplandor. El modo claro queda exactamente igual.' },
+    ],
+    cambios: [
+      { t: 'El menú lateral ahora dice "Punto de Venta" y abre la pantalla de venta completa.' },
+      { t: 'Se cargó el set básico de hamburguesería en tu stock: aderezos, cheddar en fetas, bacon, huevo, palta y más, con los adicionales ya vinculados (editá cantidades y costos a gusto).' },
+    ],
+  },
   {
     version: '1.11.0',
     fecha: '2026-07-06',
