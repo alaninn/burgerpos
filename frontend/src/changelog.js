@@ -6,9 +6,20 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.14.2'
+export const VERSION_ACTUAL = '1.15.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.15.0',
+    fecha: '2026-07-07',
+    titulo: 'Mapa de pedidos en pantalla completa y para otro monitor',
+    destacados: [
+      { titulo: 'Mapa para los repartidores en otro monitor', detalle: 'Nuevo botón sobre el mapa del POS que lo abre solo, en otra ventana, a pantalla completa: la arrastrás a un segundo monitor y los repartidores ven los deliveries en vivo (se actualiza solo con cada pedido) sin interrumpir la venta.' },
+    ],
+    cambios: [
+      { t: 'Botones sobre el mapa del POS para ponerlo a pantalla completa, volverlo al tamaño normal u ocultarlo.' },
+    ],
+  },
   {
     version: '1.14.2',
     fecha: '2026-07-07',

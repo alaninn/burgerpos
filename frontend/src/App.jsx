@@ -11,6 +11,7 @@ import AdminLayout from './components/layout/AdminLayout'
 import Dashboard from './pages/admin/Dashboard'
 import PanelPedidos from './pages/admin/PanelPedidos'
 import POS from './pages/admin/POS'
+import MapaVivo from './pages/admin/MapaVivo'
 import Pedidos from './pages/admin/Pedidos'
 import Menu from './pages/admin/Menu'
 import Repartidores from './pages/admin/Repartidores'
@@ -84,6 +85,8 @@ function AppRoutes() {
 
       {/* Punto de Venta: pantalla de venta separada del panel administrativo */}
       <Route path="/pos" element={<PrivateRoute roles={['superadmin', 'admin', 'operador']}><POS /></PrivateRoute>} />
+      {/* Mapa de pedidos solo, para un segundo monitor (repartidores) */}
+      <Route path="/mapa" element={<PrivateRoute roles={['superadmin', 'admin', 'operador']}><MapaVivo /></PrivateRoute>} />
 
       <Route path="/admin" element={<PrivateRoute roles={['superadmin', 'admin', 'operador']}><AdminLayout /></PrivateRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />

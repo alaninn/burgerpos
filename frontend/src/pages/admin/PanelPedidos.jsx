@@ -391,6 +391,7 @@ export default function PanelPedidos() {
   const [showOtros, setShowOtros] = useState(false)
   const [repartidores, setRepartidores] = useState([])
   const [showMapa, setShowMapa] = useState(true)
+  const [mapaFull, setMapaFull] = useState(false)
   const [negocio, setNegocio] = useState(null)
   const [pedidoDetalle, setPedidoDetalle] = useState(null)
   const [pedidoEditar, setPedidoEditar] = useState(null)
@@ -700,11 +701,50 @@ export default function PanelPedidos() {
           </div>
         </div>
 
-        {/* Mapa */}
+        {/* Mapa (normal o a pantalla completa) */}
         {showMapa && (
-          <div className="w-full lg:w-1/2 h-96 lg:h-auto flex-shrink-0 overflow-hidden" style={{ borderLeft: 'none', borderTop: '1px solid var(--border)', borderLeftWidth: '0', borderTopWidth: '1px' }} className="w-full lg:w-1/2 h-96 lg:h-auto flex-shrink-0 overflow-hidden lg:border-t-0 lg:border-l" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className={mapaFull
+              ? 'fixed inset-0'
+              : 'relative w-full lg:w-1/2 h-96 lg:h-auto flex-shrink-0 overflow-hidden lg:border-t-0 lg:border-l'}
+            style={mapaFull ? { zIndex: 9998, background: 'var(--bg-main)' } : { borderColor: 'var(--border)' }}>
+
+            {/* Controles del mapa: pantalla completa / achicar / abrir en otra ventana */}
+            <div className="absolute top-2 right-2 flex gap-1.5" style={{ zIndex: 500 }}>
+              <button onClick={() => window.open('/mapa', 'mapaPedidos', 'noopener')}
+                title="Abrir el mapa solo en otra ventana (para un segundo monitor)"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-lg transition-transform active:scale-90"
+                style={{ background: 'rgba(17,17,24,0.8)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </button>
+              <button onClick={() => setMapaFull(f => !f)}
+                title={mapaFull ? 'Salir de pantalla completa' : 'Mapa a pantalla completa'}
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-lg transition-transform active:scale-90"
+                style={{ background: 'rgba(17,17,24,0.8)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                {mapaFull ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9L4 4m0 0v5m0-5h5m6 0l5 5m0 0V4m0 5h-5m-6 11l-5-5m0 0v5m0-5h5m11 0l-5 5m5-5v5m0-5h-5" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                )}
+              </button>
+              <button onClick={() => { setMapaFull(false); setShowMapa(false) }}
+                title="Ocultar mapa"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white shadow-lg transition-transform active:scale-90"
+                style={{ background: 'rgba(17,17,24,0.8)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
             <MapaPedidos
-              key={showConfigMapa && mapaConfigTemp ? JSON.stringify(mapaConfigTemp) : 'mapa-default'}
+              key={(mapaFull ? 'full-' : 'inline-') + (showConfigMapa && mapaConfigTemp ? JSON.stringify(mapaConfigTemp) : 'mapa-default')}
               pedidos={todosParaMapa}
               negocio={
                 showConfigMapa && mapaConfigTemp
