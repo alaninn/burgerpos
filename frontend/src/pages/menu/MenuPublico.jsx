@@ -493,10 +493,11 @@ function ModalDetalle({ prod, color, onClose, onAgregar }) {
               )
             })}
 
-            {/* Grupos adicionales */}
-            {grupos.map(grupo => {
+            {/* Grupos adicionales: primero los obligatorios; los opcionales
+                arrancan cerrados y se abren con un click */}
+            {[...grupos].sort((a, b) => (b.obligatorio ? 1 : 0) - (a.obligatorio ? 1 : 0)).map(grupo => {
               const sel = adicionales[grupo.id] || []
-              const abierto = gruposAbiertos[grupo.id] !== false
+              const abierto = gruposAbiertos[grupo.id] ?? !!grupo.obligatorio
               const esSingle = grupo.maxSeleccion === 1
 
               return (
@@ -628,8 +629,9 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
   const [cuponAplicado, setCuponAplicado] = useState(null)
   const [validandoCupon, setValidandoCupon] = useState(false)
   const [zonaSeleccionada, setZonaSeleccionada] = useState(null)
-  const [propina, setPropina] = useState(0)
-  const [propinaOtro, setPropinaOtro] = useState(false)
+  // Propina: arranca seleccionado el 10%; el cliente puede elegir otro
+  // porcentaje, "Sin propina" (0) u "Otro monto" ('otro').
+  const [propinaSel, setPropinaSel] = useState(10)
   const [propinaCustom, setPropinaCustom] = useState('')
   const [zonaDetectada, setZonaDetectada] = useState(null)
   const [coordsCliente, setCoordsCliente] = useState(null)
@@ -746,6 +748,11 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
       : zonaSeleccionada !== null ? (zonas[zonaSeleccionada]?.costo || 0) : (conf.costoEnvio || 0)
     : 0
   const subtotal = carrito.reduce((s, i) => s + i.precioVenta * i.cantidad, 0)
+  // La propina se calcula sobre el subtotal actual (si es porcentaje) y solo
+  // cuando el negocio acepta propinas.
+  const propina = (negocio?.configuracion?.aceptaPropinas)
+    ? (propinaSel === 'otro' ? (parseInt(propinaCustom) || 0) : Math.round(subtotal * propinaSel / 100))
+    : 0
   const descuentoAutomaticoMonto = descuentosAutomaticos.reduce((sum, d) => sum + (d.monto || 0), 0)
   const descuentoMonto = (cuponAplicado?.montoDescuento || 0) + descuentoAutomaticoMonto
   const total = Math.max(0, subtotal + costoEnvio + propina - descuentoMonto)
@@ -1108,9 +1115,9 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {[10, 15, 20].map(pct => {
                     const amt = Math.round(subtotal * pct / 100)
-                    const selected = !propinaOtro && propina === amt
+                    const selected = propinaSel === pct
                     return (
-                      <button key={pct} onClick={() => { setPropina(amt); setPropinaOtro(false); setPropinaCustom('') }}
+                      <button key={pct} onClick={() => { setPropinaSel(pct); setPropinaCustom('') }}
                         className="py-2.5 sm:py-3 rounded-xl text-xs font-bold transition-all"
                         style={selected
                           ? { background: color, color: '#fff' }
@@ -1122,28 +1129,28 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
                   })}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button onClick={() => { setPropina(0); setPropinaOtro(false); setPropinaCustom('') }}
+                  <button onClick={() => { setPropinaSel(0); setPropinaCustom('') }}
                     className="py-2.5 rounded-xl text-xs font-bold transition-all"
-                    style={!propinaOtro && propina === 0
-                      ? { background: '#3a3a3c', color: '#fff' }
+                    style={propinaSel === 0
+                      ? { background: color, color: '#fff' }
                       : { background: '#1c1c1e', color: '#8e8e93', border: '1px solid #2c2c2e' }}>
                     Sin propina
                   </button>
-                  <button onClick={() => { setPropinaOtro(true); setPropina(0); setPropinaCustom('') }}
+                  <button onClick={() => { setPropinaSel('otro'); setPropinaCustom('') }}
                     className="py-2.5 rounded-xl text-xs font-bold transition-all"
-                    style={propinaOtro
+                    style={propinaSel === 'otro'
                       ? { background: color, color: '#fff' }
                       : { background: '#1c1c1e', color: '#8e8e93', border: '1px solid #2c2c2e' }}>
                     Otro monto
                   </button>
                 </div>
-                {propinaOtro && (
+                {propinaSel === 'otro' && (
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white font-bold text-sm">$</span>
                     <input
                       type="number" min="0" inputMode="numeric"
                       value={propinaCustom}
-                      onChange={e => { setPropinaCustom(e.target.value); setPropina(parseInt(e.target.value) || 0) }}
+                      onChange={e => setPropinaCustom(e.target.value)}
                       placeholder="Ingresá el monto"
                       className="w-full pl-8 pr-4 py-3.5 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none"
                       style={{ background: '#1c1c1e', border: `1px solid ${color}` }}

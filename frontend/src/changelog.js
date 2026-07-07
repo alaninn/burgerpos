@@ -12,9 +12,11 @@ export const CHANGELOG = [
   {
     version: '1.14.2',
     fecha: '2026-07-07',
-    titulo: 'Fotos completas en la tienda',
+    titulo: 'Mejoras en la tienda online',
     cambios: [
-      { t: 'En la tienda online, la foto del producto ahora se ve entera en el detalle (antes se recortaba); el recuadro es más grande y la imagen se adapta sin cortes.' },
+      { t: 'La foto del producto ahora se ve entera en el detalle (antes se recortaba); el recuadro es más grande y la imagen se adapta sin cortes.' },
+      { t: 'En el detalle del producto, los adicionales obligatorios aparecen primero y abiertos; los opcionales quedan plegados y se abren con un toque.' },
+      { t: 'La propina arranca seleccionada en 10% (el cliente puede tocar "Sin propina" para no abonarla), se recalcula sola si cambia el carrito y el botón "Sin propina" ahora se marca con color al elegirlo.' },
     ],
   },
   {
