@@ -418,9 +418,10 @@ function ModalDetalle({ prod, color, onClose, onAgregar }) {
 
         {/* Imagen o header */}
         {prod.imagen ? (
-          <div className="relative w-full flex-shrink-0" style={{ height: 220 }}>
-            <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-cover rounded-t-3xl" />
-            <div className="absolute inset-0 rounded-t-3xl" style={{ background: 'linear-gradient(to bottom, transparent 50%, #111 100%)' }} />
+          <div className="relative w-full flex-shrink-0" style={{ height: 300, background: '#0a0a0a' }}>
+            {/* object-contain: la foto se muestra entera, sin recortes */}
+            <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-contain rounded-t-3xl" />
+            <div className="absolute inset-0 rounded-t-3xl pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent 75%, #111 100%)' }} />
             <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center"
               style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

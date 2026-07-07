@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.14.1'
+export const VERSION_ACTUAL = '1.14.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.14.2',
+    fecha: '2026-07-07',
+    titulo: 'Fotos completas en la tienda',
+    cambios: [
+      { t: 'En la tienda online, la foto del producto ahora se ve entera en el detalle (antes se recortaba); el recuadro es más grande y la imagen se adapta sin cortes.' },
+    ],
+  },
   {
     version: '1.14.1',
     fecha: '2026-07-07',
