@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import api from '../../api/axios'
 import PanelPedidos from './PanelPedidos'
+import { ModalAbrirCaja, ModalCerrarCaja } from '../../components/cajas/ModalesCaja'
 
 export default function POS() {
   const { usuario, logout, getNegocioId } = useAuth()
@@ -17,6 +18,9 @@ export default function POS() {
   const negocioId = getNegocioId()
 
   const [caja, setCaja] = useState(null)
+  const [cajasFijas, setCajasFijas] = useState([])
+  const [showAbrir, setShowAbrir] = useState(false)
+  const [showCerrar, setShowCerrar] = useState(false)
   const [hora, setHora] = useState(new Date())
 
   const cargarCaja = useCallback(() => {
@@ -24,6 +28,9 @@ export default function POS() {
     api.get(`/negocios/${negocioId}/cajas/actual`)
       .then(({ data }) => setCaja(data?.caja || null))
       .catch(() => setCaja(null))
+    api.get(`/negocios/${negocioId}/cajas/fijas`)
+      .then(({ data }) => setCajasFijas(data?.cajasFijas || []))
+      .catch(() => {})
   }, [negocioId])
 
   useEffect(() => { cargarCaja() }, [cargarCaja])
@@ -51,16 +58,29 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Estado de caja */}
-        <Link to="/admin/cajas"
-          className={`ml-2 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-            caja
-              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
-              : 'bg-red-500/15 border-red-500/40 text-red-300 hover:bg-red-500/25'
-          }`}>
-          <span className={`w-2 h-2 rounded-full ${caja ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-          {caja ? `Caja: ${caja.nombre || 'abierta'}` : 'Caja cerrada'}
-        </Link>
+        {/* Estado de caja + acción de apertura/cierre */}
+        <div className="ml-2 flex items-center gap-1.5">
+          <Link to="/admin/cajas"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              caja
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                : 'bg-red-500/15 border-red-500/40 text-red-300 hover:bg-red-500/25'
+            }`}>
+            <span className={`w-2 h-2 rounded-full ${caja ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+            {caja ? `Caja: ${caja.nombre || 'abierta'}` : 'Caja cerrada'}
+          </Link>
+          {caja ? (
+            <button onClick={() => setShowCerrar(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-500 text-white transition-colors">
+              🔒 Cerrar caja
+            </button>
+          ) : (
+            <button onClick={() => setShowAbrir(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors">
+              🔓 Abrir caja
+            </button>
+          )}
+        </div>
 
         <div className="flex-1" />
 
@@ -95,6 +115,9 @@ export default function POS() {
       <main className="flex-1 overflow-hidden">
         <PanelPedidos />
       </main>
+
+      {showAbrir && <ModalAbrirCaja negocioId={negocioId} cajasFijas={cajasFijas} onClose={() => setShowAbrir(false)} onOpened={cargarCaja} />}
+      {showCerrar && caja && <ModalCerrarCaja negocioId={negocioId} caja={caja} onClose={() => setShowCerrar(false)} onClosed={cargarCaja} />}
     </div>
   )
 }

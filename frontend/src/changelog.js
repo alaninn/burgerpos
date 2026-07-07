@@ -6,9 +6,23 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.12.0'
+export const VERSION_ACTUAL = '1.13.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.13.0',
+    fecha: '2026-07-07',
+    titulo: 'Menú reorganizado y caja directa desde el Punto de Venta',
+    destacados: [
+      { titulo: 'Abrí y cerrá la caja sin salir del Punto de Venta', detalle: 'La barra del POS ahora tiene el botón "Abrir caja" cuando no hay turno y "Cerrar caja" cuando estás operando, con el mismo arqueo completo de siempre (contar billetes, declarados por método e impresión del cierre).' },
+      { titulo: 'Menú lateral reorganizado por áreas', detalle: 'El panel administrativo agrupa todo por área de trabajo: Ventas (pedidos, cajas, cocina, repartidores, clientes, descuentos), Inventario (menú, stock, recetas, proveedores), Finanzas (gastos, reportes, facturación) y General. El Punto de Venta quedó como botón destacado arriba de todo.' },
+    ],
+    cambios: [
+      { t: 'Se quitó el botón "Personalizar" del panel de pedidos: la personalización del mapa vive en Configuraciones → Mapa de pedidos.' },
+      { t: 'Modo oscuro más pulido: campos de texto, selectores y calendarios ahora se ven oscuros y coherentes en todas las pantallas.' },
+      { t: 'El botón "Soporte" de la barra superior ahora abre la sección de soporte.' },
+    ],
+  },
   {
     version: '1.12.0',
     fecha: '2026-07-06',

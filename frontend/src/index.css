@@ -93,6 +93,28 @@ body {
 /* Selección de texto y focos en oscuro */
 .dark ::selection { background: rgba(124, 58, 237, 0.45); color: #fff; }
 
+/* Controles nativos (date pickers, selects, checkboxes) en oscuro */
+.dark { color-scheme: dark; }
+
+/* Inputs y selects: fondo y borde coherentes con la paleta oscura */
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.dark select,
+.dark textarea {
+  background-color: #1d1c2c;
+  border-color: #2d2c41;
+  color: #f1f0f7;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #6b6a86; }
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus { border-color: #7c3aed; }
+
+/* Sombras de tarjetas mas profundas en oscuro */
+.dark .shadow-sm, .dark .shadow, .dark .shadow-md {
+  --tw-shadow-color: rgba(0, 0, 0, 0.45);
+}
+
 /* Leaflet z-index fix */
 .leaflet-container {
   z-index: 10 !important;
