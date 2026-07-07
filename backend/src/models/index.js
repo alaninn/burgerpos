@@ -68,6 +68,9 @@ GrupoAdicional.belongsTo(Negocio,       { foreignKey: 'negocioId', as: 'negocio'
 GrupoAdicional.hasMany(Adicional,       { foreignKey: 'grupoAdicionalId', as: 'items', onDelete: 'CASCADE' });
 Adicional.belongsTo(GrupoAdicional,     { foreignKey: 'grupoAdicionalId', as: 'grupo' });
 
+// ── Adicional → Producto (ingrediente de stock que consume) ─
+Adicional.belongsTo(Producto,           { foreignKey: 'ingredienteId', as: 'ingrediente' });
+
 // ── Producto ↔ GrupoAdicional (many-to-many) ──────────────
 Producto.belongsToMany(GrupoAdicional, {
   through: 'producto_grupos_adicionales',

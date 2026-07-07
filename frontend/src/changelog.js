@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.10.1'
+export const VERSION_ACTUAL = '1.11.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.11.0',
+    fecha: '2026-07-06',
+    titulo: 'Los adicionales descuentan stock y suman al costo real',
+    destacados: [
+      { titulo: 'Adicionales conectados al stock', detalle: 'Cada adicional (medallón extra, ketchup, aderezos...) se puede vincular a un ingrediente del stock con una cantidad fija: "medallón extra = 100 gramos de carne". Al venderse, descuenta ese stock aunque no esté en la receta, y su costo real entra en la ganancia del Centro de Control.' },
+    ],
+    cambios: [
+      { t: 'En Menú → Adicionales, cada opción tiene un selector "Descuenta del stock": elegís el ingrediente, la cantidad y la unidad (gramos, kg, ml...).' },
+      { t: 'Los pedidos de la tienda online ahora también descuentan el stock de recetas y adicionales (antes solo lo hacía el POS).' },
+      { t: 'El desglose de ingredientes consumidos del Centro de Control incluye lo usado por los adicionales.' },
+    ],
+  },
   {
     version: '1.10.1',
     fecha: '2026-07-06',

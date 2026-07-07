@@ -1,4 +1,5 @@
 const { Negocio, Categoria, Producto, ProductoVariante, GrupoAdicional, Adicional, Pedido, ItemPedido, Descuento, Cliente, sequelize } = require('../models');
+const { descontarStockPedido } = require('../utils/descuentoStock');
 const { Op } = require('sequelize');
 
 exports.obtenerMenuDefault = async (req, res) => {
@@ -191,6 +192,7 @@ exports.crearPedido = async (req, res) => {
             const cantAdic = adic.cantidad || 1;
             precioAdicionales += precioAdic * cantAdic;
             adicionalesData.push({
+              id: adicional.id,
               grupoTitulo: adic.grupoTitulo || '',
               nombre: adicional.nombre,
               precio: precioAdic,
@@ -345,6 +347,9 @@ exports.crearPedido = async (req, res) => {
     }, { transaction: t });
 
     await ItemPedido.bulkCreate(itemsData.map(i => ({ ...i, pedidoId: pedido.id })), { transaction: t });
+
+    // Descuento automatico de stock por recetas y adicionales (igual que el POS)
+    await descontarStockPedido({ negocioId, pedidoId: pedido.id, items: itemsData, transaction: t });
 
     await t.commit();
 

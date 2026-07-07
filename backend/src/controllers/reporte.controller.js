@@ -1,7 +1,7 @@
-const { Pedido, ItemPedido, Cliente, Repartidor, Producto, ProductoVariante, Gasto, StockMovimiento } = require('../models');
+const { Pedido, ItemPedido, Cliente, Repartidor, Producto, ProductoVariante, Gasto, StockMovimiento, Adicional } = require('../models');
 const { Op, fn, col } = require('sequelize');
 const xlsx = require('xlsx');
-const { costoPorUnidadBase } = require('../utils/costoReceta');
+const { costoPorUnidadBase, convertir } = require('../utils/costoReceta');
 
 // =============================================
 // Centro de Control: ganancia real del negocio en un período.
@@ -52,6 +52,27 @@ exports.centroControl = async (req, res) => {
     };
     const porProducto = {}; // desglose de productos vendidos
 
+    // Adicionales del negocio con su ingrediente: para costear los extras
+    // vendidos (medallon, aderezos) segun el stock que consumen.
+    const adicionalesNegocio = await Adicional.findAll({
+      where: { negocioId },
+      include: [{ model: Producto, as: 'ingrediente' }]
+    });
+    const adicPorId = {};
+    const adicPorNombre = {};
+    for (const a of adicionalesNegocio) {
+      adicPorId[a.id] = a;
+      if (!adicPorNombre[a.nombre]) adicPorNombre[a.nombre] = a;
+    }
+    const costoAdicionalUnitario = (a) => {
+      if (!a) return 0;
+      if (a.ingredienteId && a.ingrediente) {
+        const cantEnBase = convertir(a.cantidadIngrediente || 0, a.unidadIngrediente || a.ingrediente.unidadBase, a.ingrediente.unidadBase);
+        return costoPorUnidadBase(a.ingrediente) * cantEnBase;
+      }
+      return parseFloat(a.precioCosto) || 0;
+    };
+
     for (const p of pedidos) {
       const total = parseFloat(p.total) || 0;
       r.totalFacturado += total;
@@ -82,12 +103,20 @@ exports.centroControl = async (req, res) => {
           r.costoProductos += costoUnitario * cantidad;
         }
 
+        // Costo de los adicionales del item (segun el stock que consumen)
+        let costoAdics = 0;
+        for (const ad of item.adicionales || []) {
+          const reg = adicPorId[ad.id || ad.adicionalId] || adicPorNombre[ad.nombre];
+          costoAdics += costoAdicionalUnitario(reg) * (parseFloat(ad.cantidad) || 1);
+        }
+        r.costoProductos += costoAdics * cantidad;
+
         // Desglose por producto vendido (cantidad, venta, costo, ganancia)
         const clave = `${item.nombre}${item.varianteNombre ? ' — ' + item.varianteNombre : ''}`;
         if (!porProducto[clave]) porProducto[clave] = { nombre: item.nombre, variante: item.varianteNombre || null, cantidad: 0, venta: 0, costo: 0 };
         porProducto[clave].cantidad += cantidad;
         porProducto[clave].venta += venta;
-        porProducto[clave].costo += costoUnitario * cantidad;
+        porProducto[clave].costo += (costoUnitario + costoAdics) * cantidad;
       }
     }
 

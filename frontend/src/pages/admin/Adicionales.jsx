@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
+import { unidadesCompatibles } from '../../utils/unidades'
 
 // ─── Margen ───────────────────────────────────────────────
 function margenPct(pv, pc) {
@@ -30,11 +31,13 @@ function ModalGrupo({ negocioId, grupo, onClose, onSaved }) {
   })
   const [items, setItems] = useState(grupo?.items || [{ nombre: '', precioVenta: '', precioCosto: '', maxSeleccion: 1, visible: true, activo: true }])
   const [productos, setProductos] = useState([])
+  const [ingredientesStock, setIngredientesStock] = useState([])
   const [productosSeleccionados, setProductosSeleccionados] = useState([])
   const [loading, setLoading] = useState(false)
   const [showProductos, setShowProductos] = useState(false)
 
-  // Cargar todos los productos del negocio
+  // Cargar todos los productos del negocio (y los ingredientes de stock,
+  // para poder vincular cada adicional con lo que consume)
   useEffect(() => {
     api.get(`/negocios/${negocioId}/productos/categorias`)
       .then(({ data }) => {
@@ -42,12 +45,16 @@ function ModalGrupo({ negocioId, grupo, onClose, onSaved }) {
         return Promise.all(
           cats.map(cat =>
             api.get(`/negocios/${negocioId}/productos?categoriaId=${cat.id}`)
-              .then(res => (res.data.productos || []).map(p => ({ ...p, categoriaNombre: cat.nombre })))
+              .then(res => (res.data.productos || []).map(p => ({ ...p, categoriaNombre: cat.nombre, _catTipo: cat.tipo })))
               .catch(() => [])
           )
         )
       })
-      .then(results => setProductos(results.flat()))
+      .then(results => {
+        const todos = results.flat()
+        setProductos(todos)
+        setIngredientesStock(todos.filter(p => p._catTipo === 'ingrediente'))
+      })
       .catch(() => {})
 
     // Si estamos editando, cargar productos asignados
@@ -95,6 +102,10 @@ function ModalGrupo({ negocioId, grupo, onClose, onSaved }) {
         maxSeleccion: parseInt(it.maxSeleccion) || 1,
         visible: it.visible !== false,
         activo: it.activo !== false,
+        // Vinculo con el stock: que ingrediente consume y cuanto por unidad
+        ingredienteId: it.ingredienteId || null,
+        cantidadIngrediente: it.ingredienteId ? (parseFloat(it.cantidadIngrediente) || null) : null,
+        unidadIngrediente: it.ingredienteId ? (it.unidadIngrediente || null) : null,
         orden: i
       }))
 
@@ -232,6 +243,50 @@ function ModalGrupo({ negocioId, grupo, onClose, onSaved }) {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </div>
+                  </div>
+                  {/* Vinculo con el stock: que ingrediente consume este adicional */}
+                  <div className="grid grid-cols-12 gap-2 mb-2 items-center">
+                    <div className="col-span-5">
+                      <select
+                        value={it.ingredienteId || ''}
+                        onChange={e => {
+                          const ing = ingredientesStock.find(x => x.id === e.target.value)
+                          cambiarItem(idx, 'ingredienteId', e.target.value || null)
+                          if (ing && !it.unidadIngrediente) cambiarItem(idx, 'unidadIngrediente', ing.unidadBase)
+                          if (!e.target.value) { cambiarItem(idx, 'cantidadIngrediente', ''); cambiarItem(idx, 'unidadIngrediente', '') }
+                        }}
+                        className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white dark:bg-gray-800"
+                      >
+                        <option value="">📦 Sin descuento de stock</option>
+                        {ingredientesStock.map(ing => (
+                          <option key={ing.id} value={ing.id}>Descuenta: {ing.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {it.ingredienteId && (() => {
+                      const ing = ingredientesStock.find(x => x.id === it.ingredienteId)
+                      const opciones = ing ? unidadesCompatibles(ing.unidadBase) : []
+                      return (
+                        <>
+                          <div className="col-span-3">
+                            <input type="number" min="0" step="0.001" value={it.cantidadIngrediente || ''}
+                              onChange={e => cambiarItem(idx, 'cantidadIngrediente', e.target.value)}
+                              placeholder="Cantidad (ej: 100)"
+                              className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white dark:bg-gray-800" />
+                          </div>
+                          <div className="col-span-2">
+                            <select value={it.unidadIngrediente || ing?.unidadBase || ''}
+                              onChange={e => cambiarItem(idx, 'unidadIngrediente', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-violet-500 bg-white dark:bg-gray-800">
+                              {opciones.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </div>
+                          <div className="col-span-2 text-[10px] text-gray-500 dark:text-gray-400 leading-tight">
+                            por unidad pedida
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
                   <div className="flex items-center gap-3">
                     <MargenBadge pv={it.precioVenta} pc={it.precioCosto} />
