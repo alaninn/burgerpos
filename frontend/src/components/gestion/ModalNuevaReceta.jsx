@@ -74,7 +74,8 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
       const nueva = { ...fila, [field]: value }
       if (field === 'ingredienteId') {
         const ing = ingredientes.find(x => x.id === value)
-        nueva.unidad = ing?.unidadBase || ''
+        // Sin unidad base definida (ej. bebidas creadas desde el Menu) se asume 'unidad'
+        nueva.unidad = ing ? (ing.unidadBase || 'unidad') : ''
       }
       return nueva
     })
@@ -422,12 +423,22 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
                       >
                         <option value="">Seleccionar ingrediente...</option>
                         {ingredientes.length === 0 ? (
-                          <option disabled>⚠️ No hay ingredientes. Andá a Stock y creá ingredientes (pan, carne, etc.)</option>
+                          <option disabled>⚠️ No hay productos en el stock. Andá a Stock y creá ingredientes (pan, carne, etc.)</option>
                         ) : (
-                          ingredientes.map(i => (
-                            <option key={i.id} value={i.id}>
-                              {i.nombre} - Stock: {i.stock} {i.unidadBase}
-                            </option>
+                          Object.entries(
+                            ingredientes.reduce((acc, i) => {
+                              const cat = i.categoria?.nombre || 'Sin categoría'
+                              ;(acc[cat] = acc[cat] || []).push(i)
+                              return acc
+                            }, {})
+                          ).map(([cat, items]) => (
+                            <optgroup key={cat} label={cat}>
+                              {items.map(i => (
+                                <option key={i.id} value={i.id}>
+                                  {i.nombre} - Stock: {i.stock} {i.unidadBase}
+                                </option>
+                              ))}
+                            </optgroup>
                           ))
                         )}
                       </select>

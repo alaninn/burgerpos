@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.14.0'
+export const VERSION_ACTUAL = '1.14.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.14.1',
+    fecha: '2026-07-07',
+    titulo: 'Recetas con cualquier producto del stock',
+    destacados: [
+      { titulo: 'Cualquier categoría de stock sirve de ingrediente', detalle: 'Las recetas ahora aceptan productos de todas las categorías del stock: papelería, bebidas, cajas, envases... Antes solo permitían la categoría "Ingredientes", pero una receta real puede llevar el papel, la caja o la bebida del combo. Solo los productos elaborados del menú quedan excluidos.' },
+    ],
+    cambios: [
+      { t: 'El selector de ingredientes agrupa los productos por categoría para encontrarlos más rápido.' },
+      { t: 'Las variantes que se muestran al crear una receta son siempre las del producto del menú elegido, con sus nombres actuales (la lista se refresca al abrir el modal).' },
+      { t: 'Los productos sin unidad definida (ej. bebidas) se cargan en recetas como "unidad" sin dar error.' },
+    ],
+  },
   {
     version: '1.14.0',
     fecha: '2026-07-07',

@@ -132,10 +132,12 @@ exports.crear = async (req, res) => {
         return res.status(400).json({ error: `Ingrediente ${ing.ingredienteId} no encontrado` });
       }
 
-      if (producto.categoria?.tipo !== 'ingrediente') {
+      // Cualquier producto de stock sirve de ingrediente (ingredientes, bebidas,
+      // papeleria, cajas...); solo se excluyen los elaborados del menu.
+      if (producto.categoria?.tipo === 'elaborado') {
         await transaction.rollback();
         return res.status(400).json({
-          error: `El producto "${producto.nombre}" no es un ingrediente de stock`
+          error: `"${producto.nombre}" es un producto elaborado del menú y no puede usarse como ingrediente`
         });
       }
 
@@ -280,10 +282,12 @@ exports.actualizar = async (req, res) => {
           return res.status(400).json({ error: `Ingrediente ${ing.ingredienteId} no encontrado` });
         }
 
-        if (producto.categoria?.tipo !== 'ingrediente') {
+        // Cualquier producto de stock sirve de ingrediente; solo se excluyen
+        // los elaborados del menu.
+        if (producto.categoria?.tipo === 'elaborado') {
           await transaction.rollback();
           return res.status(400).json({
-            error: `El producto "${producto.nombre}" no es un ingrediente de stock`
+            error: `"${producto.nombre}" es un producto elaborado del menú y no puede usarse como ingrediente`
           });
         }
 

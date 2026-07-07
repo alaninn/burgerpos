@@ -24,8 +24,8 @@ export default function Recetas() {
     cargarDatos()
   }, [])
 
-  const cargarDatos = async () => {
-    setLoading(true)
+  const cargarDatos = async (conSpinner = true) => {
+    if (conSpinner) setLoading(true)
     try {
       const negocioId = getNegocioId()
       const [recetasRes, productosRes] = await Promise.all([
@@ -41,8 +41,9 @@ export default function Recetas() {
       const menu = productos.filter(p =>
         p.categoria?.tipo === 'elaborado' || p.categoria?.tipo === 'producto'
       )
-      // Ingredientes: solo los de tipo 'ingrediente' (pan, carne, etc.)
-      const ingredientesStock = productos.filter(p => p.categoria?.tipo === 'ingrediente')
+      // Ingredientes: cualquier producto de stock (ingredientes, bebidas, papelería,
+      // cajas...); solo se excluyen los elaborados del menú.
+      const ingredientesStock = productos.filter(p => p.categoria?.tipo !== 'elaborado')
 
       setProductosMenu(menu)
       setIngredientes(ingredientesStock)
@@ -50,7 +51,7 @@ export default function Recetas() {
       console.error('Error:', error)
       toast.error('Error al cargar datos')
     } finally {
-      setLoading(false)
+      if (conSpinner) setLoading(false)
     }
   }
 
@@ -109,7 +110,7 @@ export default function Recetas() {
             </p>
           </div>
           <button
-            onClick={() => setModalNueva(true)}
+            onClick={() => { cargarDatos(false); setModalNueva(true) }}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
