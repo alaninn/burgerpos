@@ -58,21 +58,21 @@ export default function ARCAConfigSection({ negocioId }) {
   return (
     <div className="space-y-6">
       {/* Formulario */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
             <span className="text-xl">📄</span>
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Configurar ARCA - Facturación Electrónica</h3>
-            <p className="text-sm text-gray-500">Genera certificados para emitir facturas electrónicas</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Configurar ARCA - Facturación Electrónica</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Genera certificados para emitir facturas electrónicas</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 CUIT <span className="text-red-500">*</span>
               </label>
               <input
@@ -80,13 +80,13 @@ export default function ARCAConfigSection({ negocioId }) {
                 value={form.cuit}
                 onChange={(e) => setForm({ ...form, cuit: e.target.value })}
                 placeholder="20-12345678-9"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Clave Fiscal <span className="text-red-500">*</span>
               </label>
               <input
@@ -94,7 +94,7 @@ export default function ARCAConfigSection({ negocioId }) {
                 value={form.claveFiscal}
                 onChange={(e) => setForm({ ...form, claveFiscal: e.target.value })}
                 placeholder="Tu clave fiscal de AFIP"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 disabled={loading}
               />
             </div>
@@ -102,7 +102,7 @@ export default function ARCAConfigSection({ negocioId }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Punto de Venta <span className="text-red-500">*</span>
               </label>
               <input
@@ -110,19 +110,19 @@ export default function ARCAConfigSection({ negocioId }) {
                 value={form.puntoVenta}
                 onChange={(e) => setForm({ ...form, puntoVenta: e.target.value })}
                 placeholder="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Régimen Fiscal
               </label>
               <select
                 value={form.regimenFiscal}
                 onChange={(e) => setForm({ ...form, regimenFiscal: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 disabled={loading}
               >
                 <option value="responsable_inscripto">Responsable Inscripto</option>
@@ -132,7 +132,7 @@ export default function ARCAConfigSection({ negocioId }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Razón Social (opcional)
             </label>
             <input
@@ -140,7 +140,7 @@ export default function ARCAConfigSection({ negocioId }) {
               value={form.razonSocial}
               onChange={(e) => setForm({ ...form, razonSocial: e.target.value })}
               placeholder="Ej: Mi Negocio SRL"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               disabled={loading}
             />
           </div>
@@ -151,10 +151,10 @@ export default function ARCAConfigSection({ negocioId }) {
               id="esHomologacion"
               checked={form.esHomologacion}
               onChange={(e) => setForm({ ...form, esHomologacion: e.target.checked })}
-              className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              className="w-4 h-4 text-violet-600 border-gray-300 dark:border-gray-600 rounded focus:ring-violet-500"
               disabled={loading}
             />
-            <label htmlFor="esHomologacion" className="text-sm text-gray-700">
+            <label htmlFor="esHomologacion" className="text-sm text-gray-700 dark:text-gray-300">
               Modo Homologación (recomendado para pruebas)
             </label>
           </div>
@@ -188,7 +188,7 @@ export default function ARCAConfigSection({ negocioId }) {
                   <div className="flex-1">
                     <span className="font-medium">{paso.paso}</span>
                     {paso.mensaje && (
-                      <pre className="mt-1 text-xs bg-white p-2 rounded border whitespace-pre-wrap">
+                      <pre className="mt-1 text-xs bg-white dark:bg-gray-800 p-2 rounded border whitespace-pre-wrap">
                         {paso.mensaje}
                       </pre>
                     )}

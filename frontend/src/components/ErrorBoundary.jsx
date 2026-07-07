@@ -32,7 +32,7 @@ class ErrorBoundary extends React.Component {
         <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center space-y-4">
             <div className="text-5xl">😵</div>
-            <h1 className="text-xl font-bold text-gray-800">Algo salió mal</h1>
+            <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Algo salió mal</h1>
             <p className="text-sm text-gray-500">
               Ocurrió un error inesperado en la pantalla. El error ya fue reportado
               automáticamente. Probá recargar la página.

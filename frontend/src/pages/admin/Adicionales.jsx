@@ -210,7 +210,7 @@ function ModalGrupo({ negocioId, grupo, onClose, onSaved }) {
               </div>
 
               {items.map((it, idx) => (
-                <div key={idx} className="border border-gray-300 dark:border-gray-700 rounded-xl p-3 bg-gray-50/50">
+                <div key={idx} className="border border-gray-300 dark:border-gray-700 rounded-xl p-3 bg-gray-50/50 dark:bg-gray-900/40">
                   <div className="grid grid-cols-12 gap-2 mb-2">
                     <div className="col-span-4">
                       <input value={it.nombre || ''} onChange={e => cambiarItem(idx, 'nombre', e.target.value)}

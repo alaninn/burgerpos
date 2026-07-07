@@ -298,8 +298,8 @@ function FacturacionElectronica() {
     <div className="space-y-6">
       {/* Título */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">🧾 Facturación Electrónica</h2>
-        <p className="text-gray-500">Configurá ARCA Argentina para emitir facturas electrónicas</p>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">🧾 Facturación Electrónica</h2>
+        <p className="text-gray-500 dark:text-gray-400">Configurá ARCA Argentina para emitir facturas electrónicas</p>
       </div>
 
       {/* Mensajes */}
@@ -321,7 +321,7 @@ function FacturacionElectronica() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               paso === tab.id
                 ? 'bg-orange-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
             }`}
           >
             {tab.label}
@@ -347,7 +347,7 @@ function FacturacionElectronica() {
           {/* Card principal de bienvenida */}
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 text-white">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-4xl">
+              <div className="w-16 h-16 bg-white dark:bg-gray-800/20 rounded-2xl flex items-center justify-center text-4xl">
                 🧾
               </div>
               <div>
@@ -363,10 +363,10 @@ function FacturacionElectronica() {
           </div>
 
           {/* Tutorial paso a paso */}
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="p-6 border-b bg-gray-50">
-              <h4 className="text-lg font-bold text-gray-800">📋 Tutorial Paso a Paso</h4>
-              <p className="text-sm text-gray-500">Seguí estos pasos para configurar tu facturación electrónica</p>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b bg-gray-50 dark:bg-gray-900">
+              <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200">📋 Tutorial Paso a Paso</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Seguí estos pasos para configurar tu facturación electrónica</p>
             </div>
             
             <div className="divide-y">
@@ -407,7 +407,7 @@ function FacturacionElectronica() {
                   detalle: 'Con esto ya podés empezar a facturar electrónicamente'
                 }
               ].map(item => (
-                <div key={item.paso} className="p-6 hover:bg-gray-50 transition-colors">
+                <div key={item.paso} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-2xl flex-shrink-0">
                       {item.icono}
@@ -415,9 +415,9 @@ function FacturacionElectronica() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded">PASO {item.paso}</span>
-                        <h5 className="font-bold text-gray-800">{item.titulo}</h5>
+                        <h5 className="font-bold text-gray-800 dark:text-gray-200">{item.titulo}</h5>
                       </div>
-                      <p className="text-gray-600">{item.descripcion}</p>
+                      <p className="text-gray-600 dark:text-gray-400">{item.descripcion}</p>
                       <p className="text-sm text-gray-400 mt-1">{item.detalle}</p>
                     </div>
                   </div>
@@ -427,9 +427,9 @@ function FacturacionElectronica() {
           </div>
 
           {/* Preguntas frecuentes */}
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="p-6 border-b bg-gray-50">
-              <h4 className="text-lg font-bold text-gray-800">❓ Preguntas Frecuentes</h4>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b bg-gray-50 dark:bg-gray-900">
+              <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200">❓ Preguntas Frecuentes</h4>
             </div>
             
             <div className="divide-y">
@@ -452,8 +452,8 @@ function FacturacionElectronica() {
                 }
               ].map((item, idx) => (
                 <div key={idx} className="p-6">
-                  <h5 className="font-bold text-gray-800 mb-2">❓ {item.pregunta}</h5>
-                  <p className="text-gray-600">{item.respuesta}</p>
+                  <h5 className="font-bold text-gray-800 dark:text-gray-200 mb-2">❓ {item.pregunta}</h5>
+                  <p className="text-gray-600 dark:text-gray-400">{item.respuesta}</p>
                 </div>
               ))}
             </div>
@@ -466,11 +466,11 @@ function FacturacionElectronica() {
       {paso === 1 && (
         <div className="space-y-6">
           {/* Activar facturación electrónica */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h4 className="font-bold text-gray-800">🧾 Activar Facturación Electrónica</h4>
-                <p className="text-sm text-gray-500">Habilitá este módulo para emitir comprobantes válidos ante ARCA</p>
+                <h4 className="font-bold text-gray-800 dark:text-gray-200">🧾 Activar Facturación Electrónica</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Habilitá este módulo para emitir comprobantes válidos ante ARCA</p>
               </div>
               <Toggle
                 activo={config?.facturacion_electronica_activa || false}
@@ -548,9 +548,9 @@ function FacturacionElectronica() {
           {config?.facturacion_electronica_activa && (
             <>
               {/* Régimen Fiscal */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h4 className="font-bold text-gray-800 mb-2">📋 Mi Régimen Fiscal</h4>
-                <p className="text-sm text-gray-500 mb-4">Seleccioná tu régimen fiscal según tu situación tributaria</p>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">📋 Mi Régimen Fiscal</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Seleccioná tu régimen fiscal según tu situación tributaria</p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <button
@@ -558,17 +558,17 @@ function FacturacionElectronica() {
                     className={`p-6 rounded-xl border-2 text-left transition-all ${
                       config?.regimen_fiscal === 'responsable_inscripto'
                         ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl">🏢</div>
                       <div>
-                        <h5 className="font-bold text-gray-800">Responsable Inscripto</h5>
-                        <p className="text-xs text-gray-500">Pagás IVA mensual</p>
+                        <h5 className="font-bold text-gray-800 dark:text-gray-200">Responsable Inscripto</h5>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Pagás IVA mensual</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
                       <p>📄 Factura A (Responsables Inscriptos)</p>
                       <p>📄 Factura B (Consumidores Finales)</p>
                       <p>📝 Nota de Crédito A y B</p>
@@ -580,17 +580,17 @@ function FacturacionElectronica() {
                     className={`p-6 rounded-xl border-2 text-left transition-all ${
                       config?.regimen_fiscal === 'monotributista'
                         ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-2xl">🏪</div>
                       <div>
-                        <h5 className="font-bold text-gray-800">Monotributista</h5>
-                        <p className="text-xs text-gray-500">Cuota fija mensual</p>
+                        <h5 className="font-bold text-gray-800 dark:text-gray-200">Monotributista</h5>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Cuota fija mensual</p>
                       </div>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
                       <p>📄 Factura C</p>
                       <p>📝 Nota de Crédito C</p>
                     </div>
@@ -599,20 +599,20 @@ function FacturacionElectronica() {
               </div>
 
               {/* Datos Fiscales del Emisor */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h4 className="font-bold text-gray-800 mb-2">🏢 Datos Fiscales del Emisor</h4>
-                <p className="text-sm text-gray-500 mb-4">Estos datos aparecen en el comprobante electrónico y son obligatorios según AFIP</p>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">🏢 Datos Fiscales del Emisor</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Estos datos aparecen en el comprobante electrónico y son obligatorios según AFIP</p>
 
                 <div className="space-y-4">
                   {/* Condición IVA */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Condición frente al IVA
                     </label>
                     <select
                       value={config?.condicion_iva || ''}
                       onChange={(e) => set('condicion_iva', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
                     >
                       <option value="">-- Seleccioná --</option>
                       <option value="IVA Responsable Inscripto">IVA Responsable Inscripto</option>
@@ -624,48 +624,48 @@ function FacturacionElectronica() {
 
                   {/* Ingresos Brutos */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       N° Ingresos Brutos
                     </label>
                     <input
                       type="text"
                       value={config?.ingresos_brutos || ''}
                       onChange={(e) => set('ingresos_brutos', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
                       placeholder="Ej: 12345678 o CM-12345678"
                     />
                   </div>
 
                   {/* Inicio de Actividades */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Inicio de Actividades
                     </label>
                     <input
                       type="date"
                       value={config?.inicio_actividades || ''}
                       onChange={(e) => set('inicio_actividades', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
                     />
                   </div>
                 </div>
               </div>
 
               
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h4 className="font-bold text-gray-800 mb-2">🔢 Punto de Venta ARCA</h4>
-                <p className="text-sm text-gray-500 mb-4">Es el número que te asigna ARCA para facturar (generalmente es 1)</p>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2">🔢 Punto de Venta ARCA</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Es el número que te asigna ARCA para facturar (generalmente es 1)</p>
                 
                 <div className="flex items-center gap-4">
                   <input
                     type="number"
                     value={config?.punto_venta_arca || 1}
                     onChange={(e) => set('punto_venta_arca', parseInt(e.target.value) || 1)}
-                    className="w-32 border border-gray-300 rounded-lg px-4 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    className="w-32 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-2xl font-bold text-center focus:outline-none focus:ring-2 focus:ring-orange-400"
                     min="1"
                     max="99999"
                   />
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     <p>Si no sabés tu punto de venta, ingresá <strong>1</strong></p>
                     <p>Podés crear más puntos de venta desde el portal de ARCA</p>
                   </div>
@@ -673,9 +673,9 @@ function FacturacionElectronica() {
               </div>
 
               {/* Entorno de Facturación */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h4 className="font-bold text-gray-800 mb-2"> Entorno de Facturación</h4>
-                <p className="text-sm text-gray-500 mb-4">Elegí el entorno según si estás en pruebas o producción real</p>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-2"> Entorno de Facturación</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Elegí el entorno según si estás en pruebas o producción real</p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <button
@@ -683,17 +683,17 @@ function FacturacionElectronica() {
                     className={`p-4 rounded-xl border-2 text-left transition-all ${
                       config?.entorno_arca === 'homologacion' || !config?.entorno_arca
                         ? 'border-yellow-500 bg-yellow-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-2xl">🧪</span>
                       <div>
-                        <h5 className="font-bold text-gray-800">Homologación</h5>
-                        <p className="text-xs text-gray-500">Para pruebas</p>
+                        <h5 className="font-bold text-gray-800 dark:text-gray-200">Homologación</h5>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Para pruebas</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       URL: wsaaext.homo.afip.gov.ar
                     </p>
                     <p className="text-xs text-yellow-600 mt-1">
@@ -706,17 +706,17 @@ function FacturacionElectronica() {
                     className={`p-4 rounded-xl border-2 text-left transition-all ${
                       config?.entorno_arca === 'produccion'
                         ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-2xl">🚀</span>
                       <div>
-                        <h5 className="font-bold text-gray-800">Producción</h5>
-                        <p className="text-xs text-gray-500">Real / Oficial</p>
+                        <h5 className="font-bold text-gray-800 dark:text-gray-200">Producción</h5>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Real / Oficial</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       URL: wsaa.afip.gov.ar
                     </p>
                     <p className="text-xs text-green-600 mt-1">
@@ -729,8 +729,8 @@ function FacturacionElectronica() {
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-700">🔗 Test de Conexión con ARCA</p>
-                      <p className="text-xs text-gray-500">Verificá que tu configuración funcione correctamente</p>
+                      <p className="font-medium text-gray-700 dark:text-gray-300">🔗 Test de Conexión con ARCA</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Verificá que tu configuración funcione correctamente</p>
                     </div>
                     <button
                       onClick={async () => {
@@ -764,7 +764,7 @@ function FacturacionElectronica() {
                           <p className={`font-medium ${resultadoTest.exito ? 'text-green-700' : 'text-red-700'}`}>
                             {resultadoTest.exito ? 'Conexión exitosa' : 'Error de conexión'}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">{resultadoTest.mensaje}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{resultadoTest.mensaje}</p>
                         </div>
                       </div>
                     </div>
@@ -776,11 +776,11 @@ function FacturacionElectronica() {
           )}
 
           {/* Botón guardar configuración */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-700">💾 Guardar Configuración</p>
-                <p className="text-xs text-gray-500">Guardá los cambios de régimen fiscal, punto de venta, entorno y datos fiscales</p>
+                <p className="font-medium text-gray-700 dark:text-gray-300">💾 Guardar Configuración</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Guardá los cambios de régimen fiscal, punto de venta, entorno y datos fiscales</p>
               </div>
               <button
                 onClick={async () => {
@@ -820,11 +820,11 @@ function FacturacionElectronica() {
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-2xl">⚡</span>
                 <div>
-                  <h4 className="font-bold text-gray-800">Conexión rápida (delegada) — recomendada</h4>
-                  <p className="text-sm text-gray-500">Facturá sin generar certificados: delegás el web service al proveedor.</p>
+                  <h4 className="font-bold text-gray-800 dark:text-gray-200">Conexión rápida (delegada) — recomendada</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Facturá sin generar certificados: delegás el web service al proveedor.</p>
                 </div>
               </div>
-              <ol className="text-sm text-gray-600 list-decimal ml-5 mb-4 space-y-1">
+              <ol className="text-sm text-gray-600 dark:text-gray-400 list-decimal ml-5 mb-4 space-y-1">
                 <li>Entrá a ARCA con tu clave fiscal → <b>Administrador de Relaciones de Clave Fiscal</b>.</li>
                 <li>Nueva relación → servicio <b>"Facturación Electrónica" (wsfe)</b> → delegalo al CUIT <b>{delegacionInfo.cuitProveedor}</b>.</li>
                 <li>Completá tus datos acá y activá.</li>
@@ -834,7 +834,7 @@ function FacturacionElectronica() {
                   type="text"
                   value={formDelegacion.cuit}
                   onChange={(e) => setFormDelegacion(p => ({ ...p, cuit: e.target.value }))}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
                   placeholder="Tu CUIT (11 dígitos)"
                 />
                 <input
@@ -842,13 +842,13 @@ function FacturacionElectronica() {
                   min="1"
                   value={formDelegacion.puntoVenta}
                   onChange={(e) => setFormDelegacion(p => ({ ...p, puntoVenta: e.target.value }))}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
                   placeholder="Punto de venta"
                 />
                 <select
                   value={formDelegacion.regimenFiscal}
                   onChange={(e) => setFormDelegacion(p => ({ ...p, regimenFiscal: e.target.value }))}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
                 >
                   <option value="responsable_inscripto">Responsable Inscripto (Factura A/B)</option>
                   <option value="monotributista">Monotributista (Factura C)</option>
@@ -865,8 +865,8 @@ function FacturacionElectronica() {
           )}
 
           {/* Estado del certificado */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-bold text-gray-800 mb-4">🔐 Estado de Certificados</h4>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-4">🔐 Estado de Certificados</h4>
             
             {certificadoActivo ? (
               <div className={`p-4 rounded-xl border-2 ${
@@ -879,16 +879,16 @@ function FacturacionElectronica() {
                     {certificadoActivo.estado_certificado?.valido ? '✅' : '❌'}
                   </div>
                   <div>
-                    <p className="font-bold text-gray-800">
+                    <p className="font-bold text-gray-800 dark:text-gray-200">
                       {certificadoActivo.estado_certificado?.valido ? 'Certificado Vigente' : 'Certificado Vencido/Inválido'}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       CUIT: {certificadoActivo.cuit} | Punto de Venta: {certificadoActivo.punto_venta}
                     </p>
                   </div>
                 </div>
                 {certificadoActivo.estado_certificado?.fechaVencimiento && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     Vence: {new Date(certificadoActivo.estado_certificado.fechaVencimiento).toLocaleDateString('es-AR')}
                     ({certificadoActivo.estado_certificado.diasRestantes} días restantes)
                   </p>
@@ -904,31 +904,31 @@ function FacturacionElectronica() {
           </div>
 
           {/* Generar certificados */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-bold text-gray-800 mb-4">📝 Generar Certificados</h4>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-4">📝 Generar Certificados</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Generá tus archivos .key y .csr. El .csr lo subís a ARCA para obtener tu certificado .crt
             </p>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CUIT *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CUIT *</label>
                 <input
                   type="text"
                   value={cuitInput}
                   onChange={(e) => setCuitInput(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                   placeholder="Ej: 20123456789"
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Razón Social</label>
                 <input
                   type="text"
                   value={razonSocialInput}
                   onChange={(e) => setRazonSocialInput(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                   placeholder="Ej: Mi Empresa SRL"
                 />
               </div>
@@ -949,14 +949,14 @@ function FacturacionElectronica() {
                 <div className="space-y-2">
                   <button
                     onClick={() => descargarArchivo('key', archivosGenerados.key.split('/').pop())}
-                    className="w-full flex items-center justify-between p-3 bg-white rounded-lg border hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <span className="font-medium">🔑 Archivo .key (clave privada)</span>
                     <span className="text-blue-600 text-sm">Descargar →</span>
                   </button>
                   <button
                     onClick={() => descargarArchivo('csr', archivosGenerados.csr.split('/').pop())}
-                    className="w-full flex items-center justify-between p-3 bg-white rounded-lg border hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <span className="font-medium">📄 Archivo .csr (subir a ARCA)</span>
                     <span className="text-blue-600 text-sm">Descargar →</span>
@@ -970,14 +970,14 @@ function FacturacionElectronica() {
           </div>
 
           {/* Subir certificado de ARCA */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-bold text-gray-800 mb-4">📤 Subir Certificado de ARCA</h4>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-4">📤 Subir Certificado de ARCA</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Una vez que ARCA te devuelva el archivo .crt, subilo acá
             </p>
             
             <div className="space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-orange-400 transition-colors">
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center hover:border-orange-400 transition-colors">
                 <input
                   type="file"
                   accept=".crt,.pem"
@@ -987,7 +987,7 @@ function FacturacionElectronica() {
                 />
                 <label htmlFor="cert-upload" className="cursor-pointer">
                   <div className="text-4xl mb-2">📁</div>
-                  <p className="font-medium text-gray-700">
+                  <p className="font-medium text-gray-700 dark:text-gray-300">
                     {archivoCert ? archivoCert.name : 'Arrastrá tu archivo .crt acá'}
                   </p>
                   <p className="text-sm text-gray-400">o hacé click para seleccionar</p>
@@ -1010,16 +1010,16 @@ function FacturacionElectronica() {
       {paso === 3 && (
         <div className="space-y-6">
           {/* Tipos de comprobante disponibles */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-bold text-gray-800 mb-4">📄 Tipos de Comprobante Disponibles</h4>
-            <p className="text-sm text-gray-500 mb-4">Según tu régimen fiscal: <strong>{config?.regimen_fiscal === 'monotributista' ? 'Monotributista' : 'Responsable Inscripto'}</strong></p>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-4">📄 Tipos de Comprobante Disponibles</h4>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Según tu régimen fiscal: <strong>{config?.regimen_fiscal === 'monotributista' ? 'Monotributista' : 'Responsable Inscripto'}</strong></p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {tiposComprobante.map(tipo => (
-                <div key={tipo.codigo} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div key={tipo.codigo} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
                   <div className="text-3xl mb-2">{tipo.emoji}</div>
-                  <h5 className="font-bold text-gray-800">{tipo.nombre}</h5>
-                  <p className="text-xs text-gray-500">{tipo.descripcion}</p>
+                  <h5 className="font-bold text-gray-800 dark:text-gray-200">{tipo.nombre}</h5>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{tipo.descripcion}</p>
                   <p className="text-xs text-gray-400 mt-1">Código ARCA: {tipo.codigo}</p>
                 </div>
               ))}
@@ -1027,11 +1027,11 @@ function FacturacionElectronica() {
           </div>
 
           {/* Emitir comprobante de prueba */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h4 className="font-bold text-gray-800">🧪 Emitir Comprobante de Prueba</h4>
-                <p className="text-sm text-gray-500">Generá un comprobante de prueba para verificar que todo funciona</p>
+                <h4 className="font-bold text-gray-800 dark:text-gray-200">🧪 Emitir Comprobante de Prueba</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Generá un comprobante de prueba para verificar que todo funciona</p>
               </div>
               <button
                 onClick={() => setMostrarFormComprobante(!mostrarFormComprobante)}
@@ -1042,14 +1042,14 @@ function FacturacionElectronica() {
             </div>
 
             {mostrarFormComprobante && (
-              <div className="space-y-4 p-4 bg-gray-50 rounded-xl">
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Comprobante *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Comprobante *</label>
                     <select
                       value={formComprobante.tipo_comprobante}
                       onChange={(e) => setFormComprobante(p => ({ ...p, tipo_comprobante: parseInt(e.target.value) }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                     >
                       <option value="">Seleccionar...</option>
                       {tiposComprobante.map(t => (
@@ -1058,11 +1058,11 @@ function FacturacionElectronica() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Documento</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Documento</label>
                     <select
                       value={formComprobante.tipo_documento}
                       onChange={(e) => setFormComprobante(p => ({ ...p, tipo_documento: parseInt(e.target.value) }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                     >
                       <option value={99}>Consumidor Final</option>
                       <option value={96}>DNI</option>
@@ -1074,22 +1074,22 @@ function FacturacionElectronica() {
                 {formComprobante.tipo_documento !== 99 && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Número de Documento</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número de Documento</label>
                       <input
                         type="text"
                         value={formComprobante.numero_documento}
                         onChange={(e) => setFormComprobante(p => ({ ...p, numero_documento: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="Ej: 12345678"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Denominación Comprador</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Denominación Comprador</label>
                       <input
                         type="text"
                         value={formComprobante.denominacion_comprador}
                         onChange={(e) => setFormComprobante(p => ({ ...p, denominacion_comprador: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="Ej: Juan Pérez"
                       />
                     </div>
@@ -1098,40 +1098,40 @@ function FacturacionElectronica() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Importe Total *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Importe Total *</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                      <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
                       <input
                         type="number"
                         value={formComprobante.importe_total}
                         onChange={(e) => setFormComprobante(p => ({ ...p, importe_total: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="0"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Importe Neto</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Importe Neto</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                      <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
                       <input
                         type="number"
                         value={formComprobante.importe_neto}
                         onChange={(e) => setFormComprobante(p => ({ ...p, importe_neto: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="0"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">IVA</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2.5 text-gray-500">$</span>
+                      <span className="absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">$</span>
                       <input
                         type="number"
                         value={formComprobante.importe_iva}
                         onChange={(e) => setFormComprobante(p => ({ ...p, importe_iva: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="0"
                       />
                     </div>
@@ -1150,8 +1150,8 @@ function FacturacionElectronica() {
           </div>
 
           {/* Historial de comprobantes */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h4 className="font-bold text-gray-800 mb-4">📊 Historial de Comprobantes</h4>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+            <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-4">📊 Historial de Comprobantes</h4>
             
             {comprobantes.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
@@ -1163,17 +1163,17 @@ function FacturacionElectronica() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Fecha</th>
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Tipo</th>
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Número</th>
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">CAE</th>
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Total</th>
-                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600">Estado</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Fecha</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Tipo</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Número</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">CAE</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Total</th>
+                      <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {comprobantes.map(comp => (
-                      <tr key={comp.id} className="border-b hover:bg-gray-50">
+                      <tr key={comp.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
                         <td className="py-2 px-3 text-sm">
                           {new Date(comp.fecha_emision).toLocaleDateString('es-AR')}
                         </td>

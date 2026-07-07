@@ -18,6 +18,7 @@ export const CHANGELOG = [
     ],
     cambios: [
       { t: 'Botones sobre el mapa del POS para ponerlo a pantalla completa, volverlo al tamaño normal u ocultarlo.' },
+      { t: 'Modo oscuro revisado a fondo: se corrigieron textos y paneles que quedaban del mismo color que el fondo en el editor de productos del Menú (variantes), Adicionales, Facturación ARCA, detalle de pedido y comprobantes.' },
     ],
   },
   {

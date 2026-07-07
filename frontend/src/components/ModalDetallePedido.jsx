@@ -265,7 +265,7 @@ export default function ModalDetallePedido({ pedido: pedidoInicial, repartidores
             </div>
 
             {/* Totales */}
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 space-y-1.5 bg-gray-50/50">
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 space-y-1.5 bg-gray-50/50 dark:bg-gray-900/40">
               <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
                 <span>Subtotal</span>
                 <span className="font-mono">${fmt(subtotal)}</span>

@@ -103,7 +103,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-6 mb-6 text-white">
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-white/20 rounded-lg">
+          <div className="p-3 bg-white dark:bg-gray-800/20 rounded-lg">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
@@ -136,11 +136,11 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
       </div>
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
         <div className="space-y-4">
           {/* CUIT */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               CUIT *
             </label>
             <input
@@ -149,14 +149,14 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
               value={formData.cuit}
               onChange={(e) => setFormData({ ...formData, cuit: e.target.value })}
               placeholder="20-12345678-9"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               disabled={loading}
             />
           </div>
 
           {/* Clave Fiscal */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Clave Fiscal de AFIP *
             </label>
             <div className="relative">
@@ -166,13 +166,13 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                 value={formData.claveFiscal}
                 onChange={(e) => setFormData({ ...formData, claveFiscal: e.target.value })}
                 placeholder="Tu contraseña de AFIP"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setMostrarClave(!mostrarClave)}
-                className="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700"
+                className="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-300"
               >
                 {mostrarClave ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,14 +186,14 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                 )}
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               ⚠️ Tu clave NO se guarda, solo se usa temporalmente para la vinculación
             </p>
           </div>
 
           {/* Razón Social */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Razón Social
             </label>
             <input
@@ -201,14 +201,14 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
               value={formData.razonSocial}
               onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
               placeholder="Nombre de tu negocio (opcional)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               disabled={loading}
             />
           </div>
 
           {/* Punto de Venta */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Punto de Venta *
             </label>
             <input
@@ -218,21 +218,21 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
               max="9999"
               value={formData.puntoVenta}
               onChange={(e) => setFormData({ ...formData, puntoVenta: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               disabled={loading}
             />
           </div>
 
           {/* Régimen Fiscal */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Régimen Fiscal *
             </label>
             <select
               required
               value={formData.regimenFiscal}
               onChange={(e) => setFormData({ ...formData, regimenFiscal: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               disabled={loading}
             >
               <option value="responsable_inscripto">Responsable Inscripto</option>
@@ -242,7 +242,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
 
           {/* Entorno - Radio Buttons */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Entorno de Conexión *
             </label>
             <div className="space-y-3">
@@ -252,7 +252,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                   formData.esHomologacion
                     ? 'border-orange-500 bg-orange-50'
-                    : 'border-gray-300 hover:border-orange-300'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-orange-300'
                 } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className="flex items-start">
@@ -266,10 +266,10 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                     disabled={loading}
                   />
                   <div className="ml-3 flex-1">
-                    <label htmlFor="homologacion" className="font-medium text-gray-900 cursor-pointer">
+                    <label htmlFor="homologacion" className="font-medium text-gray-900 dark:text-gray-100 cursor-pointer">
                       🧪 Homologación (Pruebas)
                     </label>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       Entorno de testing de AFIP. Certificados y comprobantes NO son fiscalmente válidos.
                       <span className="block mt-1 text-orange-600 font-medium">✅ Recomendado para primeras pruebas</span>
                     </p>
@@ -283,7 +283,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                   !formData.esHomologacion
                     ? 'border-red-500 bg-red-50'
-                    : 'border-gray-300 hover:border-red-300'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-red-300'
                 } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className="flex items-start">
@@ -297,10 +297,10 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                     disabled={loading}
                   />
                   <div className="ml-3 flex-1">
-                    <label htmlFor="produccion" className="font-medium text-gray-900 cursor-pointer">
+                    <label htmlFor="produccion" className="font-medium text-gray-900 dark:text-gray-100 cursor-pointer">
                       🚀 Producción (Real)
                     </label>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       Entorno oficial de AFIP. Certificados y comprobantes SON fiscalmente válidos.
                       <span className="block mt-1 text-red-600 font-medium">⚠️ Solo usar después de validar en homologación</span>
                     </p>
@@ -343,7 +343,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 testingConexion
                   ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
+                  : 'bg-white dark:bg-gray-800 text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
               }`}
             >
               {testingConexion ? (
@@ -398,7 +398,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                 {estadoConexion.mensaje}
               </p>
               {estadoConexion.detalles && (
-                <div className="mt-2 text-xs text-green-600 font-mono bg-white rounded p-2">
+                <div className="mt-2 text-xs text-green-600 font-mono bg-white dark:bg-gray-800 rounded p-2">
                   <div>Token: {estadoConexion.detalles.tokenPreview}</div>
                   {estadoConexion.detalles.expiracion && (
                     <div>Expira: {new Date(estadoConexion.detalles.expiracion).toLocaleString()}</div>
@@ -425,7 +425,7 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
 
       {/* Progreso */}
       {progreso.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <svg className="w-5 h-5 mr-2 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -469,10 +469,10 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
                     {item.paso}
                   </p>
                   {item.mensaje && (
-                    <p className="text-xs text-gray-600 mt-1">{item.mensaje}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{item.mensaje}</p>
                   )}
                   {item.timestamp && (
-                    <p className="text-xs text-gray-500 mt-1">{item.timestamp}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.timestamp}</p>
                   )}
                 </div>
               </div>
@@ -482,9 +482,9 @@ export default function VincularARCAAutomatico({ negocioId, onSuccess }) {
       )}
 
       {/* Información adicional */}
-      <div className="mt-6 bg-gray-50 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-2">ℹ️ ¿Cómo funciona?</h4>
-        <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+      <div className="mt-6 bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">ℹ️ ¿Cómo funciona?</h4>
+        <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
           <li>El sistema genera automáticamente los certificados RSA</li>
           <li>Se conecta a ARCA con tus credenciales (simulación de navegador)</li>
           <li>Sube el CSR (solicitud de certificado)</li>

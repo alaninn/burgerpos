@@ -95,7 +95,7 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
           <p className="text-center">Cargando...</p>
         </div>
       </div>
@@ -104,7 +104,7 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="bg-violet-600 text-white p-4 rounded-t-lg flex justify-between items-center">
           <h3 className="text-lg font-semibold">Emitir Factura Electrónica</h3>
@@ -119,20 +119,20 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Datos del pedido */}
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600">Pedido #{pedido.numeroOrden || pedido.id?.slice(0, 8)}</p>
-            <p className="text-xl font-bold text-gray-800">Total: ${parseFloat(pedido.total).toFixed(2)}</p>
+          <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Pedido #{pedido.numeroOrden || pedido.id?.slice(0, 8)}</p>
+            <p className="text-xl font-bold text-gray-800 dark:text-gray-200">Total: ${parseFloat(pedido.total).toFixed(2)}</p>
           </div>
 
           {/* Tipo de comprobante */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Tipo de Comprobante *
             </label>
             <select
               value={formData.tipoComprobante}
               onChange={(e) => handleTipoComprobanteChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               required
             >
               <option value="">Seleccionar...</option>
@@ -142,7 +142,7 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {formData.tipoComprobante === 1 && '⚠️ Factura A requiere CUIT del cliente'}
               {formData.tipoComprobante === 6 && 'ℹ️ Factura B - No discrimina IVA'}
               {formData.tipoComprobante === 11 && 'ℹ️ Factura C - Consumidor Final'}
@@ -151,14 +151,14 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
 
           {/* Cliente */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Cliente *
             </label>
             <input
               type="text"
               value={formData.denominacion}
               onChange={(e) => setFormData(prev => ({ ...prev, denominacion: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               required
             />
           </div>
@@ -166,7 +166,7 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
           {/* CUIT (solo si es Factura A) */}
           {formData.tipoComprobante === 1 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 CUIT del Cliente *
               </label>
               <input
@@ -174,7 +174,7 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
                 value={formData.numeroDocumento}
                 onChange={(e) => setFormData(prev => ({ ...prev, numeroDocumento: e.target.value }))}
                 placeholder="20-12345678-9"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 required
               />
             </div>
@@ -192,7 +192,7 @@ function ModalFacturaDesdePedido({ pedido, onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors"
               disabled={emitiendo}
             >
               Cancelar

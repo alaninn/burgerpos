@@ -366,10 +366,10 @@ function ComprobanteElectronico({ comprobante, onClose, config }) {
         </div>
 
         {/* Footer botones */}
-        <div className="flex gap-3 p-3 border-t bg-gray-50 flex-shrink-0">
+        <div className="flex gap-3 p-3 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 font-bold text-sm hover:bg-gray-100 transition-colors"
+            className="flex-1 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Cerrar
           </button>

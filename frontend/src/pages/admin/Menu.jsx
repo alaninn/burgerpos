@@ -842,7 +842,7 @@ function PanelProducto({ negocioId, producto, categorias, onClose, onSaved }) {
             ) : (
               <div className="space-y-3 mb-3">
                 {variantes.map((v, idx) => (
-                  <div key={idx} className="border border-gray-300 dark:border-gray-700 rounded-xl p-3.5 bg-gray-50/50">
+                  <div key={idx} className="border border-gray-300 dark:border-gray-700 rounded-xl p-3.5 bg-gray-50/50 dark:bg-gray-900/40">
                     <div className="grid grid-cols-3 gap-2 mb-2.5">
                       <div>
                         <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Variante</label>
