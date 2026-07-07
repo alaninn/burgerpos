@@ -153,7 +153,7 @@ function ClienteSelector({
       <label className="flex items-center gap-1.5 cursor-pointer select-none">
         <div className="relative">
           <input type="checkbox" checked={omitir} onChange={e => handleOmitir(e.target.checked)} className="sr-only" />
-          <div className={`w-8 h-4 rounded-full transition-colors ${omitir ? 'bg-gray-400' : 'bg-gray-200'}`}>
+          <div className={`w-8 h-4 rounded-full transition-colors ${omitir ? 'bg-gray-400 dark:bg-gray-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
             <span className={`absolute top-0.5 w-3 h-3 bg-white dark:bg-gray-800 rounded-full shadow transition-transform ${omitir ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
         </div>
@@ -514,7 +514,7 @@ function ProductoCustomizer({ producto, onAgregar, onCerrar }) {
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 bg-white dark:bg-[#1a1a24]">
         {producto.variantes?.length > 0 && (
           <div>
-            <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-1.5">Elegir variante</p>
+            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-1.5">Elegir variante</p>
             <div className="space-y-2">
               {producto.variantes.map(v => {
                 // Calcular precio con descuento para esta variante
@@ -608,7 +608,7 @@ function ProductoCustomizer({ producto, onAgregar, onCerrar }) {
         })}
 
         <div>
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-1.5">Notas del item</p>
+          <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-1.5">Notas del item</p>
           <textarea value={notas} onChange={e => setNotas(e.target.value)}
             placeholder="Ej: sin cebolla, bien cocido..."
             rows={2}
@@ -811,6 +811,14 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
     if (unique.length > 0) setMetodosPagoHabilitados(unique)
   }, [configProp, ciudadProp])
 
+  // Si el metodo elegido quedo fuera de los habilitados, pasar al primero disponible
+  useEffect(() => {
+    if (metodosPagoHabilitados.length > 0 && !metodosPagoHabilitados.some(m => m.id === metodoPago)) {
+      setMetodoPago(metodosPagoHabilitados[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metodosPagoHabilitados])
+
   useEffect(() => {
     if (paso !== 2) return
     setLoadingProds(true)
@@ -819,7 +827,8 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
       api.get(`/negocios/${negocioId}/repartidores`),
       api.get(`/negocios/${negocioId}`),
     ]).then(([prodRes, repRes, negRes]) => {
-      const prods = prodRes.data.productos || []
+      // Solo productos del menu: los ingredientes/insumos del stock no se venden directo
+      const prods = (prodRes.data.productos || []).filter(p => p.categoria?.tipo !== 'ingrediente')
       const cats = []
       const seen = new Set()
       prods.forEach(p => {
@@ -981,6 +990,9 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
   const guardar = async () => {
     if (!modalidad) return toast.error('Seleccioná una modalidad')
     if (carrito.length === 0) return toast.error('Agregá productos al pedido')
+    if (modalidad === 'delivery' && !String(clienteDireccion || '').trim()) {
+      return toast.error('Ingresá la dirección de entrega del delivery')
+    }
     setLoading(true)
     try {
       // Resolver cliente
@@ -1044,7 +1056,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
         style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}>
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-10 flex flex-col items-center gap-6 w-full max-w-md mx-4">
           <div className="text-center">
-            <div className="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg dark:shadow-[0_0_20px_rgba(124,58,237,0.45)]">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
@@ -1059,9 +1071,9 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
               { id: 'salon', label: 'Salón', icon: '🪑' },
             ].filter(m => configProp.modalidades?.[m.id] !== false).map(m => (
               <button key={m.id} onClick={() => { setModalidad(m.id); setPaso(2) }}
-                className="flex-1 flex flex-col items-center gap-3 py-6 border-2 border-gray-300 dark:border-gray-700 rounded-2xl hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-all">
+                className="flex-1 flex flex-col items-center gap-3 py-6 border-2 border-gray-300 dark:border-gray-600 rounded-2xl hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/30 dark:hover:border-violet-500 hover:-translate-y-0.5 transition-all">
                 <span className="text-3xl">{m.icon}</span>
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{m.label}</span>
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{m.label}</span>
               </button>
             ))}
           </div>
@@ -1076,7 +1088,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-100 dark:bg-gray-900">
 
       {/* Header */}
-      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2.5 md:py-3.5 bg-gray-900 text-white flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2.5 md:py-3.5 bg-gray-900 dark:bg-gray-950 text-white flex-shrink-0 border-b border-gray-800">
         <button onClick={onClose} className="p-1.5 md:p-2 hover:bg-white/10 rounded-xl transition-colors flex-shrink-0">
           <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1111,7 +1123,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
           <div className="flex-1 overflow-y-auto px-3 py-1">
             {carrito.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-                <svg className="w-10 h-10 text-gray-200 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-10 h-10 text-gray-200 dark:text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Sin productos</p>
@@ -1208,23 +1220,35 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
-                    {productosFiltrados.map(prod => (
+                    {productosFiltrados.map(prod => {
+                      const precios = prod.variantes?.length
+                        ? prod.variantes.map(v => parseFloat(v.precioVenta || 0)).filter(n => n > 0)
+                        : [parseFloat(prod.precioVenta || 0)]
+                      const precioMin = precios.length ? Math.min(...precios) : 0
+                      const desde = (prod.variantes?.length || 0) > 1
+                      return (
                       <button key={prod.id}
                         onClick={() => prod.activo && setProductoCustom(prod)}
                         disabled={!prod.activo}
-                        className={`group rounded-xl overflow-hidden text-left transition-all border border-gray-200 dark:border-gray-700 ${!prod.activo ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}`}>
+                        className={`group rounded-xl overflow-hidden text-left transition-all border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 ${!prod.activo ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-violet-400 dark:hover:border-violet-500 dark:hover:shadow-[0_4px_16px_rgba(124,58,237,0.25)]'}`}>
                         {prod.imagen ? (
-                          <div className="h-20 overflow-hidden bg-gray-100 dark:bg-gray-700">
+                          <div className="h-20 overflow-hidden bg-gray-100 dark:bg-gray-900">
                             <img src={prod.imagen} alt={prod.nombre} className="w-full h-full object-contain p-1 transition-transform duration-300 group-hover:scale-105" />
                           </div>
                         ) : (
-                          <div className="h-20 bg-gradient-to-br from-gray-100 dark:from-gray-700 to-gray-200 dark:to-gray-600 flex items-center justify-center text-2xl">🍔</div>
+                          <div className="h-20 bg-gradient-to-br from-gray-100 dark:from-gray-700 to-gray-200 dark:to-gray-900 flex items-center justify-center text-2xl">🍔</div>
                         )}
-                        <div className="px-2 py-1.5 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                        <div className="px-2 py-1.5 border-t border-gray-200 dark:border-gray-700">
                           <p className="text-xs font-medium text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">{prod.nombre}</p>
+                          {precioMin > 0 && (
+                            <p className="text-xs font-bold text-violet-700 dark:text-violet-400 mt-0.5">
+                              {desde && <span className="font-normal text-gray-500 dark:text-gray-400">desde </span>}${fmt(precioMin)}
+                            </p>
+                          )}
                         </div>
                       </button>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -1245,7 +1269,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                     .filter(m => configProp.modalidades?.[m.id] !== false)
                     .map(m => (
                     <button key={m.id} onClick={() => setModalidad(m.id)}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border-2 transition-colors ${modalidad === m.id ? 'bg-violet-600 text-white border-violet-600' : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-gray-400'}`}>
+                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border-2 transition-colors ${modalidad === m.id ? 'bg-violet-600 text-white border-violet-600 dark:shadow-[0_2px_10px_rgba(124,58,237,0.35)]' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-400 dark:hover:border-violet-500'}`}>
                       {m.icon} {m.label}
                     </button>
                   ))}
@@ -1265,7 +1289,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                     return disp.includes(modalidad)
                   }).map(m => (
                     <button key={m.id} onClick={() => setMetodoPago(m.id)}
-                      className={`py-3 px-3 rounded-xl text-xs font-bold border-2 transition-all text-left flex items-center gap-2 ${metodoPago === m.id ? 'bg-violet-600 text-white border-violet-600 shadow-sm' : 'border-gray-200 text-gray-600 dark:text-gray-300 hover:border-gray-300 hover:bg-gray-50'}`}>
+                      className={`py-3 px-3 rounded-xl text-xs font-bold border-2 transition-all text-left flex items-center gap-2 ${metodoPago === m.id ? 'bg-violet-600 text-white border-violet-600 shadow-sm dark:shadow-[0_2px_10px_rgba(124,58,237,0.35)]' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 hover:bg-gray-50 dark:hover:border-violet-500 dark:hover:bg-gray-700/40'}`}>
                       <span className="text-base">{m.icon}</span>
                       <span className="leading-tight">{m.label}</span>
                     </button>
@@ -1395,7 +1419,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                       onChange={e => setRequiereFactura(e.target.checked)}
                       className="sr-only"
                     />
-                    <div className={`w-9 h-5 rounded-full transition-colors ${requiereFactura ? 'bg-violet-600' : 'bg-gray-200'}`}>
+                    <div className={`w-9 h-5 rounded-full transition-colors ${requiereFactura ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-600'}`}>
                       <span className={`absolute top-0.5 w-4 h-4 bg-white dark:bg-gray-800 rounded-full shadow transition-transform ${requiereFactura ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </div>
                   </div>
@@ -1448,7 +1472,7 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
                 Cancelar
               </button>
               <button onClick={guardar} disabled={loading || carrito.length === 0}
-                className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-700 disabled:opacity-40 text-white text-sm font-bold rounded-xl transition-all">
+                className="flex-1 py-2.5 bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400 disabled:opacity-40 text-white text-sm font-bold rounded-xl transition-all shadow-md dark:shadow-[0_4px_16px_rgba(124,58,237,0.35)]">
                 {loading ? 'Guardando...' : pedidoExistente ? 'Actualizar pedido' : 'Crear pedido'}
               </button>
             </div>

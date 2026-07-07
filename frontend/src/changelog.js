@@ -6,9 +6,23 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.13.0'
+export const VERSION_ACTUAL = '1.14.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.14.0',
+    fecha: '2026-07-07',
+    titulo: 'Editor de pedidos mejorado',
+    destacados: [
+      { titulo: 'El catálogo de venta muestra solo el menú', detalle: 'Al crear un pedido ya no aparecen los ingredientes ni las categorías del stock (carne, aderezos, insumos...): solo se pueden vender los productos creados en el panel Menú, como corresponde.' },
+      { titulo: 'Precios a la vista y mejor modo oscuro', detalle: 'Cada producto del catálogo muestra su precio (o "desde $..." si tiene variantes), las tarjetas resaltan al pasar el mouse y todos los botones del editor (modalidad, método de pago, variantes) se ven bien en modo oscuro.' },
+    ],
+    cambios: [
+      { t: 'Los pedidos de delivery ahora piden la dirección de entrega antes de guardarse, para que ningún envío quede sin destino.' },
+      { t: 'Si un método de pago se deshabilita en la configuración, el editor pasa automáticamente al primero disponible.' },
+      { t: 'Botón "Crear pedido" en violeta, más visible en las dos apariencias.' },
+    ],
+  },
   {
     version: '1.13.0',
     fecha: '2026-07-07',
