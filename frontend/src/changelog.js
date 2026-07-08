@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.16.2'
+export const VERSION_ACTUAL = '1.17.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.17.0',
+    fecha: '2026-07-08',
+    titulo: 'Carga rápida de stock, vender sin stock y comprobantes manipulables',
+    destacados: [
+      { titulo: 'Cargá el stock de varios productos de una', detalle: 'En Stock hay un botón nuevo "Cargar stock": ponés cuántas unidades hay de cada producto en una sola pantalla y guardás todo junto. Ideal para hacer el inventario o reponer.' },
+      { titulo: 'Reimprimí facturas y hacé notas de crédito', detalle: 'En Facturación ARCA → Comprobantes, cada factura tiene botones para imprimir su PDF y para emitir una nota de crédito que la anula ante ARCA, con CAE real.' },
+    ],
+    cambios: [
+      { t: 'Nuevo interruptor en Configuraciones → Pedidos: "Vender sin stock", para que la venta nunca se frene aunque un producto no tenga stock (queda en negativo).' },
+      { t: 'Al crear una categoría de stock, las opciones son más claras: "Insumo de stock" (no se vende) o "Producto de venta"; el nombre lo elegís libremente.' },
+    ],
+  },
   {
     version: '1.16.2',
     fecha: '2026-07-08',

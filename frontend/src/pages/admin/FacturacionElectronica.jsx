@@ -45,6 +45,7 @@ function FacturacionElectronica() {
   const [emitiendo, setEmitiendo] = useState(false);
   const [testConectando, setTestConectando] = useState(false);
   const [resultadoTest, setResultadoTest] = useState(null);
+  const [ncEnProceso, setNcEnProceso] = useState(null);
 
   // Conexión delegada (web service delegado al CUIT del proveedor)
   const [delegacionInfo, setDelegacionInfo] = useState(null);
@@ -282,6 +283,35 @@ function FacturacionElectronica() {
       link.remove();
     } catch (err) {
       setError('Error al descargar archivo');
+    }
+  };
+
+  // Abrir el PDF del comprobante en una pestaña nueva (para imprimir/guardar)
+  const imprimirComprobante = async (comp) => {
+    try {
+      const res = await api.get(`/negocios/${negocioId}/arca/comprobantes/${comp.id}/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch {
+      setError('No se pudo generar el PDF del comprobante');
+    }
+  };
+
+  const emitirNotaCredito = async (comp) => {
+    const numero = `${String(comp.punto_venta).padStart(5, '0')}-${String(comp.numero_comprobante).padStart(8, '0')}`;
+    if (!window.confirm(`¿Emitir una nota de crédito que anule la factura ${numero} por $${parseFloat(comp.importe_total).toLocaleString('es-AR')}? Esta acción es definitiva ante ARCA.`)) return;
+    setNcEnProceso(comp.id);
+    setError(''); setExito('');
+    try {
+      const res = await api.post(`/negocios/${negocioId}/arca/comprobantes/${comp.id}/nota-credito`);
+      const nc = res.data?.comprobante;
+      setExito(`✅ Nota de crédito emitida: ${String(nc.puntoVenta).padStart(5, '0')}-${String(nc.numeroComprobante).padStart(8, '0')} · CAE ${nc.cae}`);
+      cargarDatosSecundarios();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al emitir la nota de crédito');
+    } finally {
+      setNcEnProceso(null);
     }
   };
 
@@ -1160,10 +1190,14 @@ function FacturacionElectronica() {
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">CAE</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Total</th>
                       <th className="text-left py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Estado</th>
+                      <th className="text-right py-2 px-3 text-sm font-medium text-gray-600 dark:text-gray-400">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {comprobantes.map(comp => (
+                    {comprobantes.map(comp => {
+                      const esNC = [3, 8, 13].includes(comp.tipo_comprobante);
+                      const puedeAnular = comp.estado === 'emitido' && !esNC && comp.cae;
+                      return (
                       <tr key={comp.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
                         <td className="py-2 px-3 text-sm">
                           {new Date(comp.fecha_emision).toLocaleDateString('es-AR')}
@@ -1185,8 +1219,28 @@ function FacturacionElectronica() {
                             {comp.estado}
                           </span>
                         </td>
+                        <td className="py-2 px-3">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {comp.cae && (
+                              <button onClick={() => imprimirComprobante(comp)}
+                                title="Ver / imprimir PDF"
+                                className="px-2.5 py-1 rounded-lg text-xs font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                🖨️ Imprimir
+                              </button>
+                            )}
+                            {puedeAnular && (
+                              <button onClick={() => emitirNotaCredito(comp)}
+                                disabled={ncEnProceso === comp.id}
+                                title="Emitir nota de crédito (anula la factura)"
+                                className="px-2.5 py-1 rounded-lg text-xs font-medium border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50">
+                                {ncEnProceso === comp.id ? '...' : 'N. Crédito'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>

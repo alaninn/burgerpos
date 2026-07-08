@@ -264,6 +264,26 @@ exports.testConexion = async (req, res) => {
 };
 
 /**
+ * Emite una nota de crédito que anula un comprobante del listado.
+ * POST /api/negocios/:negocioId/arca/comprobantes/:comprobanteId/nota-credito
+ */
+exports.notaCreditoDeComprobante = async (req, res) => {
+  try {
+    const { negocioId, comprobanteId } = req.params;
+    if (req.usuario.negocioId !== negocioId) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const resultado = await arcaService.emitirNotaCredito({ negocioId, comprobanteId });
+    if (!resultado.exito) {
+      return res.status(400).json({ error: resultado.error });
+    }
+    res.json(resultado);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
  * Obtiene tipos de comprobante según régimen fiscal
  * GET /api/negocios/:negocioId/arca/tipos-comprobante/:regimenFiscal
  */

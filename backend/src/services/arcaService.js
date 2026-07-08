@@ -714,32 +714,31 @@ async function guardarCertificadoNegocio(negocioId, certPath, keyPath, csrPath, 
  * Portado de gestionQ24 (probado en producción).
  * @param {Object} datos - { negocioId, pedidoId }
  */
-async function emitirNotaCredito({ negocioId, pedidoId }) {
-    if (!pedidoId) return { exito: false, error: 'pedidoId requerido' };
-
-    // 1. Buscar la factura original del pedido
-    const orig = await ComprobanteElectronico.findOne({
-        where: {
-            pedidoId, negocioId, estado: 'emitido',
-            tipoComprobante: { [Op.in]: [1, 2, 3, 6, 7, 8, 11, 12, 13] }
-        },
-        order: [['createdAt', 'DESC']]
-    });
-    if (!orig) {
-        return { exito: false, error: 'El pedido no tiene una factura electrónica emitida' };
+async function emitirNotaCredito({ negocioId, pedidoId, comprobanteId }) {
+    // 1. Buscar la factura original: por comprobante (desde el listado) o por
+    // pedido (al anular un pedido). Solo facturas, nunca una NC (3/8/13).
+    let orig;
+    if (comprobanteId) {
+        orig = await ComprobanteElectronico.findOne({
+            where: { id: comprobanteId, negocioId, estado: 'emitido', tipoComprobante: { [Op.in]: [1, 2, 6, 7, 11, 12] } }
+        });
+    } else if (pedidoId) {
+        orig = await ComprobanteElectronico.findOne({
+            where: { pedidoId, negocioId, estado: 'emitido', tipoComprobante: { [Op.in]: [1, 2, 6, 7, 11, 12] } },
+            order: [['createdAt', 'DESC']]
+        });
     }
+    if (!orig) {
+        return { exito: false, error: 'No se encontró una factura emitida para anular' };
+    }
+    // La NC hereda el pedido de la factura original (si tenía)
+    pedidoId = orig.pedidoId || pedidoId || null;
 
-    // Mapear factura/ND → nota de crédito (A=3, B=8, C=13)
-    const mapNC = { 1: 3, 2: 3, 3: 3, 6: 8, 7: 8, 8: 8, 11: 13, 12: 13, 13: 13 };
+    // Mapear factura → nota de crédito (A=3, B=8, C=13)
+    const mapNC = { 1: 3, 2: 3, 6: 8, 7: 8, 11: 13, 12: 13 };
     const origTipo = parseInt(orig.tipoComprobante);
     const ncTipo = mapNC[origTipo];
     if (!ncTipo) return { exito: false, error: 'Tipo de comprobante no soportado para nota de crédito' };
-
-    // Evitar duplicar la nota de crédito
-    const yaNC = await ComprobanteElectronico.findOne({
-        where: { pedidoId, negocioId, estado: 'emitido', tipoComprobante: { [Op.in]: [3, 8, 13] } }
-    });
-    if (yaNC) return { exito: false, error: 'Este pedido ya tiene una nota de crédito emitida' };
 
     const punto_venta = parseInt(orig.puntoVenta);
     const docTipo = parseInt(orig.tipoDocumento) || 99;
@@ -900,6 +899,9 @@ async function emitirNotaCredito({ negocioId, pedidoId }) {
             xmlRespuesta,
             estado: 'emitido'
         });
+
+        // Marcar la factura original como anulada (previene doble NC)
+        await orig.update({ estado: 'anulado' });
 
         console.log(`✅ Nota de crédito emitida con CAE real: ${cae} - Número ${numeroComprobante}`);
         return { exito: true, cae, comprobante: notaCredito.toJSON(), comprobanteOriginal: orig, mensaje: 'Nota de crédito emitida correctamente' };

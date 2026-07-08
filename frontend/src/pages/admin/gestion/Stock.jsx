@@ -6,6 +6,7 @@ import ModalNuevoProducto from '../../../components/gestion/ModalNuevoProducto'
 import ModalEditarProducto from '../../../components/gestion/ModalEditarProducto'
 import ModalNuevaCategoria from '../../../components/gestion/ModalNuevaCategoria'
 import ModalGestionarCategorias from '../../../components/gestion/ModalGestionarCategorias'
+import ModalCargarStock from '../../../components/gestion/ModalCargarStock'
 import { factorConversion } from '../../../utils/unidades'
 
 export default function Stock() {
@@ -20,6 +21,7 @@ export default function Stock() {
   const [guardando, setGuardando] = useState({})
   const [showModal, setShowModal] = useState(false)
   const [showModalCategoria, setShowModalCategoria] = useState(false)
+  const [showModalCargar, setShowModalCargar] = useState(false)
   const [showModalGestionar, setShowModalGestionar] = useState(false)
   const [showModalEditar, setShowModalEditar] = useState(false)
   const [productoEditar, setProductoEditar] = useState(null)
@@ -193,6 +195,15 @@ export default function Stock() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               Gestionar
+            </button>
+            <button
+              onClick={() => setShowModalCargar(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Cargar stock
             </button>
             <button
               onClick={() => setShowModalCategoria(true)}
@@ -376,6 +387,15 @@ export default function Stock() {
           onUpdate={() => {
             cargar()
           }}
+        />
+      )}
+
+      {showModalCargar && (
+        <ModalCargarStock
+          productos={productos}
+          categorias={categorias}
+          onClose={() => setShowModalCargar(false)}
+          onSave={cargar}
         />
       )}
 

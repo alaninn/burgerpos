@@ -621,6 +621,7 @@ export default function Configuraciones() {
                 { key: 'aceptarResenas', label: 'Aceptar reseñas.' },
                 { key: 'aceptaPropinas', label: 'Aceptar propinas.' },
                 { key: 'datosClienteObligatorios', label: 'Datos del cliente obligatorios.' },
+                { key: 'venderSinStock', label: 'Vender sin stock (nunca frenar la venta aunque no haya stock).' },
               ].map(o => (
                 <label key={o.key} className="flex items-center gap-3 cursor-pointer">
                   <input type="checkbox"

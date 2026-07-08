@@ -45,6 +45,7 @@ router.get('/certificados', arcaController.listarCertificados);
 router.post('/emitir', arcaController.emitirComprobante);
 router.get('/comprobantes', arcaController.obtenerComprobantes);
 router.get('/comprobantes/:comprobanteId/pdf', arcaController.descargarPDF);
+router.post('/comprobantes/:comprobanteId/nota-credito', arcaController.notaCreditoDeComprobante);
 
 // Utilidades
 router.post('/test-conexion', arcaController.testConexion);

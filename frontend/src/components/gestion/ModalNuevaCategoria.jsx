@@ -52,20 +52,18 @@ export default function ModalNuevaCategoria({ onClose, onSave }) {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tipo de Categoría <span className="text-red-500">*</span>
+                ¿Qué tipo de categoría es? <span className="text-red-500">*</span>
               </label>
               <select
                 value={tipo}
                 onChange={e => setTipo(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
               >
-                <option value="ingrediente">📦 Ingrediente (pan, carne, queso)</option>
-                <option value="producto">🥤 Producto Final (bebidas)</option>
+                <option value="ingrediente">📦 Insumo de stock (no se vende solo: carne, pan, aderezos, cajas, papelería...)</option>
+                <option value="producto">🥤 Producto de venta (se vende tal cual: bebidas, agua...)</option>
               </select>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {tipo === 'ingrediente'
-                  ? 'Se usará en recetas. Solo aparece en Stock.'
-                  : 'Se vende tal cual. Aparece en Stock Y en Menú.'}
+                El <strong>nombre</strong> lo elegís vos (ej: "Panificados", "Bebidas", "Envases"). El tipo define si el producto se usa para preparar/recetas o si se vende directo en el menú.
               </p>
             </div>
 

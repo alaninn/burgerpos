@@ -167,8 +167,11 @@ exports.crearPedido = async (req, res) => {
         throw new Error(`Cantidad inválida para "${prod.nombre}"`);
       }
 
-      // Validar stock si el producto lo tiene configurado
-      if (prod.stock !== null && prod.stock !== undefined && prod.stock < item.cantidad) {
+      // Validar stock salvo que el negocio permita vender sin stock.
+      // La venta nunca se frena si el toggle "vender sin stock" está activo
+      // (el stock podrá quedar negativo, igual que en el POS).
+      const permiteSinStock = negocio.configuracion?.venderSinStock === true;
+      if (!permiteSinStock && prod.stock !== null && prod.stock !== undefined && prod.stock < item.cantidad) {
         throw new Error(`Stock insuficiente para "${prod.nombre}" (disponible: ${prod.stock})`);
       }
 
