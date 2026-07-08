@@ -12,7 +12,8 @@ exports.obtenerMenuDefault = async (req, res) => {
     if (!negocio) return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
 
     const categorias = await Categoria.findAll({
-      where: { negocioId: negocio.id, activo: true },
+      // Las categorias de ingredientes/insumos del stock no se venden en la tienda
+      where: { negocioId: negocio.id, activo: true, tipo: { [Op.ne]: 'ingrediente' } },
       include: [{
         model: Producto,
         as: 'productos',
@@ -67,7 +68,8 @@ exports.obtenerMenu = async (req, res) => {
     if (!negocio) return res.status(404).json({ success: false, message: 'Negocio no encontrado' });
 
     const categorias = await Categoria.findAll({
-      where: { negocioId: negocio.id, activo: true },
+      // Las categorias de ingredientes/insumos del stock no se venden en la tienda
+      where: { negocioId: negocio.id, activo: true, tipo: { [Op.ne]: 'ingrediente' } },
       include: [{
         model: Producto,
         as: 'productos',

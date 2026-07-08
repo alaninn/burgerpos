@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.15.1'
+export const VERSION_ACTUAL = '1.15.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.15.2',
+    fecha: '2026-07-08',
+    titulo: 'La tienda ya no muestra el stock',
+    cambios: [
+      { t: 'La tienda online mostraba también las categorías de ingredientes del stock (carne, aderezos, insumos...). Ahora solo se ven las categorías del menú de venta.' },
+    ],
+  },
   {
     version: '1.15.1',
     fecha: '2026-07-08',
