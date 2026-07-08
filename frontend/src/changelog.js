@@ -6,9 +6,21 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.15.2'
+export const VERSION_ACTUAL = '1.16.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.16.0',
+    fecha: '2026-07-08',
+    titulo: 'WhatsApp más estable y mensajes más lindos',
+    destacados: [
+      { titulo: 'El código QR vuelve a generarse siempre', detalle: 'Si la sesión de WhatsApp se cerraba, el QR dejaba de aparecer para revincular. Ahora el sistema limpia la sesión vieja automáticamente y el QR se genera cada vez que lo necesites.' },
+      { titulo: 'Aguanta muchos pedidos juntos', detalle: 'Si confirmás varios pedidos seguidos, los mensajes de WhatsApp salen en orden, de a uno, sin trabarse. La confirmación del pedido es instantánea: el mensaje se envía por detrás sin hacerte esperar.' },
+    ],
+    cambios: [
+      { t: 'Los mensajes automáticos de WhatsApp ahora son más cálidos y claros: saludan por el nombre, muestran el número de pedido en negrita y usan emojis. Podés seguir editándolos en Configuraciones → Integraciones.' },
+    ],
+  },
   {
     version: '1.15.2',
     fecha: '2026-07-08',

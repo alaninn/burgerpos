@@ -510,15 +510,15 @@ class WhatsAppMultiTenantService {
   getDefaultTemplates() {
     return {
       delivery: {
-        nuevo_a_preparacion: '¡Hola! Tu pedido fue realizado y se encuentra en preparación.\nTe avisaremos por este medio cuando esté en camino!\nLas promociones y descuentos son validas solo en Efectivo.',
-        preparacion_a_listo: 'Tu pedido ya está listo para ser entregado.\nen minutos sale hacia tu domicilio por favor estar atentos.',
-        listo_a_en_camino: 'Tu pedido va en camino! Por favor este atento que el repartidor esta llegando.',
-        cualquier_a_cancelado: 'Tu pedido ha sido cancelado.'
+        nuevo_a_preparacion: '¡Hola {{nombre_cliente}}! 👋\n\nRecibimos tu pedido *#{{numero_pedido}}* y ya lo estamos preparando con todo. 🍔🔥\n\nTe avisamos por acá cuando salga para tu casa. ¡Gracias por elegirnos! 🙌\n\n_Recordá que las promos y descuentos son solo en efectivo._',
+        preparacion_a_listo: '¡Tu pedido *#{{numero_pedido}}* ya está listo! ✅\n\nEn unos minutos sale para tu domicilio 🛵💨\nPor favor estate atento/a para recibirlo. 📍',
+        listo_a_en_camino: '¡Tu pedido *#{{numero_pedido}}* va en camino! 🛵🔥\n\nEl repartidor está llegando, ¡preparate para disfrutar! 😋',
+        cualquier_a_cancelado: 'Hola {{nombre_cliente}}, tu pedido *#{{numero_pedido}}* fue cancelado. 😔\n\nSi fue un error o tenés alguna duda, escribinos y lo resolvemos. 🙏'
       },
       takeaway: {
-        nuevo_a_preparacion: '¡Hola! Tu pedido fue realizado y se encuentra en preparación.\nTe avisaremos por este medio cuando esté Listo!\nLas promociones y descuentos son validas solo en Efectivo.',
-        preparacion_a_listo: 'Tu pedido ya está listo para retirar. Podes venir cuando quieras!',
-        cualquier_a_cancelado: 'Tu pedido ha sido cancelado.'
+        nuevo_a_preparacion: '¡Hola {{nombre_cliente}}! 👋\n\nRecibimos tu pedido *#{{numero_pedido}}* y ya lo estamos preparando. 🍔🔥\n\nTe avisamos por acá apenas esté listo para retirar. ¡Gracias por elegirnos! 🙌\n\n_Recordá que las promos y descuentos son solo en efectivo._',
+        preparacion_a_listo: '¡Tu pedido *#{{numero_pedido}}* ya está listo para retirar! ✅🎉\n\nTe esperamos, ¡vení cuando quieras! 🏪😋',
+        cualquier_a_cancelado: 'Hola {{nombre_cliente}}, tu pedido *#{{numero_pedido}}* fue cancelado. 😔\n\nSi fue un error o tenés alguna duda, escribinos. 🙏'
       }
     };
   }
