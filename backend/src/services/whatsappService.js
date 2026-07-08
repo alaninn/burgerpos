@@ -11,8 +11,27 @@ class WhatsAppMultiTenantService {
     this.MAX_INSTANCES = 8; // Límite por RAM (1GB server)
     this.IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutos
     this.idleTimers = new Map(); // negocioId → timeout
+    this.sendQueues = new Map(); // negocioId → Promise (cola FIFO de envios)
+    this.reconnectAttempts = new Map(); // negocioId → contador de reintentos
 
     console.log('✅ WhatsApp Multi-Tenant Service inicializado (Baileys)');
+  }
+
+  /**
+   * Borra los archivos de sesion de un negocio (credenciales corruptas o
+   * deslogueadas). Sin esto, una sesion invalidada bloquea la generacion de
+   * un QR nuevo para siempre.
+   */
+  limpiarSesionArchivos(negocioId) {
+    try {
+      const authPath = path.join(__dirname, `../../whatsapp-sessions/${negocioId}`);
+      if (fs.existsSync(authPath)) {
+        fs.rmSync(authPath, { recursive: true, force: true });
+        console.log(`🧹 Sesión de WhatsApp limpiada para negocio: ${negocioId}`);
+      }
+    } catch (err) {
+      console.error(`Error limpiando sesión (negocio ${negocioId}):`, err.message);
+    }
   }
 
   /**
@@ -58,9 +77,13 @@ class WhatsAppMultiTenantService {
         version,
         auth: state,
         logger: pino({ level: 'silent' }), // Sin logs de Baileys
-        printQRInTerminal: false,
         browser: ['BurgerPOS', 'Chrome', '120.0.0'],
-        defaultQueryTimeoutMs: undefined
+        // Un timeout finito evita que las queries queden colgadas para siempre
+        // (era 'undefined', lo que podia tildar el envio cuando la red fallaba)
+        defaultQueryTimeoutMs: 60_000,
+        connectTimeoutMs: 60_000,
+        keepAliveIntervalMs: 25_000,
+        markOnlineOnConnect: false
       });
 
       // Estado de la instancia
@@ -94,20 +117,33 @@ class WhatsAppMultiTenantService {
 
         // Conexión cerrada
         if (connection === 'close') {
-          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-          console.log(`❌ WhatsApp desconectado (negocio: ${negocioId}), reconnect:`, shouldReconnect);
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          this.instances.delete(negocioId);
 
-          if (shouldReconnect) {
-            // Reconectar automáticamente
-            setTimeout(() => {
-              this.instances.delete(negocioId);
-              this.initInstance(negocioId);
-            }, 3000);
-          } else {
-            // Logout manual - limpiar sesión
-            this.instances.delete(negocioId);
+          // loggedOut (401) o connectionReplaced (440): la sesión ya no sirve.
+          // Hay que BORRAR las credenciales para poder generar un QR nuevo; si
+          // no, la sesión muerta bloquea la vinculación indefinidamente.
+          if (statusCode === DisconnectReason.loggedOut || statusCode === DisconnectReason.connectionReplaced) {
+            console.log(`❌ WhatsApp cerrado (negocio: ${negocioId}) motivo: ${statusCode} — limpiando sesión`);
+            this.limpiarSesionArchivos(negocioId);
+            this.reconnectAttempts.delete(negocioId);
             await this.updateStatus(negocioId, 'disconnected', null);
+            return;
           }
+
+          // Resto de motivos (incluye restartRequired 515, parte normal del
+          // flujo de QR): reconectar con backoff y tope de intentos.
+          const intentos = (this.reconnectAttempts.get(negocioId) || 0) + 1;
+          this.reconnectAttempts.set(negocioId, intentos);
+          if (intentos > 5) {
+            console.log(`⛔ Demasiados reintentos de WhatsApp (negocio: ${negocioId}) — se detiene`);
+            this.reconnectAttempts.delete(negocioId);
+            await this.updateStatus(negocioId, 'disconnected', null);
+            return;
+          }
+          const espera = Math.min(3000 * intentos, 15000);
+          console.log(`❌ WhatsApp desconectado (negocio: ${negocioId}) motivo: ${statusCode} — reintento ${intentos} en ${espera}ms`);
+          setTimeout(() => { this.initInstance(negocioId).catch(() => {}); }, espera);
         }
 
         // Conexión abierta (exitosa)
@@ -116,6 +152,7 @@ class WhatsAppMultiTenantService {
           instance.status = 'connected';
           instance.qr = null;
           instance.lastActivity = Date.now();
+          this.reconnectAttempts.delete(negocioId);
 
           await this.updateStatus(negocioId, 'connected', null);
           this.scheduleIdleShutdown(negocioId);
@@ -164,25 +201,41 @@ class WhatsAppMultiTenantService {
    * Obtiene el código QR para vincular WhatsApp
    */
   async getQrCode(negocioId) {
-    let instance = this.instances.get(negocioId);
+    // Si ya está conectado, no hay QR que generar
+    const actual = this.instances.get(negocioId);
+    if (actual?.status === 'connected') return null;
 
-    // Si no existe instancia, crearla
-    if (!instance) {
-      instance = await this.getInstance(negocioId);
-    }
-
-    // Esperar hasta 15 segundos a que se genere el QR
-    for (let i = 0; i < 30; i++) {
-      if (instance.qr) {
-        try {
-          const qrDataURL = await qrcode.toDataURL(instance.qr);
-          return qrDataURL;
-        } catch (error) {
-          console.error('Error generando QR data URL:', error.message);
-          return null;
-        }
+    // Hasta 2 vueltas: si la sesión estaba muerta (loggedOut), la primera vuelta
+    // la limpia y la segunda arranca fresca y genera el QR.
+    for (let intento = 0; intento < 2; intento++) {
+      let instance = this.instances.get(negocioId);
+      if (!instance) {
+        try { instance = await this.getInstance(negocioId); }
+        catch { instance = null; }
       }
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Esperar hasta 20 segundos a que aparezca el QR
+      for (let i = 0; i < 40; i++) {
+        // La instancia murió (sesión inválida): salir para reintentar limpio
+        if (!this.instances.has(negocioId) && !instance?.qr) break;
+
+        if (instance?.qr) {
+          try {
+            return await qrcode.toDataURL(instance.qr);
+          } catch (error) {
+            console.error('Error generando QR data URL:', error.message);
+            return null;
+          }
+        }
+        if (instance?.status === 'connected') return null;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // No hubo QR: limpiar sesión por las dudas y reintentar una vez
+      if (intento === 0) {
+        this.instances.delete(negocioId);
+        this.limpiarSesionArchivos(negocioId);
+      }
     }
 
     console.log(`⏱️ Timeout esperando QR para negocio: ${negocioId}`);
@@ -225,24 +278,35 @@ class WhatsAppMultiTenantService {
   /**
    * Envía un mensaje de WhatsApp
    */
+  /**
+   * Envía un mensaje. Los envíos de un mismo negocio se encolan y se procesan
+   * de a uno (FIFO): si se confirman 10 pedidos casi simultáneos, cada mensaje
+   * sale en orden sin saturar el socket ni pisarse entre sí.
+   */
   async sendMessage(negocioId, number, message) {
-    console.log(`\n📤 ========== INTENTO DE ENVÍO WHATSAPP ==========`);
-    console.log(`🏢 Negocio: ${negocioId}`);
-    console.log(`📱 Número: ${number}`);
-    console.log(`💬 Mensaje: ${message.substring(0, 50)}...`);
+    const previa = this.sendQueues.get(negocioId) || Promise.resolve();
+    const tarea = previa
+      .catch(() => {}) // un envío fallido no bloquea los siguientes
+      .then(() => this._enviarAhora(negocioId, number, message));
+    this.sendQueues.set(negocioId, tarea);
+    // Liberar la referencia de la cola cuando esta tarea sea la última
+    tarea.finally(() => {
+      if (this.sendQueues.get(negocioId) === tarea) this.sendQueues.delete(negocioId);
+    });
+    return tarea;
+  }
 
+  async _enviarAhora(negocioId, number, message) {
     try {
-      // Obtener instancia
       const instance = await this.getInstance(negocioId);
 
       if (instance.status !== 'connected') {
-        console.log(`❌ WhatsApp no está conectado (status: ${instance.status})`);
+        console.log(`❌ WhatsApp no está conectado (negocio ${negocioId}, status: ${instance.status})`);
         return false;
       }
 
       // Formatear número para Argentina
-      let num = number.replace(/\D/g, '');
-
+      let num = String(number).replace(/\D/g, '');
       if (num.length === 10 && num.startsWith('11')) {
         num = '549' + num;
       } else if (num.length === 8) {
@@ -250,43 +314,36 @@ class WhatsAppMultiTenantService {
       } else if (num.length === 10 && !num.startsWith('549')) {
         num = '54' + num;
       }
-
-      console.log(`🔢 Número formateado: ${num}`);
-
       const jid = num + '@s.whatsapp.net';
 
-      // Verificar si el número está registrado
-      let isRegistered = false;
+      // Verificar registro con timeout propio (no colgar la cola si WA no responde)
+      let isRegistered = true;
       try {
-        const [result] = await instance.sock.onWhatsApp(jid);
-        isRegistered = result?.exists || false;
-        console.log(`${isRegistered ? '✅' : '❌'} Número ${isRegistered ? 'SÍ' : 'NO'} está en WhatsApp`);
+        const check = instance.sock.onWhatsApp(jid);
+        const [result] = await Promise.race([
+          check,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout onWhatsApp')), 10_000))
+        ]);
+        isRegistered = result?.exists ?? false;
       } catch (checkError) {
-        console.log(`⚠️ No se pudo verificar registro: ${checkError.message}`);
-        isRegistered = true; // Intentar enviar de todos modos
+        console.log(`⚠️ No se pudo verificar registro (${num}): ${checkError.message} — se intenta enviar igual`);
+        isRegistered = true;
       }
 
       if (!isRegistered) {
-        console.log('❌ El número no tiene WhatsApp');
+        console.log(`❌ El número ${num} no tiene WhatsApp`);
         return false;
       }
 
-      // Enviar mensaje
-      console.log('📨 Enviando mensaje...');
       await instance.sock.sendMessage(jid, { text: message });
+      console.log(`✅ WhatsApp enviado (negocio ${negocioId} → ${num})`);
 
-      console.log(`✅ ✅ ✅ MENSAJE ENVIADO EXITOSAMENTE ✅ ✅ ✅`);
-      console.log(`================================================\n`);
-
-      // Actualizar última actividad
       instance.lastActivity = Date.now();
       this.resetIdleTimer(negocioId);
-
       return true;
 
     } catch (error) {
-      console.error(`❌ Error enviando mensaje (negocio ${negocioId}):`, error.message);
-      console.log(`================================================\n`);
+      console.error(`❌ Error enviando WhatsApp (negocio ${negocioId}):`, error.message);
       return false;
     }
   }
