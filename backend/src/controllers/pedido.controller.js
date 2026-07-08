@@ -220,10 +220,12 @@ exports.actualizar = async (req, res) => {
             }
 
             if (mensaje && mensaje.trim().length > 0) {
-              console.log('✅ Enviando mensaje WhatsApp...');
-              console.log('📝 Mensaje:', mensaje);
-              const resultado = await whatsappService.sendMessage(req.params.negocioId, pedidoCompleto.clienteTelefono, mensaje);
-              console.log('✅ Resultado envio:', resultado);
+              // Fire-and-forget: el estado del pedido ya se guardó. El envío
+              // entra a la cola FIFO del servicio y sale por detrás, así la
+              // confirmación responde al instante aunque haya 10 en cola.
+              whatsappService.sendMessage(req.params.negocioId, pedidoCompleto.clienteTelefono, mensaje)
+                .then(ok => console.log(`WhatsApp pedido #${pedidoCompleto.numero}: ${ok ? 'enviado' : 'no enviado'}`))
+                .catch(e => console.log('WhatsApp error:', e.message));
             } else {
               console.log('⚠️ Mensaje vacío, no se envía');
             }
@@ -353,9 +355,10 @@ exports.actualizarEstado = async (req, res) => {
           console.log('👉 Mensaje a enviar:', mensaje);
 
           if (mensaje && mensaje.trim().length > 0) {
-            console.log('✅ Enviando mensaje...');
-            const resultado = await whatsappService.sendMessage(req.params.negocioId, pedidoCompleto.clienteTelefono, mensaje);
-            console.log('✅ Resultado envio:', resultado);
+            // Fire-and-forget: el envío entra a la cola FIFO y no bloquea la respuesta
+            whatsappService.sendMessage(req.params.negocioId, pedidoCompleto.clienteTelefono, mensaje)
+              .then(ok => console.log(`WhatsApp pedido #${pedidoCompleto.numero}: ${ok ? 'enviado' : 'no enviado'}`))
+              .catch(e => console.log('WhatsApp error:', e.message));
           } else {
             console.log('⚠️ Mensaje vacio, no se envia');
           }
