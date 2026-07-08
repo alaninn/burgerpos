@@ -64,6 +64,11 @@ exports.crear = async (req, res) => {
     const itemsData = items.map(item => {
       const producto = productosMap[item.productoId];
 
+      // La cantidad debe ser un entero positivo razonable
+      if (!Number.isInteger(item.cantidad) || item.cantidad < 1 || item.cantidad > 999) {
+        throw new Error(`Cantidad inválida para ${item.nombre || 'producto'}`);
+      }
+
       // Validar precio
       let precio = item.precioUnitario != null
         ? parseFloat(item.precioUnitario)

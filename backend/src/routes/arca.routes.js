@@ -3,7 +3,7 @@ const router = express.Router({ mergeParams: true }); // Para acceder a :negocio
 const multer = require('multer');
 const path = require('path');
 const arcaController = require('../controllers/arca.controller');
-const { protect } = require('../middleware/auth');
+const { protect, perteneceAlNegocio } = require('../middleware/auth');
 const { checkAcceso } = require('../middleware/checkPlan');
 
 // Configuración multer para certificados
@@ -32,8 +32,8 @@ const upload = multer({
   }
 });
 
-// Todas las rutas requieren autenticación
-router.use(protect, checkAcceso('fiscal'));
+// Todas las rutas requieren autenticación y que el usuario pertenezca al negocio
+router.use(protect, perteneceAlNegocio, checkAcceso('fiscal'));
 
 // Certificados
 router.post('/generar-certificados', arcaController.generarCertificados);

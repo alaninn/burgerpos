@@ -153,11 +153,19 @@ exports.crearPedido = async (req, res) => {
     const productosMap = {};
     productos.forEach(p => { productosMap[p.id] = p; });
 
+    // La cantidad debe ser un entero positivo razonable: evita que un cliente
+    // envie cantidades negativas o fraccionarias para bajar el total del pedido.
+    const cantidadValida = (c) => Number.isInteger(c) && c >= 1 && c <= 999;
+
     let subtotal = 0;
     const itemsData = [];
     for (const item of items) {
       const prod = productosMap[item.productoId];
       if (!prod) throw new Error(`Producto no disponible`);
+
+      if (!cantidadValida(item.cantidad)) {
+        throw new Error(`Cantidad inválida para "${prod.nombre}"`);
+      }
 
       // Validar stock si el producto lo tiene configurado
       if (prod.stock !== null && prod.stock !== undefined && prod.stock < item.cantidad) {
@@ -191,7 +199,8 @@ exports.crearPedido = async (req, res) => {
           const adicional = await Adicional.findOne({ where: { id: adic.adicionalId, negocioId }, transaction: t });
           if (adicional) {
             const precioAdic = parseFloat(adicional.precioVenta);
-            const cantAdic = adic.cantidad || 1;
+            // Cantidad de adicional acotada a entero positivo (no confiar en el cliente)
+            const cantAdic = cantidadValida(adic.cantidad) ? adic.cantidad : 1;
             precioAdicionales += precioAdic * cantAdic;
             adicionalesData.push({
               id: adicional.id,

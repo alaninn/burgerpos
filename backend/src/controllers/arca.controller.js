@@ -63,9 +63,13 @@ exports.descargarCertificado = async (req, res) => {
       return res.status(403).json({ error: 'No autorizado' });
     }
 
-    const filePath = path.join(__dirname, '../../uploads/certificados', filename);
+    // Sanitizar el nombre: solo el archivo, sin componentes de ruta (evita
+    // path traversal tipo ..%2F..%2F.env que expondria secretos del servidor)
+    const nombreSeguro = path.basename(filename);
+    const dirCertificados = path.resolve(__dirname, '../../uploads/certificados');
+    const filePath = path.join(dirCertificados, nombreSeguro);
 
-    if (!fs.existsSync(filePath)) {
+    if (!filePath.startsWith(dirCertificados + path.sep) || !fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Archivo no encontrado' });
     }
 
