@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import Toggle from '../../components/shared/Toggle';
-import VincularARCAAutomatico from '../../components/VincularARCAAutomatico';
 
 function FacturacionElectronica() {
   const { getNegocioId } = useAuth();
@@ -309,7 +308,6 @@ function FacturacionElectronica() {
       {/* Navegación de pestañas */}
       <div className="flex gap-2 border-b pb-2 overflow-x-auto">
         {[
-          { id: -1, label: '⚡ Vincular Automático', icon: '⚡' },
           { id: 0, label: '📚 Tutorial', icon: '📚' },
           { id: 1, label: '⚙️ Configuración', icon: '⚙️' },
           { id: 2, label: '🔐 Certificados', icon: '🔐' },
@@ -328,18 +326,6 @@ function FacturacionElectronica() {
           </button>
         ))}
       </div>
-
-      {/* PASO -1: VINCULAR AUTOMÁTICO */}
-      {paso === -1 && (
-        <VincularARCAAutomatico
-          negocioId={negocioId}
-          onSuccess={() => {
-            // Recargar certificados después de vinculación exitosa
-            cargarDatos();
-            setPaso(2); // Ir a la pestaña de certificados
-          }}
-        />
-      )}
 
       {/* PASO 0: TUTORIAL */}
       {paso === 0 && (

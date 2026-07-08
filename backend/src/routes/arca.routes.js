@@ -51,9 +51,6 @@ router.post('/test-conexion', arcaController.testConexion);
 router.get('/tipos-comprobante/:regimenFiscal', arcaController.obtenerTiposComprobante);
 router.get('/tipos-documento', arcaController.obtenerTiposDocumento);
 
-// Vinculación automática (experimental)
-router.post('/vincular-automatico', arcaController.vincularAutomatico);
-
 // Conexión delegada (web service delegado al CUIT del proveedor)
 router.get('/delegacion-info', arcaController.delegacionInfo);
 router.post('/activar-delegacion', arcaController.activarDelegacion);

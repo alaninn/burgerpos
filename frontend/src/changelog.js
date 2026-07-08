@@ -6,9 +6,18 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.16.0'
+export const VERSION_ACTUAL = '1.16.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.16.1',
+    fecha: '2026-07-08',
+    titulo: 'Facturación ARCA por conexión delegada',
+    super: true,
+    cambios: [
+      { t: 'Se quitó la vinculación automática (no era confiable). La facturación ARCA se configura por conexión delegada o subiendo el certificado.' },
+    ],
+  },
   {
     version: '1.16.0',
     fecha: '2026-07-08',
