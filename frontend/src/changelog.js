@@ -6,9 +6,19 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.16.1'
+export const VERSION_ACTUAL = '1.16.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.16.2',
+    fecha: '2026-07-08',
+    titulo: 'Panel de facturación muestra tus datos y comprobantes',
+    super: true,
+    cambios: [
+      { t: 'El menú Facturación ARCA ahora carga tus datos fiscales y la lista de comprobantes emitidos (antes quedaban vacíos si el régimen no estaba en la configuración del negocio).' },
+      { t: 'Se quitó la sección vieja de ARCA de Configuraciones → Integraciones.' },
+    ],
+  },
   {
     version: '1.16.1',
     fecha: '2026-07-08',

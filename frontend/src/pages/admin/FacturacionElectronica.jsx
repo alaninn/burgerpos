@@ -80,42 +80,47 @@ function FacturacionElectronica() {
 
   useEffect(() => {
     if (!negocioId) return;
-    api.get(`/negocios/${negocioId}`)
-      .then(({ data }) => {
-        const cfg = data.negocio.configuracion || {};
-        setConfig(cfg);
-      })
-      .catch(err => {
-        console.error('Error cargando configuración:', err);
-      })
-      .finally(() => setCargando(false));
+    cargarDatosSecundarios(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [negocioId]);
 
-  useEffect(() => {
-    if (config) {
-      cargarDatosSecundarios();
-    }
-  }, [config?.regimen_fiscal]);
-
-  const cargarDatosSecundarios = async () => {
+  // Carga certificado + comprobantes y, la primera vez, combina los datos
+  // fiscales del certificado en la configuración para que el formulario los
+  // muestre (el CUIT/punto de venta/régimen se guardan en el certificado).
+  const cargarDatosSecundarios = async (cargarConfigNegocio = false) => {
     try {
       setCargando(true);
-      const [certRes, compRes] = await Promise.all([
+      const peticiones = [
         api.get(`/negocios/${negocioId}/arca/certificados`),
         api.get(`/negocios/${negocioId}/arca/comprobantes`)
-      ]);
-      
-      // Convertir certificado a array si es un objeto
-      const certsData = certRes.data;
-      setCertificados(Array.isArray(certsData) ? certsData : (certsData && certsData.id ? [certsData] : []));
+      ];
+      if (cargarConfigNegocio) peticiones.push(api.get(`/negocios/${negocioId}`));
+      const [certRes, compRes, negRes] = await Promise.all(peticiones);
 
-      // Convertir comprobantes a array si es necesario
+      const certsData = certRes.data;
+      const cert = (certsData && certsData.id) ? certsData : null;
+      setCertificados(cert ? [cert] : []);
+
       const compsData = compRes.data;
       setComprobantes(Array.isArray(compsData) ? compsData : []);
-      
-      // Cargar tipos de comprobante según régimen
-      if (config?.regimen_fiscal) {
-        const tiposRes = await api.get(`/negocios/${negocioId}/arca/tipos-comprobante/${config.regimen_fiscal}`);
+
+      // Combinar configuración del negocio con los datos del certificado
+      let cfg = config;
+      if (cargarConfigNegocio) {
+        const cfgNeg = negRes?.data?.negocio?.configuracion || {};
+        cfg = {
+          ...cfgNeg,
+          cuit: cfgNeg.cuit || cert?.cuit || '',
+          razon_social: cfgNeg.razon_social || cert?.razonSocial || '',
+          regimen_fiscal: cfgNeg.regimen_fiscal || cert?.regimen_fiscal || 'responsable_inscripto',
+          punto_venta_arca: cfgNeg.punto_venta_arca || cert?.punto_venta || 1,
+        };
+        setConfig(cfg);
+      }
+
+      const regimen = cfg?.regimen_fiscal || cert?.regimen_fiscal;
+      if (regimen) {
+        const tiposRes = await api.get(`/negocios/${negocioId}/arca/tipos-comprobante/${regimen}`);
         setTiposComprobante(tiposRes.data);
       }
     } catch (err) {

@@ -5,7 +5,6 @@ import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import EditorZonasMapa from '../../components/EditorZonasMapa'
 import MercadoPagoOAuthSection from '../../components/MercadoPagoOAuthSection'
-import ARCAConfigSection from '../../components/ARCAConfigSection'
 import ModalMapaGPS from '../../components/ModalMapaGPS'
 
 // Genera UUID compatible con HTTP (sin crypto.randomUUID que requiere HTTPS)
@@ -1157,11 +1156,6 @@ export default function Configuraciones() {
                 </button>
               </div>
 
-              {/* ARCA - Facturación Electrónica */}
-              <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">ARCA - Facturación Electrónica</h3>
-                <ARCAConfigSection negocioId={usuario?.negocioId} />
-              </div>
             </div>
           )}
 
