@@ -392,6 +392,41 @@ export default function PanelPedidos() {
   const [repartidores, setRepartidores] = useState([])
   const [showMapa, setShowMapa] = useState(true)
   const [mapaFull, setMapaFull] = useState(false)
+  // Ancho del mapa en escritorio (%), ajustable arrastrando el borde
+  const [mapaAncho, setMapaAncho] = useState(() => {
+    const g = parseFloat(localStorage.getItem('panel_mapa_ancho'))
+    return g >= 25 && g <= 75 ? g : 50
+  })
+  const contenidoRef = useRef(null)
+
+  const iniciarArrastreMapa = (e) => {
+    e.preventDefault()
+    const cont = contenidoRef.current
+    if (!cont) return
+    const rect = cont.getBoundingClientRect()
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    const mover = (ev) => {
+      const x = ev.touches ? ev.touches[0].clientX : ev.clientX
+      const pct = ((rect.right - x) / rect.width) * 100
+      setMapaAncho(Math.min(75, Math.max(25, pct)))
+    }
+    const soltar = () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', mover)
+      document.removeEventListener('mouseup', soltar)
+      document.removeEventListener('touchmove', mover)
+      document.removeEventListener('touchend', soltar)
+      setMapaAncho(actual => { localStorage.setItem('panel_mapa_ancho', String(actual)); return actual })
+      // Leaflet recalcula su tamano con el evento resize de la ventana
+      window.dispatchEvent(new Event('resize'))
+    }
+    document.addEventListener('mousemove', mover)
+    document.addEventListener('mouseup', soltar)
+    document.addEventListener('touchmove', mover)
+    document.addEventListener('touchend', soltar)
+  }
   const [negocio, setNegocio] = useState(null)
   const [pedidoDetalle, setPedidoDetalle] = useState(null)
   const [pedidoEditar, setPedidoEditar] = useState(null)
@@ -659,10 +694,10 @@ export default function PanelPedidos() {
       </div>
 
       {/* ── Contenido ─────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div ref={contenidoRef} className="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
         {/* Lista */}
-        <div className="flex-1 lg:w-1/2 flex flex-col overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Sub-header */}
           <div className="px-3 md:px-5 py-2 md:py-3 flex items-center gap-2 flex-shrink-0">
             <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full" style={{ background: currentState?.color }} />
@@ -706,8 +741,21 @@ export default function PanelPedidos() {
           <div
             className={mapaFull
               ? 'fixed inset-0'
-              : 'relative w-full lg:w-1/2 h-96 lg:h-auto flex-shrink-0 overflow-hidden lg:border-t-0 lg:border-l'}
-            style={mapaFull ? { zIndex: 9998, background: 'var(--bg-main)' } : { borderColor: 'var(--border)' }}>
+              : 'relative w-full lg:w-[var(--mapa-w)] h-96 lg:h-auto flex-shrink-0 overflow-hidden lg:border-t-0 lg:border-l'}
+            style={mapaFull
+              ? { zIndex: 9998, background: 'var(--bg-main)' }
+              : { borderColor: 'var(--border)', '--mapa-w': `${mapaAncho}%` }}>
+
+            {/* Borde arrastrable para agrandar/achicar el mapa (escritorio) */}
+            {!mapaFull && (
+              <div onMouseDown={iniciarArrastreMapa} onTouchStart={iniciarArrastreMapa}
+                title="Arrastrá para ajustar el tamaño del mapa"
+                className="hidden lg:flex absolute left-0 inset-y-0 w-2.5 cursor-col-resize items-center justify-center group"
+                style={{ zIndex: 500 }}>
+                <div className="w-1 h-14 rounded-full transition-colors group-hover:bg-violet-500"
+                  style={{ background: 'var(--border)' }} />
+              </div>
+            )}
 
             {/* Controles del mapa: pantalla completa / achicar / abrir en otra ventana */}
             <div className="absolute top-2 right-2 flex gap-1.5" style={{ zIndex: 500 }}>

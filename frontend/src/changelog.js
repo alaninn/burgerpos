@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.15.0'
+export const VERSION_ACTUAL = '1.15.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.15.1',
+    fecha: '2026-07-08',
+    titulo: 'Mapa ajustable arrastrando el borde',
+    cambios: [
+      { t: 'En el POS (escritorio) podés arrastrar el borde izquierdo del mapa para agrandarlo o achicarlo a gusto; el tamaño elegido se recuerda para la próxima vez.' },
+    ],
+  },
   {
     version: '1.15.0',
     fecha: '2026-07-07',
