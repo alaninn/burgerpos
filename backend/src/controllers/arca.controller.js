@@ -140,10 +140,38 @@ exports.listarCertificados = async (req, res) => {
 
     const credential = await ARCACredential.findOne({
       where: { negocioId },
-      attributes: ['id', 'cuit', 'razonSocial', 'regimenFiscal', 'puntoVenta', 'activo', 'entornoProduccion', 'fechaVencimiento', 'createdAt']
+      attributes: ['id', 'cuit', 'razonSocial', 'regimenFiscal', 'puntoVenta', 'activo', 'entornoProduccion', 'fechaVencimiento', 'createdAt', 'certPath', 'modo']
     });
 
-    res.json(credential || {});
+    if (!credential) return res.json({});
+
+    // Verificar el certificado real (propio: el del negocio; delegado: el del
+    // proveedor) para que el panel muestre el estado de vigencia correcto.
+    let estado = { valido: false, error: 'Sin certificado' };
+    try {
+      if (credential.modo === 'delegado') {
+        const del = wsaaService.obtenerCertDelegado();
+        estado = del.disponible ? arcaService.verificarCertificado(del.certPath) : { valido: false, error: del.error };
+      } else if (credential.certPath) {
+        const certPathRel = encryptionService.decrypt(credential.certPath);
+        estado = arcaService.verificarCertificado(certPathRel);
+      }
+    } catch (e) { estado = { valido: false, error: e.message }; }
+
+    const c = credential.toJSON();
+    delete c.certPath; // no exponer la ruta interna del certificado
+    res.json({
+      ...c,
+      punto_venta: c.puntoVenta,
+      regimen_fiscal: c.regimenFiscal,
+      es_produccion: c.entornoProduccion,
+      estado_certificado: {
+        valido: !!estado.valido,
+        fecha: estado.fechaVencimiento || null,
+        dias: estado.diasRestantes ?? null,
+        error: estado.error || null
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -189,7 +217,21 @@ exports.obtenerComprobantes = async (req, res) => {
 
     const comprobantes = await arcaService.obtenerComprobantes(negocioId, req.query);
 
-    res.json(comprobantes);
+    // Mapear a los nombres que espera el panel (snake_case)
+    const mapped = (comprobantes || []).map(x => {
+      const c = x.toJSON ? x.toJSON() : x;
+      return {
+        ...c,
+        punto_venta: c.puntoVenta,
+        numero_comprobante: c.numeroComprobante,
+        tipo_comprobante: c.tipoComprobante,
+        importe_total: c.importeTotal,
+        fecha_emision: c.fechaEmision,
+        cae_vencimiento: c.caeVencimiento
+      };
+    });
+
+    res.json(mapped);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
