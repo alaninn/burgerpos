@@ -92,6 +92,12 @@ export default function Recetas() {
     return acc
   }, {})
 
+  // Ordenar las variantes de cada producto por el orden de la variante
+  // (Simple, Doble, Triple...) en vez del orden de creación de la receta.
+  Object.values(recetasAgrupadas).forEach(grupo => {
+    grupo.recetas.sort((a, b) => (a.variante?.orden ?? 999) - (b.variante?.orden ?? 999))
+  })
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
