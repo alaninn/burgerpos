@@ -240,7 +240,7 @@ function ClienteSelector({
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs font-semibold text-violet-700 dark:text-violet-400">Nuevo cliente</p>
             <button onClick={() => setModoNuevo(false)}
-              className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-600 underline">
+              className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-100 underline">
               ← Buscar existente
             </button>
           </div>

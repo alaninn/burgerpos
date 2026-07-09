@@ -33,8 +33,8 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
     cantidadPorUnidadCompra: Number(producto.cantidadPorUnidadCompra) || 1,
     unidadBase: producto.unidadBase || 'unidad',
     precioCosto: producto.precioCosto || '',
-    stock: producto.stock || 0,
-    stockMinimo: producto.stockMinimo ?? ''
+    stock: producto.stock != null ? parseFloat(producto.stock) : 0,
+    stockMinimo: producto.stockMinimo != null ? parseFloat(producto.stockMinimo) : ''
   })
 
   useEffect(() => {

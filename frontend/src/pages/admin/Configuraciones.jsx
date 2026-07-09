@@ -570,7 +570,7 @@ export default function Configuraciones() {
           </button>
           {negocio?.slug && (
             <a href={`/menu/${negocio.slug}`} target="_blank" rel="noreferrer"
-              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-600 hover:underline">
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-100 hover:underline">
               Ver menú →
             </a>
           )}
@@ -582,7 +582,7 @@ export default function Configuraciones() {
         <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-thin pb-0.5 -mb-0.5">
           {TABS.map(t => (
             <button key={t} onClick={() => setTabActiva(t)}
-              className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${tabActiva === t ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700'}`}>
+              className={`px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${tabActiva === t ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100'}`}>
               {t}
             </button>
           ))}

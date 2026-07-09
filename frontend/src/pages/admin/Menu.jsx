@@ -1192,7 +1192,7 @@ export default function Menu() {
         <div className="flex gap-4">
           {['delivery', 'takeaway'].map(m => (
             <button key={m} onClick={() => setModalidad(m)}
-              className={`py-2 px-1 text-sm font-medium border-b-2 transition-colors -mb-3 ${modalidad === m ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700'}`}>
+              className={`py-2 px-1 text-sm font-medium border-b-2 transition-colors -mb-3 ${modalidad === m ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100'}`}>
               {m === 'delivery' ? 'Delivery' : 'Take Away'}
             </button>
           ))}

@@ -9,7 +9,8 @@ export default function ModalCargarStock({ productos, categorias, onClose, onSav
   const { getNegocioId } = useAuth()
   const [valores, setValores] = useState(() => {
     const v = {}
-    productos.forEach(p => { v[p.id] = p.stock ?? '' })
+    // parseFloat quita ceros sobrantes del DECIMAL (1.000 -> 1)
+    productos.forEach(p => { v[p.id] = p.stock != null ? parseFloat(p.stock) : '' })
     return v
   })
   const [catFiltro, setCatFiltro] = useState('')
@@ -95,6 +96,7 @@ export default function ModalCargarStock({ productos, categorias, onClose, onSav
                     <td className="py-2 text-center text-gray-500 dark:text-gray-400">{Number(p.stock ?? 0)}</td>
                     <td className="py-2 text-right">
                       <input type="number" step="0.001" value={valores[p.id]}
+                        onFocus={e => e.target.select()}
                         onChange={e => set(p.id, e.target.value)}
                         className={inputBase + ' text-right'} />
                     </td>

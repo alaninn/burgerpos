@@ -8,7 +8,7 @@ export default function Fiscal() {
       <div className="flex border-b border-gray-300 dark:border-gray-700 mb-6">
         {[{ id: 'situacion', label: 'Situación fiscal' }, { id: 'configuracion', label: 'Configuración ARCA' }, { id: 'comprobantes', label: 'Comprobantes' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`pb-3 px-4 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700'}`}>
+            className={`pb-3 px-4 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t.id ? 'border-violet-600 text-violet-700' : 'border-transparent text-gray-700 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100'}`}>
             {t.label}
           </button>
         ))}

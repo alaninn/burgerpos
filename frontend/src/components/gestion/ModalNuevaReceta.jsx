@@ -439,7 +439,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
                             <optgroup key={cat} label={cat}>
                               {items.map(i => (
                                 <option key={i.id} value={i.id}>
-                                  {i.nombre} - Stock: {i.stock} {i.unidadBase}
+                                  {i.nombre} - Stock: {parseFloat(i.stock)} {i.unidadBase}
                                 </option>
                               ))}
                             </optgroup>

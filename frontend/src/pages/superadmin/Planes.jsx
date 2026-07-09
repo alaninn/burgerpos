@@ -287,7 +287,7 @@ export default function SAPlanes() {
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
           {[['negocios','Por negocio'],['definicion','Definición']].map(([k,l]) => (
             <button key={k} onClick={() => setTab(k)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === k ? 'bg-white text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === k ? 'bg-white text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-100'}`}>
               {l}
             </button>
           ))}

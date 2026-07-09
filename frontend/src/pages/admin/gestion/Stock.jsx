@@ -288,7 +288,7 @@ export default function Stock() {
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-600 dark:text-gray-400 text-sm">No hay productos</td>
                 </tr>
               ) : filtrados.map(prod => {
-                const stockVal = editando[prod.id] !== undefined ? editando[prod.id] : (prod.stock ?? '')
+                const stockVal = editando[prod.id] !== undefined ? editando[prod.id] : (prod.stock != null ? parseFloat(prod.stock) : '')
                 const stockInfo = formatearStock(prod)
                 return (
                   <tr key={prod.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -316,9 +316,10 @@ export default function Stock() {
                           min="0"
                           value={stockVal}
                           placeholder="—"
+                          onFocus={e => e.target.select()}
                           onChange={e => setEditando(ed => ({ ...ed, [prod.id]: e.target.value }))}
                           onKeyDown={e => e.key === 'Enter' && guardarStock(prod)}
-                          className="w-20 px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-violet-500"
+                          className="w-20 px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
                         />
                         {editando[prod.id] !== undefined && (
                           <button onClick={() => guardarStock(prod)} disabled={guardando[prod.id]}
