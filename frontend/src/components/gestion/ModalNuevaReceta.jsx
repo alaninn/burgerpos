@@ -12,6 +12,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
     productoMenuId: '',
     recetasPorVariante: {},
     ingredientes: [],
+    extraCosto: '',
     notas: ''
   })
   const [productoSeleccionado, setProductoSeleccionado] = useState(null)
@@ -130,7 +131,8 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
           cantidad: ing.cantidad,
           unidad: ing.unidad,
           ingrediente: ingredientes.find(i => i.id === ing.ingredienteId)
-        }))
+        })),
+      form.extraCosto
     )
   }
 
@@ -190,6 +192,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
                 cantidad: parseFloat(ing.cantidad),
                 unidad: ing.unidad
               })),
+              extraCosto: parseFloat(form.extraCosto) || 0,
               notas: recetaVariante.notas || form.notas || null
             })
             creadas++
@@ -238,6 +241,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
             cantidad: parseFloat(ing.cantidad),
             unidad: ing.unidad
           })),
+          extraCosto: parseFloat(form.extraCosto) || 0,
           notas: form.notas.trim() || null
         })
 
@@ -503,6 +507,26 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
             )}
           </div>
 
+          {/* Extra de costo (merma / preparaciones no medidas) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Extra por merma/preparación <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <div className="relative max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number" step="0.01" min="0"
+                value={form.extraCosto}
+                onChange={e => setForm({ ...form, extraCosto: e.target.value })}
+                placeholder="0"
+                className="w-full pl-7 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Monto fijo que se suma al costo, para cubrir salsas caseras, condimentos, merma y desperdicio que no se descuentan del stock.
+            </p>
+          </div>
+
           {/* Costo estimado + margen contra el precio de venta */}
           {((varianteActiva ? form.recetasPorVariante[varianteActiva]?.ingredientes : form.ingredientes) || []).length > 0 && (() => {
             const varianteObj = varianteActiva ? productoSeleccionado?.variantes?.find(v => v.id === varianteActiva) : null
@@ -528,6 +552,7 @@ export default function ModalNuevaReceta({ productosMenu, ingredientes, onClose,
                 )}
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Basado en los precios de costo actuales de los ingredientes
+                  {parseFloat(form.extraCosto) > 0 && ` + $${(parseFloat(form.extraCosto)).toFixed(2)} de extra`}
                 </p>
               </div>
             )

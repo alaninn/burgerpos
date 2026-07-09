@@ -19,6 +19,8 @@ export default function Recetas() {
   const [recetaSeleccionada, setRecetaSeleccionada] = useState(null)
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null)
   const [busqueda, setBusqueda] = useState('')
+  const [vista, setVista] = useState(() => localStorage.getItem('recetas_vista') || 'grilla')
+  const cambiarVista = (v) => { setVista(v); localStorage.setItem('recetas_vista', v) }
 
   useEffect(() => {
     cargarDatos()
@@ -70,7 +72,7 @@ export default function Recetas() {
   }
 
   // Costo de la receta (convierte la unidad elegida, ej. kg, a la base del ingrediente)
-  const calcularCosto = (receta) => costoDeIngredientes(receta.ingredientes)
+  const calcularCosto = (receta) => costoDeIngredientes(receta.ingredientes, receta.extraCosto)
 
   const recetasFiltradas = recetas.filter(r =>
     r.nombre.toLowerCase().includes(busqueda.toLowerCase())
@@ -109,15 +111,28 @@ export default function Recetas() {
               Creá recetas para productos elaborados y el stock se descuenta automáticamente al vender
             </p>
           </div>
-          <button
-            onClick={() => { cargarDatos(false); setModalNueva(true) }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Nueva Receta
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Cambiar vista: grilla o lista */}
+            <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+              <button onClick={() => cambiarVista('grilla')} title="Vista en grilla"
+                className={`p-2 transition-colors ${vista === 'grilla' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+              </button>
+              <button onClick={() => cambiarVista('lista')} title="Vista en lista"
+                className={`p-2 transition-colors ${vista === 'lista' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </button>
+            </div>
+            <button
+              onClick={() => { cargarDatos(false); setModalNueva(true) }}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nueva Receta
+            </button>
+          </div>
         </div>
 
         {/* Buscador */}
@@ -164,6 +179,38 @@ export default function Recetas() {
               Crear Receta
             </button>
           )}
+        </div>
+      ) : vista === 'lista' ? (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  {['Producto', 'Variantes', 'Ingredientes', 'Costo'].map((h, i) => (
+                    <th key={h} className={`px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-400 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {Object.values(recetasAgrupadas).map(grupo => {
+                  const tieneVariantes = grupo.recetas.length > 1 && grupo.recetas.some(r => r.variante)
+                  const costos = grupo.recetas.map(r => calcularCosto(r))
+                  const costoMin = Math.min(...costos), costoMax = Math.max(...costos)
+                  const costoTexto = costoMax - costoMin < 0.01 ? `$${costoMin.toFixed(2)}` : `$${costoMin.toFixed(0)}–$${costoMax.toFixed(0)}`
+                  return (
+                    <tr key={grupo.productoId || grupo.recetas[0].id}
+                      onClick={() => { setGrupoSeleccionado(grupo); setModalDetalle(true) }}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{grupo.producto?.nombre || grupo.recetas[0].nombre}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{tieneVariantes ? `${grupo.recetas.length} variantes` : 'Receta única'}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{grupo.recetas[0].ingredientes?.length || 0} ingredientes</td>
+                      <td className="px-4 py-3 text-right font-bold text-green-700 dark:text-green-400">{costoTexto}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -36,7 +36,8 @@ export function costoPorUnidadBase(ing) {
 }
 
 // Costo de una lista de ingredientes de receta [{ ingrediente, cantidad, unidad }].
-export function costoDeIngredientes(ingredientes) {
+// extra: monto fijo ($) que se suma para cubrir merma/preparaciones no medidas.
+export function costoDeIngredientes(ingredientes, extra = 0) {
   let total = 0
   for (const item of ingredientes || []) {
     const ing = item.ingrediente
@@ -44,5 +45,5 @@ export function costoDeIngredientes(ingredientes) {
     const cantidadEnBase = convertir(item.cantidad, item.unidad || ing.unidadBase, ing.unidadBase)
     total += costoPorUnidadBase(ing) * cantidadEnBase
   }
-  return total
+  return total + (parseFloat(extra) || 0)
 }

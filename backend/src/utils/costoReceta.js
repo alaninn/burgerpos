@@ -47,7 +47,8 @@ function costoPorUnidadBase(ing) {
 // La cantidad de cada ingrediente puede estar en una unidad compatible distinta
 // de la base (ej. 0.2 kg con base gramo): se convierte antes de costear.
 function costoDeReceta(receta) {
-  if (!receta?.ingredientes?.length) return 0;
+  const extra = parseFloat(receta?.extraCosto) || 0;
+  if (!receta?.ingredientes?.length) return Number(extra.toFixed(2));
   let total = 0;
   for (const item of receta.ingredientes) {
     const ing = item.ingrediente;
@@ -55,6 +56,8 @@ function costoDeReceta(receta) {
     const cantidadEnBase = convertir(item.cantidad, item.unidad || ing.unidadBase, ing.unidadBase);
     total += costoPorUnidadBase(ing) * cantidadEnBase;
   }
+  // Extra fijo por merma/preparaciones que no se descuentan del stock
+  total += extra;
   return Number(total.toFixed(2));
 }
 

@@ -300,6 +300,8 @@ export default function Proveedores() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('activos')
   const [busqueda, setBusqueda] = useState('')
+  const [vista, setVista] = useState(() => localStorage.getItem('proveedores_vista') || 'grilla')
+  const cambiarVista = (v) => { setVista(v); localStorage.setItem('proveedores_vista', v) }
   const [modalProv, setModalProv] = useState(false)
   const [provEdit, setProvEdit] = useState(null)
   const [fichaId, setFichaId] = useState(null)
@@ -390,12 +392,59 @@ export default function Proveedores() {
           <button onClick={() => setTab('archivados')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'archivados' ? 'bg-amber-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Archivados</button>
         </div>
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="🔍 Buscar por nombre, teléfono o email..." className={inputBase + ' flex-1 min-w-[200px]'} />
+        <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+          <button onClick={() => cambiarVista('grilla')} title="Vista en grilla"
+            className={`p-2 transition-colors ${vista === 'grilla' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+          </button>
+          <button onClick={() => cambiarVista('lista')} title="Vista en lista"
+            className={`p-2 transition-colors ${vista === 'lista' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+        </div>
       </div>
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Cargando...</div>
       ) : proveedores.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No hay proveedores</div>
+      ) : vista === 'lista' ? (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  {['Proveedor', 'Teléfono', 'Le debemos', 'Nos debe', ''].map((h, i) => (
+                    <th key={i} className={`px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-400 ${i >= 2 ? 'text-right' : 'text-left'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {proveedores.map(prov => {
+                  const leDebemos = Number(prov.saldoAFavor) > 0
+                  const nosDebe = Number(prov.saldoDeuda) > 0
+                  return (
+                    <tr key={prov.id} onClick={() => setFichaId(prov.id)} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-violet-600 text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">{prov.nombre.charAt(0).toUpperCase()}</div>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{prov.nombre}</span>
+                          {!prov.activo && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Archivado</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{prov.telefono || '—'}</td>
+                      <td className={`px-4 py-3 text-right font-medium tabular-nums ${leDebemos ? 'text-red-600' : 'text-gray-300'}`}>{formatearPeso(prov.saldoAFavor)}</td>
+                      <td className={`px-4 py-3 text-right font-medium tabular-nums ${nosDebe ? 'text-emerald-600' : 'text-gray-300'}`}>{formatearPeso(prov.saldoDeuda)}</td>
+                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => { setProvEdit(prov); setModalProv(true) }} className="px-2 py-1 text-xs text-gray-500 border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">✏️</button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {proveedores.map(prov => {

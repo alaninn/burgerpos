@@ -39,6 +39,13 @@ const Receta = sequelize.define('Receta', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  // Extra de costo (monto fijo en $) que se suma al costo de los ingredientes:
+  // cubre merma, salsas caseras, condimentos menores y desperdicio no medidos.
+  extraCosto: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0
+  },
   notas: {
     type: DataTypes.TEXT,
     allowNull: true

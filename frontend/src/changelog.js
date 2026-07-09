@@ -6,9 +6,21 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.17.0'
+export const VERSION_ACTUAL = '1.18.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.18.0',
+    fecha: '2026-07-08',
+    titulo: 'Extra de costo en recetas y vistas en lista',
+    destacados: [
+      { titulo: 'Sumá un extra a cada receta', detalle: 'En cada receta podés agregar un monto fijo extra (por merma, salsas caseras, condimentos y desperdicio que no se descuentan del stock). Se suma al costo de los ingredientes.' },
+    ],
+    cambios: [
+      { t: 'Recetas y Proveedores ahora se pueden ver en grilla o en lista, con un botón para cambiar la vista (se recuerda tu elección).' },
+      { t: 'Las cantidades de los ingredientes se muestran limpias (1 en vez de 1.000).' },
+    ],
+  },
   {
     version: '1.17.0',
     fecha: '2026-07-08',

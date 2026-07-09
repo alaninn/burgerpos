@@ -86,7 +86,7 @@ export default function ModalDetalleRecetas({ grupo, onClose, onEditar, onElimin
                         {ing.ingrediente?.nombre || 'Ingrediente'}
                       </span>
                       <span className="text-gray-900 dark:text-gray-100 font-bold">
-                        {ing.cantidad} {ing.unidad}
+                        {parseFloat(ing.cantidad)} {ing.unidad}
                       </span>
                     </div>
                   ))

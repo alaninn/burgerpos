@@ -87,7 +87,7 @@ exports.crear = async (req, res) => {
 
   try {
     const { negocioId } = req.params;
-    const { nombre, productoMenuId, varianteId, ingredientes, notas } = req.body;
+    const { nombre, productoMenuId, varianteId, ingredientes, notas, extraCosto } = req.body;
 
     // Validar que tenga al menos un ingrediente
     if (!ingredientes || ingredientes.length === 0) {
@@ -163,6 +163,7 @@ exports.crear = async (req, res) => {
       nombre,
       productoMenuId: productoMenuId || null,
       varianteId: varianteId || null,
+      extraCosto: parseFloat(extraCosto) || 0,
       notas
     }, { transaction });
 
@@ -220,7 +221,7 @@ exports.actualizar = async (req, res) => {
 
   try {
     const { negocioId, recetaId } = req.params;
-    const { nombre, productoMenuId, varianteId, ingredientes, notas, activo } = req.body;
+    const { nombre, productoMenuId, varianteId, ingredientes, notas, activo, extraCosto } = req.body;
 
     const receta = await Receta.findOne({
       where: { id: recetaId, negocioId: negocioId },
@@ -310,6 +311,7 @@ exports.actualizar = async (req, res) => {
       nombre: nombre || receta.nombre,
       productoMenuId: productoMenuId !== undefined ? productoMenuId : receta.productoMenuId,
       varianteId: varianteId !== undefined ? varianteId : receta.varianteId,
+      extraCosto: extraCosto !== undefined ? (parseFloat(extraCosto) || 0) : receta.extraCosto,
       notas: notas !== undefined ? notas : receta.notas,
       activo: activo !== undefined ? activo : receta.activo
     }, { transaction });
