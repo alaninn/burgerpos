@@ -7,10 +7,12 @@ export default function ModalGestionarCategorias({ categorias, onClose, onUpdate
   const { getNegocioId } = useAuth()
   const [editando, setEditando] = useState(null)
   const [nombreEdit, setNombreEdit] = useState('')
+  const [tipoEdit, setTipoEdit] = useState('ingrediente')
 
   const handleEditar = (cat) => {
     setEditando(cat.id)
     setNombreEdit(cat.nombre)
+    setTipoEdit(cat.tipo === 'producto' ? 'producto' : 'ingrediente')
   }
 
   const handleGuardar = async (cat) => {
@@ -21,7 +23,8 @@ export default function ModalGestionarCategorias({ categorias, onClose, onUpdate
     try {
       const negocioId = getNegocioId()
       await api.put(`/negocios/${negocioId}/productos/categorias/${cat.id}`, {
-        nombre: nombreEdit.trim()
+        nombre: nombreEdit.trim(),
+        tipo: tipoEdit
       })
       toast.success('Categoría actualizada')
       onUpdate()
@@ -74,47 +77,64 @@ export default function ModalGestionarCategorias({ categorias, onClose, onUpdate
               {categorias.map(cat => (
                 <div
                   key={cat.id}
-                  className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                  className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
                 >
                   {editando === cat.id ? (
-                    <>
-                      <input
-                        type="text"
-                        value={nombreEdit}
-                        onChange={e => setNombreEdit(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') handleGuardar(cat)
-                          if (e.key === 'Escape') setEditando(null)
-                        }}
-                        className="flex-1 px-3 py-1.5 border border-violet-300 dark:border-violet-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => handleGuardar(cat)}
-                        className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"
-                        title="Guardar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setEditando(null)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                        title="Cancelar"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={nombreEdit}
+                          onChange={e => setNombreEdit(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleGuardar(cat)
+                            if (e.key === 'Escape') setEditando(null)
+                          }}
+                          className="flex-1 px-3 py-1.5 border border-violet-300 dark:border-violet-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleGuardar(cat)}
+                          className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"
+                          title="Guardar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setEditando(null)}
+                          className="p-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                          title="Cancelar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={tipoEdit === 'producto'}
+                          onChange={e => setTipoEdit(e.target.checked ? 'producto' : 'ingrediente')}
+                          className="w-4 h-4 mt-0.5 accent-violet-600"
+                        />
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          Los productos de esta categoría se venden solos (ej: bebidas). Sin marcar, son insumos de stock.
+                        </span>
+                      </label>
+                    </div>
                   ) : (
-                    <>
+                    <div className="flex items-center gap-3">
                       <div className="flex-1">
                         <p className="font-medium text-gray-900 dark:text-gray-100">{cat.nombre}</p>
-                        {cat.descripcion && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{cat.descripcion}</p>
-                        )}
+                        <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 ${
+                          cat.tipo === 'producto'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {cat.tipo === 'producto' ? '🥤 Se vende solo' : '📦 Insumo de stock'}
+                        </span>
                       </div>
                       <button
                         onClick={() => handleEditar(cat)}
@@ -134,7 +154,7 @@ export default function ModalGestionarCategorias({ categorias, onClose, onUpdate
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
