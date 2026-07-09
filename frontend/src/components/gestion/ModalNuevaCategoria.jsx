@@ -52,24 +52,7 @@ export default function ModalNuevaCategoria({ onClose, onSave }) {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                ¿Qué tipo de categoría es? <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={tipo}
-                onChange={e => setTipo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="ingrediente">📦 Insumo de stock (no se vende solo: carne, pan, aderezos, cajas, papelería...)</option>
-                <option value="producto">🥤 Producto de venta (se vende tal cual: bebidas, agua...)</option>
-              </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                El <strong>nombre</strong> lo elegís vos (ej: "Panificados", "Bebidas", "Envases"). El tipo define si el producto se usa para preparar/recetas o si se vende directo en el menú.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Nombre de la Categoría <span className="text-red-500">*</span>
+                Nombre de la categoría <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -77,10 +60,29 @@ export default function ModalNuevaCategoria({ onClose, onSave }) {
                 onChange={e => setNombre(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
-                placeholder={tipo === 'ingrediente' ? 'Ej: Carnes, Verduras, Panes...' : 'Ej: Bebidas, Postres...'}
+                placeholder="Ej: Carnes, Panificados, Aderezos, Bebidas, Envases..."
                 autoFocus
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Ponele el nombre que quieras. Por defecto es una categoría de insumos de stock.
+              </p>
             </div>
+
+            {/* El tipo pasa a ser un tilde opcional: por defecto insumo de stock */}
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tipo === 'producto'}
+                onChange={e => setTipo(e.target.checked ? 'producto' : 'ingrediente')}
+                className="w-4 h-4 mt-0.5 accent-violet-600"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Los productos de esta categoría se venden solos</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Marcalo solo si es algo que vendés tal cual (ej: bebidas, agua). Sin marcar, son insumos que usás para preparar y no aparecen en el menú.
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 
