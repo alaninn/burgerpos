@@ -139,6 +139,21 @@ export default function Stock() {
       setProductos(ps => ps.filter(p => p.id !== prod.id))
       toast.success('Producto eliminado')
     } catch (error) {
+      // Si el producto se usa en recetas, el backend avisa (409): preguntamos
+      // si quiere quitarlo de esas recetas y eliminarlo igual.
+      if (error.response?.status === 409 && error.response?.data?.enUso) {
+        const recetas = error.response.data.recetas || []
+        if (confirm(`"${prod.nombre}" se usa en ${recetas.length} receta(s):\n${recetas.join(', ')}\n\n¿Quitarlo de esas recetas y eliminarlo igual?`)) {
+          try {
+            await api.delete(`/negocios/${negocioId}/productos/${prod.id}?forzar=1`)
+            setProductos(ps => ps.filter(p => p.id !== prod.id))
+            toast.success('Producto eliminado')
+          } catch (e2) {
+            toast.error(e2.response?.data?.message || 'Error al eliminar producto')
+          }
+        }
+        return
+      }
       console.error('Error:', error)
       toast.error(error.response?.data?.message || 'Error al eliminar producto')
     }
