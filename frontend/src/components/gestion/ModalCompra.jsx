@@ -4,6 +4,14 @@ import api from '../../api/axios'
 import toast from 'react-hot-toast'
 import { unidadesCompatibles, cantidadBaseDeUnaUnidadCompra } from '../../utils/unidades'
 
+// Fecha de HOY en la zona horaria local (no UTC): new Date().toISOString()
+// siempre da la fecha en UTC, que despues de las 21hs en Argentina (UTC-3)
+// ya es "mañana" y hacia que la compra quedara fechada al dia siguiente.
+function hoyISO() {
+  const d = new Date()
+  return new Date(d - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]
+}
+
 // Cuanto suma al stock una compra de este item, en la unidad base del
 // producto. Cada item puede elegir su propia unidad de compra "en el
 // momento" (ej: el producto se compra habitualmente por caja, pero esta vez
@@ -45,7 +53,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
     proveedorId: '',
     numeroFactura: '',
     tipoFactura: '',
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: hoyISO(),
     pagado: false,
     fechaPago: '',
     metodoPago: 'efectivo',
@@ -66,7 +74,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
           proveedorId: c.proveedorId || '',
           numeroFactura: c.numeroFactura || '',
           tipoFactura: c.tipoFactura || '',
-          fecha: c.fecha ? String(c.fecha).split('T')[0] : new Date().toISOString().split('T')[0],
+          fecha: c.fecha ? String(c.fecha).split('T')[0] : hoyISO(),
           pagado: !!c.pagado,
           fechaPago: c.fechaPago ? String(c.fechaPago).split('T')[0] : '',
           metodoPago: c.metodoPago || 'efectivo',

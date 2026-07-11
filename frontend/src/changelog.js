@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.19.0'
+export const VERSION_ACTUAL = '1.19.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.19.1',
+    fecha: '2026-07-10',
+    titulo: 'Fix: la fecha de una compra avanzada podía quedar un día adelantada',
+    cambios: [
+      { t: 'Si cargabas una compra avanzada de noche, la fecha por defecto podía quedar registrada como el día siguiente (por eso el filtro "Hoy" en Gastos no la mostraba, aunque en pantalla figurara como de hoy). Ya está corregido.' },
+    ],
+  },
   {
     version: '1.19.0',
     fecha: '2026-07-10',

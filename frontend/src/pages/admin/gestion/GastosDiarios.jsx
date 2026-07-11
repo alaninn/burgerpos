@@ -10,6 +10,15 @@ const hoyISO = () => {
   return new Date(d - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]
 }
 
+// gasto.fecha es un DATEONLY ("2026-07-10"): parsearlo con `new Date(string)`
+// lo interpreta como medianoche UTC y al mostrarlo en hora local (Argentina,
+// UTC-3) puede correrse un dia. Se arma la fecha con sus partes locales.
+const formatearFecha = (fecha) => {
+  if (!fecha) return ''
+  const [y, m, d] = String(fecha).split('T')[0].split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('es-AR')
+}
+
 const formatearPeso = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(Number(n) || 0)
 const iconoMetodo = (m) => m === 'tarjeta' ? '💳' : m === 'transferencia' ? '🏦' : m === 'mercadopago' ? '📱' : '💵'
 
@@ -203,7 +212,7 @@ export default function GastosDiarios() {
                   <tr key={gasto.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-4 py-3">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{gasto.descripcion || '-'}</div>
-                      <div className="text-xs text-gray-400">{new Date(gasto.fecha).toLocaleDateString('es-AR')}{gasto.tipoComprobante === 'factura_a' && <span className="ml-2 text-violet-500">🧾 Factura A</span>}</div>
+                      <div className="text-xs text-gray-400">{formatearFecha(gasto.fecha)}{gasto.tipoComprobante === 'factura_a' && <span className="ml-2 text-violet-500">🧾 Factura A</span>}</div>
                     </td>
                     <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${et.clase}`}>{et.emoji} {et.label}</span></td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{etiquetaOrigen(origenDe(gasto))}</td>
