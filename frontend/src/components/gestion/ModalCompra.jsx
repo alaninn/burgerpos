@@ -138,10 +138,14 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
       if (producto) {
         nuevosItems[index].descripcion = producto.nombre
         // Por defecto se sugiere la unidad habitual del producto, pero se
-        // puede cambiar libremente por item (ver cambiarUnidadItem).
+        // puede cambiar libremente por item (ver cambiarUnidadItem). Se
+        // guarda el fraccionamiento del producto TAL COMO ESTA AHORA en el
+        // item (no se deja en blanco): si despues cambia la config del
+        // producto, esta compra vieja se sigue revirtiendo con el numero
+        // que realmente se uso al comprar.
         nuevosItems[index].unidadCompra = producto.unidadCompra || 'unidad'
-        nuevosItems[index].cantidadPorUnidadCompra = ''
-        nuevosItems[index].unidadContenido = ''
+        nuevosItems[index].cantidadPorUnidadCompra = producto.cantidadPorUnidadCompra
+        nuevosItems[index].unidadContenido = producto.unidadContenidoCaja || ''
       }
     }
     setForm({ ...form, items: nuevosItems })

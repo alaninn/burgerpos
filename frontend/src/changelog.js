@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.19.3'
+export const VERSION_ACTUAL = '1.19.4'
 
 export const CHANGELOG = [
+  {
+    version: '1.19.4',
+    fecha: '2026-07-11',
+    titulo: 'Fix: corregir/borrar una compra vieja podía descontar mal el stock',
+    cambios: [
+      { t: 'Si comprabas un producto con su unidad habitual (ej. la caja de siempre) y después cambiabas la configuración de ese producto (cuánto trae la caja), corregir o eliminar esa compra vieja podía revertir el stock con el número nuevo en vez del que se usó al comprar. Ahora cada compra queda con su propio fraccionamiento guardado y no se ve afectada por cambios posteriores en el producto.' },
+    ],
+  },
   {
     version: '1.19.3',
     fecha: '2026-07-11',
