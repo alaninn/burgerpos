@@ -55,7 +55,7 @@ const Compra = sequelize.define('Compra', {
     allowNull: true
   },
   metodoPago: {
-    type: DataTypes.ENUM('efectivo', 'transferencia', 'tarjeta'),
+    type: DataTypes.ENUM('efectivo', 'transferencia', 'tarjeta', 'mercadopago'),
     allowNull: true
   },
   notas: {

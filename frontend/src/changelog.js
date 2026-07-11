@@ -6,9 +6,18 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.19.2'
+export const VERSION_ACTUAL = '1.19.3'
 
 export const CHANGELOG = [
+  {
+    version: '1.19.3',
+    fecha: '2026-07-11',
+    titulo: 'Fix: guardar una compra avanzada podía fallar según los datos cargados',
+    cambios: [
+      { t: 'Si dejabas "Tipo de factura" sin especificar, la compra no se guardaba. Ya está corregido.' },
+      { t: 'Marcar una compra como pagada con Mercado Pago tampoco se guardaba. Ya está corregido.' },
+    ],
+  },
   {
     version: '1.19.2',
     fecha: '2026-07-10',

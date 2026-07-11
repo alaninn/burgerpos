@@ -199,7 +199,7 @@ exports.crear = async (req, res) => {
       negocioId,
       proveedorId,
       numeroFactura,
-      tipoFactura,
+      tipoFactura: tipoFactura || null,
       fecha: fecha || new Date(),
       total,
       estado: estado || 'confirmada',
@@ -459,7 +459,7 @@ exports.actualizar = async (req, res) => {
     await compra.update({
       proveedorId: proveedorId || compra.proveedorId,
       numeroFactura,
-      tipoFactura,
+      tipoFactura: tipoFactura || null,
       fecha,
       total,
       estado,
