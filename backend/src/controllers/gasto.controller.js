@@ -116,10 +116,12 @@ exports.crear = async (req, res) => {
       if (b.registrarNuevaFactura && Number(b.totalFactura) > 0) {
         saldoAFavor += Number(b.totalFactura);
       }
-      // El pago baja el saldo correspondiente
+      // El pago baja el saldo correspondiente. No se recorta en 0: si se paga
+      // de mas queda a favor (negativo) y asi eliminar el pago despues revierte
+      // exacto (sino un pago que "recortaba" quedaba mal al borrarlo).
       if (monto > 0) {
-        if (b.tipoPagoProveedor === 'cobro_deuda') saldoDeuda = Math.max(0, saldoDeuda - monto);
-        else saldoAFavor = Math.max(0, saldoAFavor - monto);
+        if (b.tipoPagoProveedor === 'cobro_deuda') saldoDeuda -= monto;
+        else saldoAFavor -= monto;
       }
       await prov.update({ saldoAFavor, saldoDeuda }, { transaction: t });
     }

@@ -493,18 +493,25 @@ exports.actualizar = async (req, res) => {
 
       const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
       if (prov) {
-        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) - totalViejo) }, { transaction: t });
+        await prov.update({ saldoAFavor: Number(prov.saldoAFavor || 0) - totalViejo }, { transaction: t });
       }
     } else if (pagado && eraPagada && total !== totalViejo) {
       // Ya estaba pagada y se corrigio el monto: ajustar el gasto vinculado.
       const gasto = await Gasto.findOne({ where: { compraId: compra.id, negocioId }, transaction: t });
       if (gasto) await gasto.update({ monto: total }, { transaction: t });
+    } else if (!pagado && eraPagada) {
+      // Se desmarca como pagada (estaba paga y ahora vuelve a ser deuda):
+      // borrar el gasto que se habia generado y reponer la deuda.
+      await Gasto.destroy({ where: { compraId: compra.id, negocioId }, transaction: t });
+      const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
+      if (prov) {
+        await prov.update({ saldoAFavor: Number(prov.saldoAFavor || 0) + total }, { transaction: t });
+      }
     } else if (!pagado && total !== totalViejo) {
       // Sigue como deuda y cambio el total: ajustar la diferencia.
       const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
       if (prov) {
-        const ajuste = eraPagada ? total : (total - totalViejo);
-        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) + ajuste) }, { transaction: t });
+        await prov.update({ saldoAFavor: Number(prov.saldoAFavor || 0) + (total - totalViejo) }, { transaction: t });
       }
     }
 

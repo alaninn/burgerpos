@@ -6,9 +6,18 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.19.1'
+export const VERSION_ACTUAL = '1.19.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.19.2',
+    fecha: '2026-07-10',
+    titulo: 'Fix: cuentas con proveedores al editar el pago de una compra',
+    cambios: [
+      { t: 'Si desmarcabas una compra como pagada (volvía a quedar como deuda), el gasto generado no se borraba y la deuda no se reponía. Ahora sí.' },
+      { t: 'Si registrabas un pago a un proveedor que ya no le debía nada, y después lo borrabas, el saldo quedaba mal. Ya está corregido.' },
+    ],
+  },
   {
     version: '1.19.1',
     fecha: '2026-07-10',
