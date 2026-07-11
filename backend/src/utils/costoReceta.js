@@ -34,9 +34,13 @@ function unidadesCompatibles(unidadBase) {
 function costoPorUnidadBase(ing) {
   const precioCosto = parseFloat(ing.precioCosto) || 0;
   const cantidadPorUnidad = parseFloat(ing.cantidadPorUnidadCompra) || 1;
-  let cantidadTotalEnUnidadBase = cantidadPorUnidad;
+  let cantidadTotalEnUnidadBase;
   if (ing.unidadCompra === 'caja' && ing.unidadContenidoCaja) {
     cantidadTotalEnUnidadBase = cantidadPorUnidad * factorConversion(ing.unidadContenidoCaja, ing.unidadBase);
+  } else {
+    // Compra directa (sin caja): convertir de la unidad de compra a la base
+    // (ej: se compra por kg pero el stock/costo se cuenta en gramo).
+    cantidadTotalEnUnidadBase = cantidadPorUnidad * factorConversion(ing.unidadCompra, ing.unidadBase);
   }
   if (cantidadTotalEnUnidadBase <= 0) return 0;
   return precioCosto / cantidadTotalEnUnidadBase;

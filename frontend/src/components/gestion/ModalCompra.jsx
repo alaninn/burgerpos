@@ -14,7 +14,9 @@ function equivalenciaCompra(producto, cantidad) {
     const enBase = enContenido * factorConversion(producto.unidadContenidoCaja, producto.unidadBase)
     return { texto: `${n} caja${n !== 1 ? 's' : ''} = ${enContenido} ${producto.unidadContenidoCaja} = ${enBase} ${producto.unidadBase}`, enBase }
   }
-  const enBase = n * porUnidad
+  // Compra directa (sin caja): tambien hay que convertir de la unidad de
+  // compra a la unidad base (ej: compro 5 kg y el stock se cuenta en gramo).
+  const enBase = n * porUnidad * factorConversion(producto?.unidadCompra, producto?.unidadBase)
   return { texto: `${n} ${producto?.unidadCompra || 'unidad'} = ${enBase} ${producto?.unidadBase || 'unidad'}`, enBase }
 }
 
@@ -23,12 +25,13 @@ function equivalenciaCompra(producto, cantidad) {
 const UNIDADES = ['caja', 'kg', 'gramos', 'unidad', 'litro', 'ml']
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta', 'mercadopago']
 
-export default function ModalCompra({ onClose, onGuardado }) {
+export default function ModalCompra({ compraId, onClose, onGuardado }) {
   const { getNegocioId } = useAuth()
   const [proveedores, setProveedores] = useState([])
   const [productos, setProductos] = useState([])
   const [todosProductos, setTodosProductos] = useState([])
   const [loading, setLoading] = useState(false)
+  const [cargandoCompra, setCargandoCompra] = useState(!!compraId)
   const [form, setForm] = useState({
     proveedorId: '',
     numeroFactura: '',
@@ -42,6 +45,40 @@ export default function ModalCompra({ onClose, onGuardado }) {
   })
 
   useEffect(() => { cargarDatos() }, [])
+
+  useEffect(() => {
+    if (!compraId) return
+    (async () => {
+      try {
+        const negocioId = getNegocioId()
+        const { data } = await api.get(`/negocios/${negocioId}/compras/${compraId}`)
+        const c = data.compra
+        setForm({
+          proveedorId: c.proveedorId || '',
+          numeroFactura: c.numeroFactura || '',
+          tipoFactura: c.tipoFactura || '',
+          fecha: c.fecha ? String(c.fecha).split('T')[0] : new Date().toISOString().split('T')[0],
+          pagado: !!c.pagado,
+          fechaPago: c.fechaPago ? String(c.fechaPago).split('T')[0] : '',
+          metodoPago: c.metodoPago || 'efectivo',
+          notas: c.notas || '',
+          items: (c.items || []).map(i => ({
+            productoId: i.productoId || '',
+            descripcion: i.descripcion || '',
+            cantidadCompra: i.cantidadCompra != null ? parseFloat(i.cantidadCompra) : '',
+            unidadCompra: i.unidadCompra || 'unidad',
+            precioUnitario: i.precioUnitario != null ? parseFloat(i.precioUnitario) : '',
+            actualizaStock: i.actualizaStock !== false
+          }))
+        })
+      } catch (error) {
+        console.error('Error:', error)
+        toast.error('No se pudo cargar la compra')
+      } finally {
+        setCargandoCompra(false)
+      }
+    })()
+  }, [compraId])
 
   const cargarDatos = async () => {
     try {
@@ -92,6 +129,15 @@ export default function ModalCompra({ onClose, onGuardado }) {
   const calcularSubtotal = (item) => (Number(item.cantidadCompra) || 0) * (Number(item.precioUnitario) || 0)
   const calcularTotal = () => form.items.reduce((sum, item) => sum + calcularSubtotal(item), 0)
 
+  // El precio unitario y el subtotal (precio final del item, como figura en la
+  // boleta) estan sincronizados: editar uno recalcula el otro.
+  const actualizarSubtotal = (index, valor) => {
+    const nuevosItems = [...form.items]
+    const cantidad = Number(nuevosItems[index].cantidadCompra) || 0
+    nuevosItems[index].precioUnitario = cantidad > 0 ? (Number(valor) || 0) / cantidad : ''
+    setForm({ ...form, items: nuevosItems })
+  }
+
   const handleSubmit = async () => {
     if (!form.proveedorId) return toast.error('Seleccioná un proveedor')
     if (form.items.length === 0) return toast.error('Agregá al menos un item')
@@ -101,11 +147,14 @@ export default function ModalCompra({ onClose, onGuardado }) {
     setLoading(true)
     try {
       const negocioId = getNegocioId()
-      await api.post(`/negocios/${negocioId}/compras`, {
-        ...form,
-        fechaPago: form.pagado && form.fechaPago ? form.fechaPago : null
-      })
-      toast.success(form.pagado ? 'Compra registrada y stock actualizado' : 'Compra registrada (queda como deuda) y stock actualizado')
+      const payload = { ...form, fechaPago: form.pagado && form.fechaPago ? form.fechaPago : null }
+      if (compraId) {
+        await api.put(`/negocios/${negocioId}/compras/${compraId}`, payload)
+        toast.success('Compra actualizada y stock corregido')
+      } else {
+        await api.post(`/negocios/${negocioId}/compras`, payload)
+        toast.success(form.pagado ? 'Compra registrada y stock actualizado' : 'Compra registrada (queda como deuda) y stock actualizado')
+      }
       onGuardado?.()
       onClose()
     } catch (error) {
@@ -123,12 +172,15 @@ export default function ModalCompra({ onClose, onGuardado }) {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Compra avanzada</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">{compraId ? 'Editar compra' : 'Compra avanzada'}</h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">Boleta completa con items que actualizan el stock</p>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 text-xl leading-none">✕</button>
         </div>
 
+        {cargandoCompra ? (
+          <div className="flex-1 flex items-center justify-center p-12 text-sm text-gray-500 dark:text-gray-400">Cargando compra...</div>
+        ) : (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="col-span-2">
@@ -210,8 +262,16 @@ export default function ModalCompra({ onClose, onGuardado }) {
                           )
                         })()}
                       </td>
-                      <td className="px-3 py-2"><input type="number" value={item.precioUnitario} min="0" step="0.01" onChange={e => actualizarItem(idx, 'precioUnitario', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="0.00" /></td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-900 dark:text-gray-100">${calcularSubtotal(item).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-3 py-2">
+                        <input type="number" value={item.precioUnitario} min="0" step="0.01" onChange={e => actualizarItem(idx, 'precioUnitario', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="0.00" />
+                        <p className="text-[10px] text-gray-400 mt-0.5">por {item.unidadCompra}</p>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <input type="number" value={calcularSubtotal(item) ? Number(calcularSubtotal(item).toFixed(2)) : ''} min="0" step="0.01"
+                          onChange={e => actualizarSubtotal(idx, e.target.value)}
+                          className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-right font-medium dark:bg-gray-700 dark:text-white" placeholder="0.00" />
+                        <p className="text-[10px] text-gray-400 mt-0.5">precio final</p>
+                      </td>
                       <td className="px-3 py-2 text-center"><input type="checkbox" checked={item.actualizaStock} onChange={e => actualizarItem(idx, 'actualizaStock', e.target.checked)} className="w-4 h-4 text-violet-600 rounded" title="Actualizar stock" /></td>
                       <td className="px-3 py-2"><button onClick={() => eliminarItem(idx)} className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">✕</button></td>
                     </tr>
@@ -256,10 +316,11 @@ export default function ModalCompra({ onClose, onGuardado }) {
             <textarea value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} rows={2} className={inputBase + ' resize-none'} placeholder="Notas adicionales..." />
           </div>
         </div>
+        )}
 
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
           <button onClick={onClose} className="text-sm text-gray-600 dark:text-gray-400 hover:underline">Cancelar</button>
-          <button onClick={handleSubmit} disabled={loading} className="px-6 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50">{loading ? 'Guardando...' : 'Guardar compra'}</button>
+          <button onClick={handleSubmit} disabled={loading || cargandoCompra} className="px-6 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-50">{loading ? 'Guardando...' : 'Guardar compra'}</button>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
-import { factorConversion } from '../../utils/unidades'
+import { factorConversion, unidadesCompatibles, unidadBaseCompatible } from '../../utils/unidades'
 
 const UNIDADES_COMPRA = [
   { value: 'caja', label: 'Caja' },
@@ -190,7 +190,11 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
               </label>
               <select
                 value={form.unidadCompra}
-                onChange={e => setForm({ ...form, unidadCompra: e.target.value })}
+                onChange={e => {
+                  const unidadCompra = e.target.value
+                  const grupo = unidadCompra === 'caja' ? form.unidadContenidoCaja : unidadCompra
+                  setForm({ ...form, unidadCompra, unidadBase: unidadBaseCompatible(grupo, form.unidadBase) })
+                }}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white text-sm"
               >
                 {UNIDADES_COMPRA.map(u => (
@@ -225,7 +229,10 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
                     </label>
                     <select
                       value={form.unidadContenidoCaja}
-                      onChange={e => setForm({ ...form, unidadContenidoCaja: e.target.value })}
+                      onChange={e => {
+                        const unidadContenidoCaja = e.target.value
+                        setForm({ ...form, unidadContenidoCaja, unidadBase: unidadBaseCompatible(unidadContenidoCaja, form.unidadBase) })
+                      }}
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
                     >
                       <option value="kg">Kilogramo</option>
@@ -268,7 +275,7 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
                 onChange={e => setForm({ ...form, unidadBase: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white text-sm"
               >
-                {UNIDADES_BASE.map(u => (
+                {UNIDADES_BASE.filter(u => unidadesCompatibles(form.unidadCompra === 'caja' ? form.unidadContenidoCaja : form.unidadCompra).includes(u.value)).map(u => (
                   <option key={u.value} value={u.value}>{u.label}</option>
                 ))}
               </select>

@@ -13,7 +13,9 @@ function cantidadCompradaEnUnidadBase(producto, cantidadCompra) {
   if (producto.unidadCompra === 'caja' && producto.unidadContenidoCaja) {
     return cantidad * cantidadPorUnidad * factorConversion(producto.unidadContenidoCaja, producto.unidadBase);
   }
-  return cantidad * cantidadPorUnidad;
+  // Compra directa (sin caja): tambien hay que convertir de la unidad de
+  // compra a la unidad base (ej: compro 5 kg y el stock se cuenta en gramo).
+  return cantidad * cantidadPorUnidad * factorConversion(producto.unidadCompra, producto.unidadBase);
 }
 
 // Listar compras
@@ -335,15 +337,20 @@ exports.crear = async (req, res) => {
   }
 };
 
-// Actualizar compra (solo metadata, NO items)
+// Actualizar compra: metadata siempre, e items opcionalmente (si vienen, se
+// reemplazan por completo revirtiendo el stock viejo y aplicando el nuevo,
+// para poder corregir una compra que quedo mal cargada).
 exports.actualizar = async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
     const { negocioId, id } = req.params;
     const {
+      proveedorId,
       numeroFactura,
+      tipoFactura,
       fecha,
+      items,
       estado,
       pagado,
       fechaPago,
@@ -354,10 +361,8 @@ exports.actualizar = async (req, res) => {
     const compra = await Compra.findOne({
       where: { id, negocioId },
       include: [
-        {
-          model: Proveedor,
-          as: 'proveedor'
-        }
+        { model: Proveedor, as: 'proveedor' },
+        { model: CompraItem, as: 'items', include: [{ model: Producto, as: 'producto' }] }
       ],
       transaction: t
     });
@@ -370,13 +375,77 @@ exports.actualizar = async (req, res) => {
       });
     }
 
-    // Si se marca como pagada por primera vez, crear gasto
     const eraPagada = compra.pagado;
-    const seMarcaPagada = pagado && !eraPagada;
+    const totalViejo = Number(compra.total);
+    const ingredientesTocados = new Set();
+    let total = totalViejo;
+
+    // Si vienen items, se reemplaza toda la carga: revertir el stock que la
+    // version anterior habia sumado, borrar los items viejos y aplicar los
+    // nuevos exactamente igual que al crear la compra.
+    if (Array.isArray(items)) {
+      for (const item of compra.items) {
+        if (item.actualizaStock && item.productoId && item.producto) {
+          const producto = item.producto;
+          const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+          await producto.update({ stock: (Number(producto.stock) || 0) - cantidadEnUnidadBase }, { transaction: t });
+          await StockMovimiento.create({
+            negocioId, productoId: producto.id, tipo: 'reversion_compra',
+            cantidad: cantidadEnUnidadBase, compraId: compra.id
+          }, { transaction: t });
+          ingredientesTocados.add(producto.id);
+        }
+      }
+      await CompraItem.destroy({ where: { compraId: compra.id }, transaction: t });
+
+      total = 0;
+      const itemsValidados = items.map(item => {
+        const subtotal = Number(item.cantidadCompra) * Number(item.precioUnitario);
+        total += subtotal;
+        return { ...item, subtotal, actualizaStock: item.actualizaStock !== false };
+      });
+      const itemsCreados = await CompraItem.bulkCreate(
+        itemsValidados.map(item => ({
+          compraId: compra.id,
+          productoId: item.productoId || null,
+          descripcion: item.descripcion,
+          cantidadCompra: item.cantidadCompra,
+          unidadCompra: item.unidadCompra,
+          precioUnitario: item.precioUnitario,
+          subtotal: item.subtotal,
+          actualizaStock: item.actualizaStock
+        })),
+        { transaction: t }
+      );
+
+      for (const item of itemsCreados) {
+        if (item.actualizaStock && item.productoId) {
+          const producto = await Producto.findByPk(item.productoId, { transaction: t });
+          if (producto) {
+            ingredientesTocados.add(producto.id);
+            const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+            await producto.update({
+              stock: (Number(producto.stock) || 0) + cantidadEnUnidadBase,
+              precioCosto: item.precioUnitario,
+              ultimaCompraFecha: fecha || compra.fecha,
+              ultimoCompraPrecio: item.precioUnitario,
+              proveedorId: proveedorId || compra.proveedorId
+            }, { transaction: t });
+            await StockMovimiento.create({
+              negocioId, productoId: producto.id, tipo: 'compra',
+              cantidad: cantidadEnUnidadBase, compraId: compra.id
+            }, { transaction: t });
+          }
+        }
+      }
+    }
 
     await compra.update({
+      proveedorId: proveedorId || compra.proveedorId,
       numeroFactura,
+      tipoFactura,
       fecha,
+      total,
       estado,
       pagado,
       fechaPago,
@@ -384,25 +453,42 @@ exports.actualizar = async (req, res) => {
       notas
     }, { transaction: t });
 
-    // Crear gasto si se marca como pagada
+    for (const ingredienteId of ingredientesTocados) {
+      await recalcularPorIngrediente(ingredienteId, negocioId, { transaction: t });
+    }
+
+    // Deuda con el proveedor: recalcular segun el estado final de pago y el
+    // total (puede haber cambiado si se editaron los items).
+    const seMarcaPagada = pagado && !eraPagada;
     if (seMarcaPagada && metodoPago) {
+      // Se paga por primera vez: crear el gasto y cancelar la deuda que tenia.
       await Gasto.create({
         negocioId,
         proveedorId: compra.proveedorId,
         compraId: compra.id,
         fecha: fechaPago || fecha || new Date(),
         descripcion: `Pago compra ${numeroFactura || compra.id.substring(0, 8)} - ${compra.proveedor.nombre}`,
-        monto: compra.total,
+        monto: total,
         categoria: 'proveedores',
         metodoPago,
         tipo: 'compra',
         notas: `Gasto generado automáticamente al marcar compra como pagada`
       }, { transaction: t });
 
-      // Se cancela la deuda que la compra habia generado
       const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
       if (prov) {
-        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) - Number(compra.total)) }, { transaction: t });
+        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) - totalViejo) }, { transaction: t });
+      }
+    } else if (pagado && eraPagada && total !== totalViejo) {
+      // Ya estaba pagada y se corrigio el monto: ajustar el gasto vinculado.
+      const gasto = await Gasto.findOne({ where: { compraId: compra.id, negocioId }, transaction: t });
+      if (gasto) await gasto.update({ monto: total }, { transaction: t });
+    } else if (!pagado && total !== totalViejo) {
+      // Sigue como deuda y cambio el total: ajustar la diferencia.
+      const prov = await Proveedor.findOne({ where: { id: compra.proveedorId, negocioId }, transaction: t });
+      if (prov) {
+        const ajuste = eraPagada ? total : (total - totalViejo);
+        await prov.update({ saldoAFavor: Math.max(0, Number(prov.saldoAFavor || 0) + ajuste) }, { transaction: t });
       }
     }
 

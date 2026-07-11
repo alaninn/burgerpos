@@ -22,6 +22,7 @@ export default function GastosDiarios() {
   const [showGasto, setShowGasto] = useState(false)
   const [showCompra, setShowCompra] = useState(false)
   const [gastoEditando, setGastoEditando] = useState(null)
+  const [compraEditando, setCompraEditando] = useState(null)
 
   // Filtros
   const [periodo, setPeriodo] = useState('hoy') // hoy | dia | mes | rango | todo
@@ -82,6 +83,17 @@ export default function GastosDiarios() {
     }
   }
 
+  const eliminarCompra = async (gasto) => {
+    if (!confirm('¿Eliminar esta compra?\n\nEl stock que había sumado se revierte automáticamente.')) return
+    try {
+      await api.delete(`/negocios/${getNegocioId()}/compras/${gasto.compraId}`)
+      toast.success('Compra eliminada y stock revertido')
+      cargarGastos()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al eliminar la compra')
+    }
+  }
+
   // Clasificación
   const esCompra = (g) => g.tipo === 'compra' || !!g.compraId
   const esPagoProv = (g) => g.tipo === 'pago_proveedor'
@@ -131,7 +143,7 @@ export default function GastosDiarios() {
         <div className="flex gap-2">
           <button onClick={() => { setGastoEditando(null); setShowGasto(true) }}
             className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium">+ Nuevo gasto</button>
-          <button onClick={() => setShowCompra(true)}
+          <button onClick={() => { setCompraEditando(null); setShowCompra(true) }}
             title="Cargar una boleta completa con items que actualizan el stock"
             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium">📑 Compra avanzada</button>
         </div>
@@ -205,6 +217,11 @@ export default function GastosDiarios() {
                             <button onClick={() => { setGastoEditando(gasto); setShowGasto(true) }} className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg" title="Editar">✏️</button>
                             <button onClick={() => eliminarGasto(gasto)} className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Eliminar">🗑️</button>
                           </>
+                        ) : gasto.compraId ? (
+                          <>
+                            <button onClick={() => { setCompraEditando(gasto.compraId); setShowCompra(true) }} className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg" title="Editar compra">✏️</button>
+                            <button onClick={() => eliminarCompra(gasto)} className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Eliminar compra">🗑️</button>
+                          </>
                         ) : <span className="text-xs text-gray-400">compra</span>}
                       </div>
                     </td>
@@ -235,7 +252,8 @@ export default function GastosDiarios() {
       )}
       {showCompra && (
         <ModalCompra
-          onClose={() => setShowCompra(false)}
+          compraId={compraEditando}
+          onClose={() => { setShowCompra(false); setCompraEditando(null) }}
           onGuardado={cargarGastos}
         />
       )}

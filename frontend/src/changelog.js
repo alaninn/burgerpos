@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.18.0'
+export const VERSION_ACTUAL = '1.19.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.19.0',
+    fecha: '2026-07-10',
+    titulo: 'Compra avanzada corregida: unidades coordinadas y compras editables',
+    destacados: [
+      { titulo: 'Las unidades ya no se pisan entre sí', detalle: 'Si comprás un producto directo en kg, litro o gramo (sin caja) y tu stock se cuenta en otra unidad, ahora la conversión se aplica siempre. Antes, en esos casos, el stock quedaba mal cargado.' },
+      { titulo: 'Poné el precio final de la boleta', detalle: 'En cada ítem de una compra avanzada ahora podés cargar directamente el precio final (el que figura en la factura) y el precio unitario se calcula solo, o al revés.' },
+      { titulo: 'Editá o eliminá una compra ya cargada', detalle: 'Si una compra quedó mal (cantidad, precio o proveedor), ahora se puede editar o eliminar desde Gastos → Compras: el stock se corrige automáticamente.' },
+    ],
+    cambios: [
+      { t: 'Al crear o editar un producto de stock, la unidad en la que se cuenta el stock ahora se ajusta sola para ser compatible con la unidad de compra elegida (evita combinaciones inválidas como caja de kg con stock en unidades).' },
+    ],
+  },
   {
     version: '1.18.0',
     fecha: '2026-07-08',
