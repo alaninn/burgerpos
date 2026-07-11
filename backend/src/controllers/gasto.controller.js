@@ -27,7 +27,39 @@ exports.listar = async (req, res) => {
       order: [['fecha', 'DESC'], ['createdAt', 'DESC']]
     });
 
-    res.json({ success: true, gastos });
+    // Una compra que queda como deuda (no pagada) no genera un Gasto, asi
+    // que no aparecia en este listado ni se podia editar/eliminar desde
+    // Gastos. Se agregan como filas "pendientes de pago" (mismo shape que
+    // un gasto, con compraId para que el frontend habilite editar/eliminar).
+    const whereCompra = { negocioId, pagado: false };
+    if (where.fecha) whereCompra.fecha = where.fecha;
+    const comprasPendientes = ((!tipo || tipo === 'todos' || tipo === 'compra') && (!categoria || categoria === 'proveedores'))
+      ? await Compra.findAll({
+          where: whereCompra,
+          include: [{ model: Proveedor, as: 'proveedor', attributes: ['id', 'nombre'] }],
+          order: [['fecha', 'DESC'], ['createdAt', 'DESC']]
+        })
+      : [];
+
+    const filasCompraPendiente = comprasPendientes.map(c => ({
+      id: `compra-pendiente-${c.id}`,
+      compraId: c.id,
+      fecha: c.fecha,
+      descripcion: `Compra${c.numeroFactura ? ' ' + c.numeroFactura : ''} - ${c.proveedor?.nombre || 'sin proveedor'} (pendiente de pago)`,
+      monto: c.total,
+      categoria: 'proveedores',
+      metodoPago: null,
+      tipo: 'compra',
+      proveedorId: c.proveedorId,
+      proveedor: c.proveedor,
+      pendientePago: true,
+      createdAt: c.createdAt
+    }));
+
+    const todas = [...gastos.map(g => g.toJSON()), ...filasCompraPendiente]
+      .sort((a, b) => (b.fecha > a.fecha ? 1 : b.fecha < a.fecha ? -1 : new Date(b.createdAt) - new Date(a.createdAt)));
+
+    res.json({ success: true, gastos: todas });
   } catch (error) {
     console.error('Error al listar gastos:', error);
     res.status(500).json({ success: false, message: 'Error al obtener gastos', error: error.message });

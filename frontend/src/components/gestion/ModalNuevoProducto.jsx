@@ -107,18 +107,25 @@ export default function ModalNuevoProducto({ onClose, onSave }) {
     }
   }
 
+  // Cuanto suma al stock (en unidadBase) comprar 1 unidad de compra: si es
+  // caja, convierte el contenido; si es directa (kg/litro/gramo), convierte
+  // desde la unidad de compra misma (ej: comprar en kg con base gramo).
+  const cantidadFinalPorUnidadCompra = () => {
+    const cantidad = Number(form.cantidadPorUnidadCompra) || 1
+    const unidadOrigen = form.unidadCompra === 'caja' ? form.unidadContenidoCaja : form.unidadCompra
+    return cantidad * calcularFactorConversion(unidadOrigen, form.unidadBase)
+  }
+
   // Calcular cuántas unidades base habrá al comprar
   const calcularStockPorCompra = () => {
     const cantidad = Number(form.cantidadPorUnidadCompra) || 1
+    const cantidadFinal = cantidadFinalPorUnidadCompra()
 
     if (form.unidadCompra === 'caja' && form.unidadContenidoCaja) {
-      // Calcular conversión cuando hay caja
-      const factorConversion = calcularFactorConversion(form.unidadContenidoCaja, form.unidadBase)
-      const cantidadFinal = cantidad * factorConversion
       return `1 caja = ${cantidad} ${form.unidadContenidoCaja} = ${cantidadFinal} ${form.unidadBase}`
     }
 
-    return `1 ${form.unidadCompra} = ${cantidad} ${form.unidadBase}${cantidad !== 1 ? 's' : ''}`
+    return `1 ${form.unidadCompra} = ${cantidadFinal} ${form.unidadBase}${cantidadFinal !== 1 ? 's' : ''}`
   }
 
   // Calcular factor de conversión entre unidades
@@ -303,7 +310,7 @@ export default function ModalNuevoProducto({ onClose, onSave }) {
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
             <p className="text-xs text-amber-800 dark:text-amber-400">
               <strong>💡 Ejemplo:</strong> Si comprás <strong>1 {form.unidadCompra}</strong> de este producto,
-              el stock aumentará en <strong>{form.cantidadPorUnidadCompra} {form.unidadBase}{Number(form.cantidadPorUnidadCompra) !== 1 ? 's' : ''}</strong>.
+              el stock aumentará en <strong>{cantidadFinalPorUnidadCompra()} {form.unidadBase}{cantidadFinalPorUnidadCompra() !== 1 ? 's' : ''}</strong>.
               <br/>
               Las cantidades que usás en recetas se restarán del stock automáticamente.
             </p>

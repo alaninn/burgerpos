@@ -12,6 +12,9 @@ function hoyISO() {
   return new Date(d - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]
 }
 
+const PLURAL_UNIDAD = { caja: 'cajas', kg: 'kg', gramo: 'gramos', litro: 'litros', ml: 'ml', unidad: 'unidades' }
+const pluralizarUnidad = (unidad, n) => (n === 1 ? unidad : (PLURAL_UNIDAD[unidad] || `${unidad}s`))
+
 // Cuanto suma al stock una compra de este item, en la unidad base del
 // producto. Cada item puede elegir su propia unidad de compra "en el
 // momento" (ej: el producto se compra habitualmente por caja, pero esta vez
@@ -26,7 +29,7 @@ function equivalenciaCompra(item, producto) {
   const enBase = n * cantidadBaseDeUnaUnidadCompra(unidadCompra, cantidadPorUnidad, unidadContenido, producto.unidadBase)
   if (!esUnidadDirecta(unidadCompra, producto.unidadBase)) {
     const enContenido = n * (Number(cantidadPorUnidad) || 1)
-    return { texto: `${n} ${unidadCompra}${n !== 1 ? 's' : ''} = ${enContenido} ${unidadContenido || producto.unidadBase} = ${enBase} ${producto.unidadBase}`, enBase }
+    return { texto: `${n} ${pluralizarUnidad(unidadCompra, n)} = ${enContenido} ${unidadContenido || producto.unidadBase} = ${enBase} ${producto.unidadBase}`, enBase }
   }
   return { texto: `${n} ${unidadCompra} = ${enBase} ${producto.unidadBase}`, enBase }
 }

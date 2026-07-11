@@ -109,16 +109,21 @@ export default function GastosDiarios() {
   const esComun = (g) => !esCompra(g) && !esPagoProv(g)
   const origenDe = (g) => g.origenDinero || 'local'
 
-  // Totales
-  const totalGeneral = gastos.reduce((a, g) => a + Number(g.monto), 0)
-  const totalComunes = gastos.filter(esComun).reduce((a, g) => a + Number(g.monto), 0)
-  const totalCompras = gastos.filter(esCompra).reduce((a, g) => a + Number(g.monto), 0)
-  const totalPagos = gastos.filter(esPagoProv).reduce((a, g) => a + Number(g.monto), 0)
+  // Totales: las compras que quedaron como deuda (pendientePago) no movieron
+  // plata todavia, asi que no suman a estos totales (solo se listan en la
+  // tabla para poder editarlas/pagarlas), para no confundir "gastado" con
+  // "debido".
+  const gastosReales = gastos.filter(g => !g.pendientePago)
+  const totalGeneral = gastosReales.reduce((a, g) => a + Number(g.monto), 0)
+  const totalComunes = gastosReales.filter(esComun).reduce((a, g) => a + Number(g.monto), 0)
+  const totalCompras = gastosReales.filter(esCompra).reduce((a, g) => a + Number(g.monto), 0)
+  const totalPagos = gastosReales.filter(esPagoProv).reduce((a, g) => a + Number(g.monto), 0)
 
-  const totalPorOrigen = (o) => gastos.filter(g => origenDe(g) === o).reduce((a, g) => a + Number(g.monto), 0)
+  const totalPorOrigen = (o) => gastosReales.filter(g => origenDe(g) === o).reduce((a, g) => a + Number(g.monto), 0)
   const gastosVisibles = filtroOrigen === 'todos' ? gastos : gastos.filter(g => origenDe(g) === filtroOrigen)
 
   const etiquetaTipo = (g) => {
+    if (g.pendientePago) return { label: 'Compra (deuda)', clase: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', emoji: '⏳' }
     if (esCompra(g)) return { label: 'Compra', clase: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400', emoji: '🛒' }
     if (esPagoProv(g)) return { label: 'Pago proveedor', clase: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', emoji: '🧾' }
     return { label: 'Gasto', clase: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', emoji: '💸' }
@@ -216,7 +221,9 @@ export default function GastosDiarios() {
                     </td>
                     <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${et.clase}`}>{et.emoji} {et.label}</span></td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{etiquetaOrigen(origenDe(gasto))}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{iconoMetodo(gasto.metodoPago)} <span className="capitalize">{gasto.metodoPago}</span></td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                      {gasto.metodoPago ? <>{iconoMetodo(gasto.metodoPago)} <span className="capitalize">{gasto.metodoPago}</span></> : <span className="text-gray-400">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{gasto.proveedor?.nombre || '-'}</td>
                     <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-gray-100">{formatearPeso(gasto.monto)}</td>
                     <td className="px-4 py-3 text-right">
@@ -241,8 +248,8 @@ export default function GastosDiarios() {
             {gastosVisibles.length > 0 && (
               <tfoot className="bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-300 dark:border-gray-600">
                 <tr>
-                  <td colSpan={5} className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Total {filtroOrigen !== 'todos' ? `(${etiquetaOrigen(filtroOrigen)})` : ''}</td>
-                  <td className="px-4 py-3 text-right font-bold text-violet-600 text-lg">{formatearPeso(gastosVisibles.reduce((a, g) => a + Number(g.monto), 0))}</td>
+                  <td colSpan={5} className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-100">Total {filtroOrigen !== 'todos' ? `(${etiquetaOrigen(filtroOrigen)})` : ''} <span className="font-normal text-xs text-gray-400">(sin contar deudas pendientes)</span></td>
+                  <td className="px-4 py-3 text-right font-bold text-violet-600 text-lg">{formatearPeso(gastosVisibles.filter(g => !g.pendientePago).reduce((a, g) => a + Number(g.monto), 0))}</td>
                   <td></td>
                 </tr>
               </tfoot>

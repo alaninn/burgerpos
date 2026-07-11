@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.19.4'
+export const VERSION_ACTUAL = '1.19.5'
 
 export const CHANGELOG = [
+  {
+    version: '1.19.5',
+    fecha: '2026-07-11',
+    titulo: 'Fix: guardar compras y ver las que quedaron como deuda',
+    destacados: [
+      { titulo: 'Las compras sin pagar ahora aparecen en Gastos', detalle: 'Antes, una compra que quedaba como deuda (sin marcar "pagada") no se veía en ningún lado de Gastos y no se podía editar ni eliminar. Ahora aparece marcada "Compra (deuda)" y se puede corregir o borrar igual que las pagadas.' },
+    ],
+    cambios: [
+      { t: 'Se corrigió un error que impedía guardar una compra avanzada cuando un ítem usaba una unidad directa (kg, gramo o litro) distinta a la habitual del producto.' },
+      { t: 'El texto de ejemplo al configurar un producto de stock ahora muestra la cantidad convertida correctamente, no la cantidad sin convertir.' },
+      { t: 'Corregido un error de tipeo al mostrar "2 unidades" en las equivalencias de compra.' },
+    ],
+  },
   {
     version: '1.19.4',
     fecha: '2026-07-11',
