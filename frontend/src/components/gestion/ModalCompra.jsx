@@ -2,26 +2,35 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../api/axios'
 import toast from 'react-hot-toast'
-import { factorConversion } from '../../utils/unidades'
+import { unidadesCompatibles, cantidadBaseDeUnaUnidadCompra } from '../../utils/unidades'
 
-// Cuanto suma al stock una compra de N unidades de compra del producto,
-// en su unidad base (ej: 2 cajas de 15 kg, base gramo -> 30000 gramo).
-function equivalenciaCompra(producto, cantidad) {
-  const n = Number(cantidad) || 0
-  const porUnidad = Number(producto?.cantidadPorUnidadCompra) || 1
-  if (producto?.unidadCompra === 'caja' && producto?.unidadContenidoCaja) {
-    const enContenido = n * porUnidad
-    const enBase = enContenido * factorConversion(producto.unidadContenidoCaja, producto.unidadBase)
-    return { texto: `${n} caja${n !== 1 ? 's' : ''} = ${enContenido} ${producto.unidadContenidoCaja} = ${enBase} ${producto.unidadBase}`, enBase }
+// Cuanto suma al stock una compra de este item, en la unidad base del
+// producto. Cada item puede elegir su propia unidad de compra "en el
+// momento" (ej: el producto se compra habitualmente por caja, pero esta vez
+// se compro suelto por kg): si no especifica contenido propio, usa el del
+// producto como default.
+function equivalenciaCompra(item, producto) {
+  const n = Number(item.cantidadCompra) || 0
+  if (!producto) return { texto: '', enBase: 0 }
+  const unidadCompra = item.unidadCompra || producto.unidadCompra
+  const cantidadPorUnidad = item.cantidadPorUnidadCompra !== '' && item.cantidadPorUnidadCompra != null ? item.cantidadPorUnidadCompra : producto.cantidadPorUnidadCompra
+  const unidadContenido = item.unidadContenido || producto.unidadContenidoCaja
+  const enBase = n * cantidadBaseDeUnaUnidadCompra(unidadCompra, cantidadPorUnidad, unidadContenido, producto.unidadBase)
+  if (!esUnidadDirecta(unidadCompra, producto.unidadBase)) {
+    const enContenido = n * (Number(cantidadPorUnidad) || 1)
+    return { texto: `${n} ${unidadCompra}${n !== 1 ? 's' : ''} = ${enContenido} ${unidadContenido || producto.unidadBase} = ${enBase} ${producto.unidadBase}`, enBase }
   }
-  // Compra directa (sin caja): tambien hay que convertir de la unidad de
-  // compra a la unidad base (ej: compro 5 kg y el stock se cuenta en gramo).
-  const enBase = n * porUnidad * factorConversion(producto?.unidadCompra, producto?.unidadBase)
-  return { texto: `${n} ${producto?.unidadCompra || 'unidad'} = ${enBase} ${producto?.unidadBase || 'unidad'}`, enBase }
+  return { texto: `${n} ${unidadCompra} = ${enBase} ${producto.unidadBase}`, enBase }
 }
+
+// Si la unidad elegida ya es del mismo grupo que la base del producto (ej:
+// comprar en kg con base gramo), la conversion es directa y no hace falta
+// declarar un "contenido" (caja/bulto).
+const esUnidadDirecta = (unidad, unidadBase) => unidadesCompatibles(unidadBase).includes(unidad)
 
 // Compra avanzada (boleta completa): carga items que actualizan el stock de
 // ingredientes y, opcionalmente, deja deuda con el proveedor. Se abre desde Gastos.
+const UNIDADES_COMPRA_ITEM = ['caja', 'kg', 'gramo', 'litro', 'unidad']
 const UNIDADES = ['caja', 'kg', 'gramos', 'unidad', 'litro', 'ml']
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta', 'mercadopago']
 
@@ -67,6 +76,8 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
             descripcion: i.descripcion || '',
             cantidadCompra: i.cantidadCompra != null ? parseFloat(i.cantidadCompra) : '',
             unidadCompra: i.unidadCompra || 'unidad',
+            cantidadPorUnidadCompra: i.cantidadPorUnidadCompra != null ? parseFloat(i.cantidadPorUnidadCompra) : '',
+            unidadContenido: i.unidadContenido || '',
             precioUnitario: i.precioUnitario != null ? parseFloat(i.precioUnitario) : '',
             actualizaStock: i.actualizaStock !== false
           }))
@@ -108,7 +119,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
 
   const agregarItem = () => setForm({
     ...form,
-    items: [...form.items, { productoId: '', descripcion: '', cantidadCompra: '', unidadCompra: 'unidad', precioUnitario: '', actualizaStock: true }]
+    items: [...form.items, { productoId: '', descripcion: '', cantidadCompra: '', unidadCompra: 'unidad', cantidadPorUnidadCompra: '', unidadContenido: '', precioUnitario: '', actualizaStock: true }]
   })
 
   const actualizarItem = (index, campo, valor) => {
@@ -118,9 +129,35 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
       const producto = productos.find(p => p.id === valor)
       if (producto) {
         nuevosItems[index].descripcion = producto.nombre
-        // La unidad la define el fraccionamiento configurado en el producto
+        // Por defecto se sugiere la unidad habitual del producto, pero se
+        // puede cambiar libremente por item (ver cambiarUnidadItem).
         nuevosItems[index].unidadCompra = producto.unidadCompra || 'unidad'
+        nuevosItems[index].cantidadPorUnidadCompra = ''
+        nuevosItems[index].unidadContenido = ''
       }
+    }
+    setForm({ ...form, items: nuevosItems })
+  }
+
+  // Cambiar la unidad de compra de un item "en el momento" (ej: esta vez se
+  // compro suelto por kg en vez de por caja). Si coincide con la unidad
+  // habitual del producto, se recupera su fraccionamiento configurado; si es
+  // directamente compatible con la base (mismo grupo) no hace falta declarar
+  // contenido; si no, se sugiere un contenido de partida para completar.
+  const cambiarUnidadItem = (index, nuevaUnidad) => {
+    const nuevosItems = [...form.items]
+    const item = nuevosItems[index]
+    const producto = item.productoId ? todosProductos.find(p => p.id === item.productoId) : null
+    item.unidadCompra = nuevaUnidad
+    if (producto && nuevaUnidad === producto.unidadCompra) {
+      item.cantidadPorUnidadCompra = producto.cantidadPorUnidadCompra
+      item.unidadContenido = producto.unidadContenidoCaja || ''
+    } else if (producto && esUnidadDirecta(nuevaUnidad, producto.unidadBase)) {
+      item.cantidadPorUnidadCompra = ''
+      item.unidadContenido = ''
+    } else if (producto) {
+      item.cantidadPorUnidadCompra = item.cantidadPorUnidadCompra || 1
+      item.unidadContenido = item.unidadContenido || unidadesCompatibles(producto.unidadBase)[0]
     }
     setForm({ ...form, items: nuevosItems })
   }
@@ -245,10 +282,29 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
                         {(() => {
                           const prod = item.productoId ? todosProductos.find(p => p.id === item.productoId) : null
                           if (prod) {
-                            const eq = equivalenciaCompra(prod, item.cantidadCompra)
+                            const eq = equivalenciaCompra(item, prod)
+                            const directa = esUnidadDirecta(item.unidadCompra, prod.unidadBase)
                             return (
-                              <div className="w-36">
-                                <span className="inline-block px-2 py-1.5 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 capitalize">{prod.unidadCompra}</span>
+                              <div className="w-40">
+                                <select value={item.unidadCompra} onChange={e => cambiarUnidadItem(idx, e.target.value)}
+                                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white capitalize">
+                                  {UNIDADES_COMPRA_ITEM.map(u => (
+                                    <option key={u} value={u}>{u}{u === prod.unidadCompra ? ' (habitual)' : ''}</option>
+                                  ))}
+                                </select>
+                                {!directa && (
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className="text-[10px] text-gray-400">1 {item.unidadCompra} =</span>
+                                    <input type="number" min="0.001" step="0.001" value={item.cantidadPorUnidadCompra}
+                                      onChange={e => actualizarItem(idx, 'cantidadPorUnidadCompra', e.target.value)}
+                                      className="w-14 px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded text-xs dark:bg-gray-700 dark:text-white" />
+                                    <select value={item.unidadContenido || unidadesCompatibles(prod.unidadBase)[0]}
+                                      onChange={e => actualizarItem(idx, 'unidadContenido', e.target.value)}
+                                      className="px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded text-xs dark:bg-gray-700 dark:text-white">
+                                      {unidadesCompatibles(prod.unidadBase).map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                  </div>
+                                )}
                                 {Number(item.cantidadCompra) > 0 && (
                                   <p className="text-[10px] text-violet-600 dark:text-violet-400 mt-0.5 leading-tight">{eq.texto}</p>
                                 )}

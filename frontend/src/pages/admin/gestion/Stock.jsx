@@ -7,7 +7,7 @@ import ModalEditarProducto from '../../../components/gestion/ModalEditarProducto
 import ModalNuevaCategoria from '../../../components/gestion/ModalNuevaCategoria'
 import ModalGestionarCategorias from '../../../components/gestion/ModalGestionarCategorias'
 import ModalCargarStock from '../../../components/gestion/ModalCargarStock'
-import { factorConversion } from '../../../utils/unidades'
+import { factorConversion, unidadesCompatibles } from '../../../utils/unidades'
 
 export default function Stock() {
   const { usuario } = useAuth()
@@ -25,10 +25,27 @@ export default function Stock() {
   const [showModalGestionar, setShowModalGestionar] = useState(false)
   const [showModalEditar, setShowModalEditar] = useState(false)
   const [productoEditar, setProductoEditar] = useState(null)
+  const [unidadVista, setUnidadVista] = useState({}) // { [productoId]: unidad elegida para mostrar el stock }
 
   // Función para calcular factor de conversión
   // Conversion de unidades: fuente unica en utils/unidades.js
   const calcularFactorConversion = (unidadOrigen, unidadDestino) => factorConversion(unidadOrigen, unidadDestino)
+
+  // En que unidades se puede ver el stock de un producto: la base y sus
+  // compatibles (kg/gramo, litro), mas "caja" si el producto se compra asi.
+  const opcionesVista = (prod) => {
+    const opciones = [...unidadesCompatibles(prod.unidadBase)]
+    if (prod.unidadCompra === 'caja' && prod.unidadContenidoCaja && prod.cantidadPorUnidadCompra) opciones.push('caja')
+    return opciones
+  }
+
+  const cambiarUnidadVista = (prod) => {
+    const opciones = opcionesVista(prod)
+    if (opciones.length < 2) return
+    const actual = unidadVista[prod.id] || opciones[0]
+    const siguiente = opciones[(opciones.indexOf(actual) + 1) % opciones.length]
+    setUnidadVista(v => ({ ...v, [prod.id]: siguiente }))
+  }
 
   // Estado del stock: 'faltante' (negativo, se vendio sin stock), 'sinstock',
   // 'bajo' (por debajo del stockMinimo del producto, o 5 si no definio uno) u 'ok'.
@@ -50,33 +67,28 @@ export default function Stock() {
     sindato: 'text-gray-400'
   }
 
-  // Función para formatear el stock según la unidad de compra
+  const LABEL_UNIDAD = { unidad: 'unidades', gramo: 'gramos', kg: 'kilogramos', litro: 'litros', ml: 'ml', caja: 'cajas' }
+
+  // Función para formatear el stock en la unidad elegida (por defecto la base
+  // del producto, o cajas si se compra por caja). Click para cambiar unidad.
   const formatearStock = (prod) => {
     const estado = estadoStock(prod)
     if (estado === 'sindato') return { texto: '—', color: COLOR_ESTADO.sindato }
     const stockNum = Number(prod.stock)
     const color = COLOR_ESTADO[estado]
+    const unidad = unidadVista[prod.id] || opcionesVista(prod)[0]
 
-    // Si es caja con unidadContenidoCaja, mostrar en cajas
-    if (prod.unidadCompra === 'caja' && prod.unidadContenidoCaja && prod.cantidadPorUnidadCompra) {
+    if (unidad === 'caja') {
       const factor = calcularFactorConversion(prod.unidadContenidoCaja, prod.unidadBase)
       const cantidadPorCaja = (parseFloat(prod.cantidadPorUnidadCompra) || 1) * factor
-      const cajas = stockNum / cantidadPorCaja
-      return {
-        texto: `${cajas.toFixed(2)} ${cajas === 1 ? 'caja' : 'cajas'}${estado === 'faltante' ? ' ⚠️' : ''}`,
-        color
-      }
+      const cajas = cantidadPorCaja > 0 ? stockNum / cantidadPorCaja : 0
+      return { texto: `${cajas.toFixed(2)} ${cajas === 1 ? 'caja' : 'cajas'}${estado === 'faltante' ? ' ⚠️' : ''}`, color }
     }
 
-    const unidad = prod.unidadBase === 'unidad' ? 'unidades' :
-                  prod.unidadBase === 'gramo' ? 'gramos' :
-                  prod.unidadBase === 'kg' ? 'kilogramos' :
-                  prod.unidadBase === 'litro' ? 'litros' : 'ud.'
-
-    return {
-      texto: `${stockNum} ${unidad}${estado === 'faltante' ? ' ⚠️' : ''}`,
-      color
-    }
+    const valor = calcularFactorConversion(prod.unidadBase, unidad) * stockNum
+    const decimales = unidad === 'unidad' ? 0 : 3
+    const texto = Number(valor.toFixed(decimales)).toString()
+    return { texto: `${texto} ${LABEL_UNIDAD[unidad] || unidad}${estado === 'faltante' ? ' ⚠️' : ''}`, color }
   }
 
   const cargar = useCallback(() => {
@@ -305,9 +317,15 @@ export default function Stock() {
                     <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{prod.categoria?.nombre || '—'}</td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-gray-100">${Number(prod.precioVenta).toLocaleString('es-AR')}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`text-sm ${stockInfo.color}`}>
-                        {stockInfo.texto}
-                      </span>
+                      {opcionesVista(prod).length > 1 ? (
+                        <button onClick={() => cambiarUnidadVista(prod)}
+                          title="Click para ver el stock en otra unidad"
+                          className={`text-sm ${stockInfo.color} hover:underline decoration-dotted underline-offset-2 cursor-pointer`}>
+                          {stockInfo.texto}
+                        </button>
+                      ) : (
+                        <span className={`text-sm ${stockInfo.color}`}>{stockInfo.texto}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-center">

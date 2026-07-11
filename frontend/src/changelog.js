@@ -12,11 +12,13 @@ export const CHANGELOG = [
   {
     version: '1.19.0',
     fecha: '2026-07-10',
-    titulo: 'Compra avanzada corregida: unidades coordinadas y compras editables',
+    titulo: 'Compra avanzada corregida: unidades flexibles y compras editables',
     destacados: [
+      { titulo: 'Cambiá la unidad de compra en el momento', detalle: 'En cada ítem de una compra avanzada ahora podés elegir con qué unidad comprás esta vez (caja, kg, gramo, litro o unidad/bulto), aunque no sea la habitual del producto. La conversión al stock se calcula sola.' },
       { titulo: 'Las unidades ya no se pisan entre sí', detalle: 'Si comprás un producto directo en kg, litro o gramo (sin caja) y tu stock se cuenta en otra unidad, ahora la conversión se aplica siempre. Antes, en esos casos, el stock quedaba mal cargado.' },
       { titulo: 'Poné el precio final de la boleta', detalle: 'En cada ítem de una compra avanzada ahora podés cargar directamente el precio final (el que figura en la factura) y el precio unitario se calcula solo, o al revés.' },
       { titulo: 'Editá o eliminá una compra ya cargada', detalle: 'Si una compra quedó mal (cantidad, precio o proveedor), ahora se puede editar o eliminar desde Gastos → Compras: el stock se corrige automáticamente.' },
+      { titulo: 'Vé el stock en la unidad que quieras', detalle: 'En Stock, hacé click sobre la cantidad de un producto para alternar entre cajas, kg, gramos, litros o unidades (según cómo lo compres).' },
     ],
     cambios: [
       { t: 'Al crear o editar un producto de stock, la unidad en la que se cuenta el stock ahora se ajusta sola para ser compatible con la unidad de compra elegida (evita combinaciones inválidas como caja de kg con stock en unidades).' },

@@ -29,19 +29,27 @@ function unidadesCompatibles(unidadBase) {
   return ['unidad'];
 }
 
+// Cuanto equivale 1 unidad de compra en la unidad base, dado su
+// fraccionamiento. Si la unidad de compra ya es del mismo grupo que la base
+// (ej: comprar directo en kg con base gramo) se convierte directo sin
+// necesitar "contenido" (caja/bulto). Si no (caja, bulto/paquete), usa el
+// contenido declarado (cantidadPorUnidadCompra + unidadContenido).
+function cantidadBaseDeUnaUnidadCompra(unidadCompra, cantidadPorUnidadCompra, unidadContenido, unidadBase) {
+  if (unidadesCompatibles(unidadBase).includes(unidadCompra)) {
+    return factorConversion(unidadCompra, unidadBase);
+  }
+  const contenido = unidadContenido || unidadBase;
+  const cantidad = parseFloat(cantidadPorUnidadCompra) || 1;
+  return cantidad * factorConversion(contenido, unidadBase);
+}
+
 // Precio de una unidad base del ingrediente (ej: $/gramo) a partir de su
 // precioCosto (precio de la unidad de compra) y su fraccionamiento.
 function costoPorUnidadBase(ing) {
   const precioCosto = parseFloat(ing.precioCosto) || 0;
-  const cantidadPorUnidad = parseFloat(ing.cantidadPorUnidadCompra) || 1;
-  let cantidadTotalEnUnidadBase;
-  if (ing.unidadCompra === 'caja' && ing.unidadContenidoCaja) {
-    cantidadTotalEnUnidadBase = cantidadPorUnidad * factorConversion(ing.unidadContenidoCaja, ing.unidadBase);
-  } else {
-    // Compra directa (sin caja): convertir de la unidad de compra a la base
-    // (ej: se compra por kg pero el stock/costo se cuenta en gramo).
-    cantidadTotalEnUnidadBase = cantidadPorUnidad * factorConversion(ing.unidadCompra, ing.unidadBase);
-  }
+  const cantidadTotalEnUnidadBase = cantidadBaseDeUnaUnidadCompra(
+    ing.unidadCompra, ing.cantidadPorUnidadCompra, ing.unidadContenidoCaja, ing.unidadBase
+  );
   if (cantidadTotalEnUnidadBase <= 0) return 0;
   return precioCosto / cantidadTotalEnUnidadBase;
 }
@@ -110,4 +118,4 @@ async function recalcularPorIngrediente(ingredienteId, negocioId, { transaction 
   return recetaIds.length;
 }
 
-module.exports = { factorConversion, convertir, unidadesCompatibles, costoPorUnidadBase, costoDeReceta, persistirCostoReceta, recalcularPorIngrediente };
+module.exports = { factorConversion, convertir, unidadesCompatibles, cantidadBaseDeUnaUnidadCompra, costoPorUnidadBase, costoDeReceta, persistirCostoReceta, recalcularPorIngrediente };

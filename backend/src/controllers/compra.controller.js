@@ -1,21 +1,33 @@
 const { Compra, CompraItem, Proveedor, Producto, Gasto, StockMovimiento } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/sequelize');
-const { recalcularPorIngrediente, factorConversion } = require('../utils/costoReceta');
+const { recalcularPorIngrediente, cantidadBaseDeUnaUnidadCompra } = require('../utils/costoReceta');
 
-// Cantidad que una compra suma al stock, en la unidad base del producto,
-// segun la configuracion de fraccionamiento del producto (ej: 2 cajas de
-// 15 kg con base gramo = 2 * 15 * 1000 = 30000 g). La usa la creacion y la
-// reversion, para que sumen y resten exactamente lo mismo.
-function cantidadCompradaEnUnidadBase(producto, cantidadCompra) {
-  const cantidad = Number(cantidadCompra) || 0;
-  const cantidadPorUnidad = Number(producto.cantidadPorUnidadCompra) || 1;
-  if (producto.unidadCompra === 'caja' && producto.unidadContenidoCaja) {
-    return cantidad * cantidadPorUnidad * factorConversion(producto.unidadContenidoCaja, producto.unidadBase);
-  }
-  // Compra directa (sin caja): tambien hay que convertir de la unidad de
-  // compra a la unidad base (ej: compro 5 kg y el stock se cuenta en gramo).
-  return cantidad * cantidadPorUnidad * factorConversion(producto.unidadCompra, producto.unidadBase);
+// Cada item de compra puede elegir su propia unidad "en el momento" (ej: el
+// producto normalmente se compra por caja, pero esta vez se compro suelto
+// por kg): si el item no la especifica, se usa la config del producto como
+// default. cantidadEnUnidadBaseDelItem() es la que suma/resta del stock;
+// precioCostoEquivalente() reexpresa el precio pagado en la unidad de compra
+// POR DEFECTO del producto, para que el costo guardado en el producto siga
+// siendo comparable sin importar en que unidad se compro esta vez.
+function cantidadEnUnidadBaseDelItem(item, producto) {
+  const cantidad = Number(item.cantidadCompra) || 0;
+  const unidadCompra = item.unidadCompra || producto.unidadCompra;
+  const cantidadPorUnidad = item.cantidadPorUnidadCompra != null ? item.cantidadPorUnidadCompra : producto.cantidadPorUnidadCompra;
+  const unidadContenido = item.unidadContenido || producto.unidadContenidoCaja;
+  return cantidad * cantidadBaseDeUnaUnidadCompra(unidadCompra, cantidadPorUnidad, unidadContenido, producto.unidadBase);
+}
+
+function precioCostoEquivalente(item, producto) {
+  const unidadCompra = item.unidadCompra || producto.unidadCompra;
+  const cantidadPorUnidad = item.cantidadPorUnidadCompra != null ? item.cantidadPorUnidadCompra : producto.cantidadPorUnidadCompra;
+  const unidadContenido = item.unidadContenido || producto.unidadContenidoCaja;
+  const baseDeEstaCompra = cantidadBaseDeUnaUnidadCompra(unidadCompra, cantidadPorUnidad, unidadContenido, producto.unidadBase);
+  if (baseDeEstaCompra <= 0) return Number(item.precioUnitario) || 0;
+  const precioPorUnidadBase = (Number(item.precioUnitario) || 0) / baseDeEstaCompra;
+
+  const baseDelDefault = cantidadBaseDeUnaUnidadCompra(producto.unidadCompra, producto.cantidadPorUnidadCompra, producto.unidadContenidoCaja, producto.unidadBase);
+  return precioPorUnidadBase * baseDelDefault;
 }
 
 // Listar compras
@@ -205,6 +217,8 @@ exports.crear = async (req, res) => {
         descripcion: item.descripcion,
         cantidadCompra: item.cantidadCompra,
         unidadCompra: item.unidadCompra,
+        cantidadPorUnidadCompra: item.cantidadPorUnidadCompra ?? null,
+        unidadContenido: item.unidadContenido || null,
         precioUnitario: item.precioUnitario,
         subtotal: item.subtotal,
         actualizaStock: item.actualizaStock
@@ -220,17 +234,17 @@ exports.crear = async (req, res) => {
 
         if (producto) {
           ingredientesActualizados.add(producto.id);
-          // Cantidad en unidad base segun el fraccionamiento del producto
-          // (ej: 2 cajas de 15 kg, base gramo -> 30000 g)
-          const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+          // Cantidad en unidad base segun la unidad elegida en este item (o
+          // la del producto si no se especifico otra distinta).
+          const cantidadEnUnidadBase = cantidadEnUnidadBaseDelItem(item, producto);
           const nuevoStock = (Number(producto.stock) || 0) + cantidadEnUnidadBase;
 
           // No redondear: el stock es decimal (kg, litros). La unidad de compra
           // configurada en el producto NO se pisa con la del item: la config de
-          // fraccionamiento del producto es la fuente de verdad.
+          // fraccionamiento del producto sigue siendo el default sugerido.
           await producto.update({
             stock: nuevoStock,
-            precioCosto: item.precioUnitario,
+            precioCosto: precioCostoEquivalente(item, producto),
             ultimaCompraFecha: compra.fecha,
             ultimoCompraPrecio: item.precioUnitario,
             proveedorId: compra.proveedorId
@@ -387,7 +401,7 @@ exports.actualizar = async (req, res) => {
       for (const item of compra.items) {
         if (item.actualizaStock && item.productoId && item.producto) {
           const producto = item.producto;
-          const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+          const cantidadEnUnidadBase = cantidadEnUnidadBaseDelItem(item, producto);
           await producto.update({ stock: (Number(producto.stock) || 0) - cantidadEnUnidadBase }, { transaction: t });
           await StockMovimiento.create({
             negocioId, productoId: producto.id, tipo: 'reversion_compra',
@@ -411,6 +425,8 @@ exports.actualizar = async (req, res) => {
           descripcion: item.descripcion,
           cantidadCompra: item.cantidadCompra,
           unidadCompra: item.unidadCompra,
+          cantidadPorUnidadCompra: item.cantidadPorUnidadCompra ?? null,
+          unidadContenido: item.unidadContenido || null,
           precioUnitario: item.precioUnitario,
           subtotal: item.subtotal,
           actualizaStock: item.actualizaStock
@@ -423,10 +439,10 @@ exports.actualizar = async (req, res) => {
           const producto = await Producto.findByPk(item.productoId, { transaction: t });
           if (producto) {
             ingredientesTocados.add(producto.id);
-            const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+            const cantidadEnUnidadBase = cantidadEnUnidadBaseDelItem(item, producto);
             await producto.update({
               stock: (Number(producto.stock) || 0) + cantidadEnUnidadBase,
-              precioCosto: item.precioUnitario,
+              precioCosto: precioCostoEquivalente(item, producto),
               ultimaCompraFecha: fecha || compra.fecha,
               ultimoCompraPrecio: item.precioUnitario,
               proveedorId: proveedorId || compra.proveedorId
@@ -568,7 +584,7 @@ exports.eliminar = async (req, res) => {
     for (const item of compra.items) {
       if (item.actualizaStock && item.productoId && item.producto) {
         const producto = item.producto;
-        const cantidadEnUnidadBase = cantidadCompradaEnUnidadBase(producto, item.cantidadCompra);
+        const cantidadEnUnidadBase = cantidadEnUnidadBaseDelItem(item, producto);
         const nuevoStock = (Number(producto.stock) || 0) - cantidadEnUnidadBase;
 
         await producto.update({ stock: nuevoStock }, { transaction: t });

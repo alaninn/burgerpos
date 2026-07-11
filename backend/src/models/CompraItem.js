@@ -40,6 +40,18 @@ const CompraItem = sequelize.define('CompraItem', {
     allowNull: false,
     defaultValue: 'unidad'
   },
+  // Fraccionamiento propio de este item (opcional): cuanto equivale 1
+  // unidadCompra en unidadContenido. Permite comprar este producto en una
+  // unidad distinta a la configurada por defecto (ej: comprar suelto por kg
+  // en vez de por caja) sin pisar la config del producto.
+  cantidadPorUnidadCompra: {
+    type: DataTypes.DECIMAL(10, 3),
+    allowNull: true
+  },
+  unidadContenido: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   precioUnitario: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
