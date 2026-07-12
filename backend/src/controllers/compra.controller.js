@@ -198,8 +198,8 @@ exports.crear = async (req, res) => {
     const compra = await Compra.create({
       negocioId,
       proveedorId,
-      numeroFactura,
-      tipoFactura: tipoFactura || null,
+      numeroFactura: numeroFactura || 'S/N',
+      tipoFactura: tipoFactura || 'X',
       fecha: fecha || new Date(),
       total,
       estado: estado || 'confirmada',
@@ -458,8 +458,8 @@ exports.actualizar = async (req, res) => {
 
     await compra.update({
       proveedorId: proveedorId || compra.proveedorId,
-      numeroFactura,
-      tipoFactura: tipoFactura || null,
+      numeroFactura: numeroFactura || 'S/N',
+      tipoFactura: tipoFactura || 'X',
       fecha,
       total,
       estado,

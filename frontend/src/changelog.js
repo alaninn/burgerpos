@@ -6,9 +6,22 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.19.5'
+export const VERSION_ACTUAL = '1.20.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.20.0',
+    fecha: '2026-07-12',
+    titulo: 'Compra avanzada más clara: campos más grandes y sin decimales de más',
+    destacados: [
+      { titulo: 'Se rediseñaron los ítems de la compra', detalle: 'Cada ítem ahora se ve como una tarjeta con los campos (cantidad, unidad, precios) más grandes y separados, en vez de una tabla apretada.' },
+      { titulo: 'Ya no aparecen decimales de más', detalle: 'Si escribías "48" en cantidades relacionadas al fraccionamiento, antes podía mostrarse como "48,000". Corregido.' },
+    ],
+    cambios: [
+      { t: 'El N° de factura ahora es claramente opcional (si lo dejás vacío, queda registrado como "S/N").' },
+      { t: 'Si no elegís un tipo de comprobante, ahora se guarda directamente como "Factura X" en vez de quedar sin especificar.' },
+    ],
+  },
   {
     version: '1.19.5',
     fecha: '2026-07-11',

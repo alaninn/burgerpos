@@ -55,7 +55,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
   const [form, setForm] = useState({
     proveedorId: '',
     numeroFactura: '',
-    tipoFactura: '',
+    tipoFactura: 'X',
     fecha: hoyISO(),
     pagado: false,
     fechaPago: '',
@@ -76,7 +76,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
         setForm({
           proveedorId: c.proveedorId || '',
           numeroFactura: c.numeroFactura || '',
-          tipoFactura: c.tipoFactura || '',
+          tipoFactura: c.tipoFactura || 'X',
           fecha: c.fecha ? String(c.fecha).split('T')[0] : hoyISO(),
           pagado: !!c.pagado,
           fechaPago: c.fechaPago ? String(c.fechaPago).split('T')[0] : '',
@@ -147,7 +147,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
         // producto, esta compra vieja se sigue revirtiendo con el numero
         // que realmente se uso al comprar.
         nuevosItems[index].unidadCompra = producto.unidadCompra || 'unidad'
-        nuevosItems[index].cantidadPorUnidadCompra = producto.cantidadPorUnidadCompra
+        nuevosItems[index].cantidadPorUnidadCompra = Number(producto.cantidadPorUnidadCompra) || 1
         nuevosItems[index].unidadContenido = producto.unidadContenidoCaja || ''
       }
     }
@@ -165,7 +165,7 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
     const producto = item.productoId ? todosProductos.find(p => p.id === item.productoId) : null
     item.unidadCompra = nuevaUnidad
     if (producto && nuevaUnidad === producto.unidadCompra) {
-      item.cantidadPorUnidadCompra = producto.cantidadPorUnidadCompra
+      item.cantidadPorUnidadCompra = Number(producto.cantidadPorUnidadCompra) || 1
       item.unidadContenido = producto.unidadContenidoCaja || ''
     } else if (producto && esUnidadDirecta(nuevaUnidad, producto.unidadBase)) {
       item.cantidadPorUnidadCompra = ''
@@ -244,15 +244,14 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">N° Factura</label>
-              <input type="text" value={form.numeroFactura} onChange={e => setForm({ ...form, numeroFactura: e.target.value })} className={inputBase} placeholder="001-00001234" />
+              <input type="text" value={form.numeroFactura} onChange={e => setForm({ ...form, numeroFactura: e.target.value })} className={inputBase} placeholder="Opcional, ej: 001-00001234" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
               <select value={form.tipoFactura} onChange={e => setForm({ ...form, tipoFactura: e.target.value })} className={inputBase}>
-                <option value="">Sin especificar</option>
+                <option value="X">Factura X</option>
                 <option value="A">Factura A</option>
                 <option value="B">Factura B</option>
-                <option value="X">Factura X</option>
               </select>
             </div>
             <div>
@@ -266,99 +265,121 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Items de compra <span className="text-red-500">*</span></label>
               <button onClick={agregarItem} className="flex items-center gap-1 px-3 py-1.5 text-sm bg-violet-600 text-white rounded-lg hover:bg-violet-700">+ Agregar item</button>
             </div>
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Producto</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Descripción</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Cantidad</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Unidad</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Precio/Unidad</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400">Subtotal</th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Stock</th>
-                    <th className="px-3 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {form.items.length === 0 ? (
-                    <tr><td colSpan={8} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">No hay items. Tocá "Agregar item" para comenzar.</td></tr>
-                  ) : form.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="px-3 py-2">
-                        <select value={item.productoId} onChange={e => actualizarItem(idx, 'productoId', e.target.value)} className="w-40 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white">
-                          <option value="">Sin producto</option>
-                          {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2"><input type="text" value={item.descripcion} onChange={e => actualizarItem(idx, 'descripcion', e.target.value)} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="Descripción" /></td>
-                      <td className="px-3 py-2"><input type="number" value={item.cantidadCompra} min="0" step="0.001" onChange={e => actualizarItem(idx, 'cantidadCompra', e.target.value)} className="w-24 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="0" /></td>
-                      <td className="px-3 py-2">
-                        {(() => {
-                          const prod = item.productoId ? todosProductos.find(p => p.id === item.productoId) : null
-                          if (prod) {
-                            const eq = equivalenciaCompra(item, prod)
-                            const directa = esUnidadDirecta(item.unidadCompra, prod.unidadBase)
-                            return (
-                              <div className="w-40">
-                                <select value={item.unidadCompra} onChange={e => cambiarUnidadItem(idx, e.target.value)}
-                                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white capitalize">
-                                  {UNIDADES_COMPRA_ITEM.map(u => (
-                                    <option key={u} value={u}>{u}{u === prod.unidadCompra ? ' (habitual)' : ''}</option>
-                                  ))}
-                                </select>
-                                {!directa && (
-                                  <div className="flex items-center gap-1 mt-1">
-                                    <span className="text-[10px] text-gray-400">1 {item.unidadCompra} =</span>
-                                    <input type="number" min="0.001" step="0.001" value={item.cantidadPorUnidadCompra}
-                                      onChange={e => actualizarItem(idx, 'cantidadPorUnidadCompra', e.target.value)}
-                                      className="w-14 px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded text-xs dark:bg-gray-700 dark:text-white" />
-                                    <select value={item.unidadContenido || unidadesCompatibles(prod.unidadBase)[0]}
-                                      onChange={e => actualizarItem(idx, 'unidadContenido', e.target.value)}
-                                      className="px-1 py-0.5 border border-gray-300 dark:border-gray-600 rounded text-xs dark:bg-gray-700 dark:text-white">
-                                      {unidadesCompatibles(prod.unidadBase).map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
-                                  </div>
-                                )}
-                                {Number(item.cantidadCompra) > 0 && (
-                                  <p className="text-[10px] text-violet-600 dark:text-violet-400 mt-0.5 leading-tight">{eq.texto}</p>
-                                )}
-                              </div>
-                            )
-                          }
-                          return (
-                            <select value={item.unidadCompra} onChange={e => actualizarItem(idx, 'unidadCompra', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white">
+
+            {form.items.length === 0 ? (
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                No hay items. Tocá "Agregar item" para comenzar.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {form.items.map((item, idx) => {
+                  const prod = item.productoId ? todosProductos.find(p => p.id === item.productoId) : null
+                  const eq = prod ? equivalenciaCompra(item, prod) : null
+                  const directa = prod ? esUnidadDirecta(item.unidadCompra, prod.unidadBase) : true
+                  return (
+                    <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50 dark:bg-gray-900/40">
+                      {/* Producto + descripción */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Producto de stock</label>
+                          <select value={item.productoId} onChange={e => actualizarItem(idx, 'productoId', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white">
+                            <option value="">Sin producto (solo descripción)</option>
+                            {productos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descripción</label>
+                          <input type="text" value={item.descripcion} onChange={e => actualizarItem(idx, 'descripcion', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white" placeholder="Descripción" />
+                        </div>
+                      </div>
+
+                      {/* Cantidad, unidad, precios */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cantidad</label>
+                          <input type="number" value={item.cantidadCompra} min="0" step="0.001" onChange={e => actualizarItem(idx, 'cantidadCompra', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-base dark:bg-gray-700 dark:text-white" placeholder="0" />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Unidad</label>
+                          {prod ? (
+                            <select value={item.unidadCompra} onChange={e => cambiarUnidadItem(idx, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white capitalize">
+                              {UNIDADES_COMPRA_ITEM.map(u => (
+                                <option key={u} value={u}>{u}{u === prod.unidadCompra ? ' (habitual)' : ''}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <select value={item.unidadCompra} onChange={e => actualizarItem(idx, 'unidadCompra', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white">
                               {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
-                          )
-                        })()}
-                      </td>
-                      <td className="px-3 py-2">
-                        <input type="number" value={item.precioUnitario} min="0" step="0.01" onChange={e => actualizarItem(idx, 'precioUnitario', e.target.value)} className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-700 dark:text-white" placeholder="0.00" />
-                        <p className="text-[10px] text-gray-400 mt-0.5">por {item.unidadCompra}</p>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <input type="number" value={calcularSubtotal(item) ? Number(calcularSubtotal(item).toFixed(2)) : ''} min="0" step="0.01"
-                          onChange={e => actualizarSubtotal(idx, e.target.value)}
-                          className="w-28 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm text-right font-medium dark:bg-gray-700 dark:text-white" placeholder="0.00" />
-                        <p className="text-[10px] text-gray-400 mt-0.5">precio final</p>
-                      </td>
-                      <td className="px-3 py-2 text-center"><input type="checkbox" checked={item.actualizaStock} onChange={e => actualizarItem(idx, 'actualizaStock', e.target.checked)} className="w-4 h-4 text-violet-600 rounded" title="Actualizar stock" /></td>
-                      <td className="px-3 py-2"><button onClick={() => eliminarItem(idx)} className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded">✕</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-                {form.items.length > 0 && (
-                  <tfoot className="bg-gray-50 dark:bg-gray-900/50 border-t-2 border-gray-300 dark:border-gray-600">
-                    <tr>
-                      <td colSpan={5} className="px-3 py-2 font-semibold text-right text-gray-700 dark:text-gray-200">Total:</td>
-                      <td className="px-3 py-2 text-right font-bold text-violet-600 text-base">${calcularTotal().toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                      <td colSpan={2}></td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Precio unitario</label>
+                          <input type="number" value={item.precioUnitario} min="0" step="0.01" onChange={e => actualizarItem(idx, 'precioUnitario', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white" placeholder="0.00" />
+                          <p className="text-[10px] text-gray-400 mt-0.5">por {item.unidadCompra}</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Precio final</label>
+                          <input type="number" value={calcularSubtotal(item) ? Number(calcularSubtotal(item).toFixed(2)) : ''} min="0" step="0.01"
+                            onChange={e => actualizarSubtotal(idx, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium dark:bg-gray-700 dark:text-white" placeholder="0.00" />
+                          <p className="text-[10px] text-gray-400 mt-0.5">como figura en la boleta</p>
+                        </div>
+                      </div>
+
+                      {/* Contenido de la unidad, si no es directamente compatible con la base */}
+                      {prod && !directa && (
+                        <div className="flex items-center gap-2 mt-3 text-sm">
+                          <span className="text-gray-500 dark:text-gray-400">1 {item.unidadCompra} equivale a</span>
+                          <input type="number" min="0.001" step="0.001" value={item.cantidadPorUnidadCompra}
+                            onChange={e => actualizarItem(idx, 'cantidadPorUnidadCompra', e.target.value)}
+                            className="w-20 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white" />
+                          <select value={item.unidadContenido || unidadesCompatibles(prod.unidadBase)[0]}
+                            onChange={e => actualizarItem(idx, 'unidadContenido', e.target.value)}
+                            className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white">
+                            {unidadesCompatibles(prod.unidadBase).map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Equivalencia calculada + subtotal */}
+                      {prod && eq && Number(item.cantidadCompra) > 0 && (
+                        <p className="text-xs text-violet-600 dark:text-violet-400 mt-2">{eq.texto}</p>
+                      )}
+
+                      {/* Pie: actualizar stock, subtotal, eliminar */}
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                          <input type="checkbox" checked={item.actualizaStock} onChange={e => actualizarItem(idx, 'actualizaStock', e.target.checked)}
+                            className="w-4 h-4 text-violet-600 rounded" />
+                          Actualiza el stock de este producto
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">${calcularSubtotal(item).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                          <button onClick={() => eliminarItem(idx)} className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Eliminar item">✕</button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {form.items.length > 0 && (
+              <div className="flex items-center justify-end gap-3 mt-3 pt-3 border-t-2 border-gray-300 dark:border-gray-600">
+                <span className="font-semibold text-gray-700 dark:text-gray-200">Total:</span>
+                <span className="font-bold text-violet-600 text-lg">${calcularTotal().toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
           </div>
 
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
