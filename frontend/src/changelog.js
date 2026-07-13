@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.20.0'
+export const VERSION_ACTUAL = '1.20.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.20.1',
+    fecha: '2026-07-12',
+    titulo: 'Cualquier unidad de compra se puede combinar con cualquier otra',
+    destacados: [
+      { titulo: 'Ya no hace falta que sea "por caja"', detalle: 'Antes, solo un producto que se compra "por caja" podía declarar en qué unidad venía adentro (ej. kg). Ahora podés hacerlo con cualquier unidad de compra: por ejemplo, una mayonesa que comprás "por unidad" podés decir que cada unidad son 500 gramos, y el stock se cuenta en gramos.' },
+    ],
+  },
   {
     version: '1.20.0',
     fecha: '2026-07-12',
