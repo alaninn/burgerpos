@@ -180,108 +180,85 @@ export default function ModalEditarProducto({ producto, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Unidades de compra y stock */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          {/* Configuración de Stock: mismo diseño que los items de "Compra
+              avanzada" (unidad + contenido + equivalencia calculada) para
+              que se pueda ajustar igual desde los dos lados. */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50 dark:bg-gray-900/40">
             <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">📦 Configuración de Stock</h4>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Unidad de Compra <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={form.unidadCompra}
-                onChange={e => {
-                  const unidadCompra = e.target.value
-                  // Por defecto se sugiere que el contenido sea la misma
-                  // unidad (caso simple, ej "1 kg = 1 kg"), salvo caja que
-                  // por defecto trae kg. Siempre se puede cambiar despues
-                  // (ej: "1 unidad" de mayonesa contiene "500 gramo").
-                  const unidadContenidoCaja = unidadCompra === 'caja' ? 'kg' : unidadCompra
-                  setForm({ ...form, unidadCompra, unidadContenidoCaja, unidadBase: unidadBaseCompatible(unidadContenidoCaja, form.unidadBase) })
-                }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white text-sm"
-              >
-                {UNIDADES_COMPRA.map(u => (
-                  <option key={u.value} value={u.value}>{u.label}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">¿Cómo comprás este producto?</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Unidad de compra <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.unidadCompra}
+                  onChange={e => {
+                    const unidadCompra = e.target.value
+                    // Por defecto se sugiere que el contenido sea la misma
+                    // unidad (caso simple, ej "1 kg = 1 kg"), salvo caja que
+                    // por defecto trae kg. Siempre se puede cambiar despues
+                    // (ej: "1 unidad" de mayonesa contiene "500 gramo").
+                    const unidadContenidoCaja = unidadCompra === 'caja' ? 'kg' : unidadCompra
+                    setForm({ ...form, unidadCompra, unidadContenidoCaja, unidadBase: unidadBaseCompatible(unidadContenidoCaja, form.unidadBase) })
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                >
+                  {UNIDADES_COMPRA.map(u => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">¿Cómo comprás este producto?</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Unidad base (stock) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.unidadBase}
+                  onChange={e => setForm({ ...form, unidadBase: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                >
+                  {UNIDADES_BASE.filter(u => unidadesCompatibles(form.unidadContenidoCaja).includes(u.value)).map(u => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-400 mt-1">Unidad en la que se cuenta el stock</p>
+              </div>
             </div>
 
             {/* Contenido de 1 unidad de compra: aplica siempre, no solo para
                 caja, para poder combinar cualquier unidad con cualquier otra
                 (ej: 1 unidad de mayonesa = 500 gramo, 1 caja de papas = 15 kg) */}
-            <div className="mt-3 p-3 bg-violet-50 dark:bg-violet-900/20 rounded border border-violet-200 dark:border-violet-800">
-              <h5 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2">📦 Contenido de 1 {UNIDADES_COMPRA.find(u => u.value === form.unidadCompra)?.label.toLowerCase()}</h5>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Cantidad <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={form.cantidadPorUnidadCompra}
-                    onChange={e => setForm({ ...form, cantidadPorUnidadCompra: e.target.value })}
-                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
-                    placeholder="15"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    En unidad <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={form.unidadContenidoCaja}
-                    onChange={e => {
-                      const unidadContenidoCaja = e.target.value
-                      setForm({ ...form, unidadContenidoCaja, unidadBase: unidadBaseCompatible(unidadContenidoCaja, form.unidadBase) })
-                    }}
-                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="kg">Kilogramo</option>
-                    <option value="litro">Litro</option>
-                    <option value="gramo">Gramo</option>
-                    <option value="unidad">Unidad</option>
-                  </select>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                💡 Ej: 1 caja de papas trae 15 kg · 1 unidad de mayonesa trae 500 gramos · 1 unidad de aceite trae 1 litro
-              </p>
-            </div>
-
-            <div className="mt-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Unidad Base (para stock) <span className="text-red-500">*</span>
-              </label>
+            <div className="flex items-center gap-2 mt-3 text-sm">
+              <span className="text-gray-500 dark:text-gray-400">1 {form.unidadCompra} equivale a</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={form.cantidadPorUnidadCompra}
+                onChange={e => setForm({ ...form, cantidadPorUnidadCompra: e.target.value })}
+                className="w-20 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
+                placeholder="15"
+              />
               <select
-                value={form.unidadBase}
-                onChange={e => setForm({ ...form, unidadBase: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-gray-700 dark:text-white text-sm"
+                value={form.unidadContenidoCaja}
+                onChange={e => {
+                  const unidadContenidoCaja = e.target.value
+                  setForm({ ...form, unidadContenidoCaja, unidadBase: unidadBaseCompatible(unidadContenidoCaja, form.unidadBase) })
+                }}
+                className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm dark:bg-gray-700 dark:text-white"
               >
-                {UNIDADES_BASE.filter(u => unidadesCompatibles(form.unidadContenidoCaja).includes(u.value)).map(u => (
-                  <option key={u.value} value={u.value}>{u.label}</option>
-                ))}
+                <option value="kg">Kilogramo</option>
+                <option value="litro">Litro</option>
+                <option value="gramo">Gramo</option>
+                <option value="unidad">Unidad</option>
               </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Unidad en la que se cuenta el stock
-              </p>
             </div>
-
-            <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded border border-blue-300 dark:border-blue-700">
-              <p className="text-xs text-gray-700 dark:text-gray-300">
-                <strong>Al comprar:</strong> {calcularStockPorCompra()}
-              </p>
-            </div>
-          </div>
-
-          {/* Ejemplo práctico */}
-          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-            <p className="text-xs text-amber-800 dark:text-amber-400">
-              <strong>💡 Ejemplo:</strong> Si comprás <strong>1 {form.unidadCompra}</strong> de este producto,
-              el stock aumentará en <strong>{cantidadFinalPorUnidadCompra()} {form.unidadBase}{cantidadFinalPorUnidadCompra() !== 1 ? 's' : ''}</strong>.
+            <p className="text-xs text-violet-600 dark:text-violet-400 mt-2">{calcularStockPorCompra()}</p>
+            <p className="text-[10px] text-gray-400 mt-2">
+              💡 Ej: 1 caja de papas trae 15 kg · 1 unidad de mayonesa trae 500 gramos · 1 unidad de aceite trae 1 litro. Las cantidades que usás en recetas se restan del stock automáticamente.
             </p>
           </div>
 

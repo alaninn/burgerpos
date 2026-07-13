@@ -6,9 +6,18 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.20.1'
+export const VERSION_ACTUAL = '1.20.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.20.2',
+    fecha: '2026-07-13',
+    titulo: 'Mismo diseño de unidades en Nuevo producto, Editar y Cargar stock',
+    destacados: [
+      { titulo: 'Configurar unidades quedó igual en todos lados', detalle: 'Nuevo Producto y Editar Producto ahora tienen el mismo diseño claro que ya tenía Compra avanzada (unidad + contenido + equivalencia calculada), así se puede ajustar el fraccionamiento del producto desde cualquiera de los dos lados sin confundirse.' },
+      { titulo: 'Cargar stock también admite cualquier unidad', detalle: 'En "Cargar stock" ahora podés elegir en qué unidad cargás cada producto (caja, kg, gramo, litro, unidad), no solo en su unidad base. Se convierte solo al guardar.' },
+    ],
+  },
   {
     version: '1.20.1',
     fecha: '2026-07-12',
