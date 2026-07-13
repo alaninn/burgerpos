@@ -1,7 +1,15 @@
-const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Receta, RecetaIngrediente, ProductoVariante, Caja, CajaUsuario, StockMovimiento, Adicional, sequelize } = require('../models');
+const { Pedido, ItemPedido, Producto, Cliente, Repartidor, ComprobanteElectronico, WhatsAppConfig, Negocio, Receta, RecetaIngrediente, ProductoVariante, Caja, CajaUsuario, StockMovimiento, Adicional, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const { descontarStockPedido } = require('../utils/descuentoStock');
 const whatsappService = require('../services/whatsappService');
+
+// El toggle "Recibir confirmación por WhatsApp" de Configuraciones > Pedidos
+// controla si se manda el mensaje automático al cliente al cambiar de estado.
+// Default true (si no esta configurado) para no romper negocios existentes.
+async function debeEnviarWhatsapp(negocioId) {
+  const negocio = await Negocio.findByPk(negocioId, { attributes: ['configuracion'] });
+  return negocio?.configuracion?.recibirWhatsapp !== false;
+}
 
 exports.listar = async (req, res) => {
   try {
@@ -187,7 +195,7 @@ exports.actualizar = async (req, res) => {
         console.log(`\n🚀 CAMBIO DE ESTADO (PUT): ${estadoAnterior} → ${estado}`);
         console.log('👉 Telefono:', pedidoCompleto.clienteTelefono, '| Modalidad:', pedidoCompleto.modalidad);
 
-        if (pedidoCompleto.clienteTelefono) {
+        if (pedidoCompleto.clienteTelefono && await debeEnviarWhatsapp(req.params.negocioId)) {
           const modalidad = pedidoCompleto.modalidad;
           let templateKey = null;
 
@@ -319,8 +327,8 @@ exports.actualizarEstado = async (req, res) => {
       console.log('👉 Estado anterior:', estadoAnterior, 'Nuevo estado:', estado);
       console.log('👉 Telefono cliente:', pedidoCompleto.clienteTelefono);
       console.log('👉 Modalidad:', pedidoCompleto.modalidad);
-      
-      if (pedidoCompleto.clienteTelefono) {
+
+      if (pedidoCompleto.clienteTelefono && await debeEnviarWhatsapp(req.params.negocioId)) {
         const modalidad = pedidoCompleto.modalidad;
         let templateKey = null;
 

@@ -13,20 +13,40 @@ function generateSessionToken() {
 }
 
 const TABS = ['Modalidades', 'Pedidos', 'Horarios', 'Métodos de pago', 'Zonas de entrega', 'Redes sociales', 'Marketing', 'Integraciones', 'Mapa de pedidos']
+
+// Tipografias disponibles para el menu publico (todas de Google Fonts, se
+// cargan dinamicamente segun la elegida - ver buildStyles en MenuPublico.jsx).
+const TIPOGRAFIAS = [
+  { nombre: 'Inter', grupo: 'Modernas' }, { nombre: 'Roboto', grupo: 'Modernas' },
+  { nombre: 'Open Sans', grupo: 'Modernas' }, { nombre: 'Lato', grupo: 'Modernas' },
+  { nombre: 'Work Sans', grupo: 'Modernas' }, { nombre: 'Manrope', grupo: 'Modernas' },
+  { nombre: 'DM Sans', grupo: 'Modernas' }, { nombre: 'Rubik', grupo: 'Modernas' },
+  { nombre: 'Sora', grupo: 'Modernas' }, { nombre: 'Outfit', grupo: 'Modernas' },
+  { nombre: 'Plus Jakarta Sans', grupo: 'Modernas' }, { nombre: 'Urbanist', grupo: 'Modernas' },
+  { nombre: 'Figtree', grupo: 'Modernas' }, { nombre: 'Mulish', grupo: 'Modernas' },
+  { nombre: 'Karla', grupo: 'Modernas' },
+  { nombre: 'Poppins', grupo: 'Redondeadas y amigables' }, { nombre: 'Nunito', grupo: 'Redondeadas y amigables' },
+  { nombre: 'Quicksand', grupo: 'Redondeadas y amigables' }, { nombre: 'Comfortaa', grupo: 'Redondeadas y amigables' },
+  { nombre: 'Baloo 2', grupo: 'Redondeadas y amigables' }, { nombre: 'Fredoka', grupo: 'Redondeadas y amigables' },
+  { nombre: 'Montserrat', grupo: 'Con carácter' }, { nombre: 'Oswald', grupo: 'Con carácter' },
+  { nombre: 'Raleway', grupo: 'Con carácter' }, { nombre: 'Bebas Neue', grupo: 'Con carácter' },
+  { nombre: 'Anton', grupo: 'Con carácter' }, { nombre: 'Archivo Black', grupo: 'Con carácter' },
+  { nombre: 'Playfair Display', grupo: 'Elegantes' }, { nombre: 'Merriweather', grupo: 'Elegantes' },
+  { nombre: 'Lora', grupo: 'Elegantes' }, { nombre: 'Libre Baskerville', grupo: 'Elegantes' },
+  { nombre: 'Pacifico', grupo: 'Divertidas' }, { nombre: 'Caveat', grupo: 'Divertidas' },
+  { nombre: 'Dancing Script', grupo: 'Divertidas' },
+]
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 const METODOS_CONFIG = [
-  { label: 'BNA+',               icon: '🏦' },
-  { label: 'Cuenta DNI',         icon: '🪪' },
-  { label: 'Dividir pago',       icon: '✂️' },
   { label: 'Efectivo',           icon: '💵' },
   { label: 'Mercado Pago',       icon: '💰' },
-  { label: 'MODO',               icon: '📱' },
-  { label: 'Nave',               icon: '🚀' },
   { label: 'Tarjeta de crédito', icon: '💳' },
   { label: 'Tarjeta de débito',  icon: '💳' },
   { label: 'Transferencia',      icon: '🏧' },
 ]
+// Solo se cobran presencialmente (no tiene sentido delivery/salón con posnet)
+const METODOS_SOLO_TAKEAWAY = ['tarjeta_de_crédito', 'tarjeta_credito', 'tarjeta_de_débito', 'tarjeta_debito']
 
 function getMetodoKey(label) {
   return label.toLowerCase().replace(/\s+/g, '_').replace(/\+/g, 'plus')
@@ -67,6 +87,20 @@ function ModalEditarNegocio({ negocio, onClose, onSaved }) {
   const portadaRef = useRef()
   const fondoRef = useRef()
   const [modalMapaDir, setModalMapaDir] = useState(false)
+
+  // Carga dinamicamente la tipografia elegida (Google Fonts) para poder
+  // mostrar la vista previa con la fuente real, no un texto generico.
+  useEffect(() => {
+    const href = `https://fonts.googleapis.com/css2?family=${form.tipografia.replace(/ /g, '+')}:wght@400;600;700&display=swap`
+    let link = document.getElementById('preview-tipografia-link')
+    if (!link) {
+      link = document.createElement('link')
+      link.id = 'preview-tipografia-link'
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+    link.href = href
+  }, [form.tipografia])
 
   const abrirMapaDireccion = () => {
     // Intentar obtener GPS o usar coords previas o centro default
@@ -250,10 +284,23 @@ function ModalEditarNegocio({ negocio, onClose, onSaved }) {
               <select value={form.tipografia}
                 onChange={e => setForm(f => ({ ...f, tipografia: e.target.value }))}
                 className={inputCls}>
-                {['Inter', 'Poppins', 'Nunito', 'Montserrat', 'Raleway', 'Oswald'].map(t => (
-                  <option key={t} value={t}>{t}</option>
+                {Object.entries(
+                  TIPOGRAFIAS.reduce((acc, t) => { (acc[t.grupo] = acc[t.grupo] || []).push(t.nombre); return acc }, {})
+                ).map(([grupo, nombres]) => (
+                  <optgroup key={grupo} label={grupo}>
+                    {nombres.map(n => <option key={n} value={n}>{n}</option>)}
+                  </optgroup>
                 ))}
               </select>
+              {/* Vista previa con la tipografia real, para saber como se ve antes de guardar */}
+              <div className="mt-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                <p style={{ fontFamily: `'${form.tipografia}', sans-serif`, fontWeight: 700 }} className="text-base text-gray-900 dark:text-gray-100">
+                  Hamburguesa Clásica
+                </p>
+                <p style={{ fontFamily: `'${form.tipografia}', sans-serif` }} className="text-sm text-gray-600 dark:text-gray-400">
+                  Doble carne, cheddar, panceta y salsa especial — $4.500
+                </p>
+              </div>
             </div>
           </div>
 
@@ -526,8 +573,30 @@ export default function Configuraciones() {
   const setMetodoPagoKey = (key, campo, valor) =>
     setConfig(c => {
       const existente = normalizeMetodoPago(c.metodosPago?.[key])
-      return { ...c, metodosPago: { ...(c.metodosPago || {}), [key]: { ...existente, [campo]: valor } } }
+      // Débito/crédito se cobran presencialmente (posnet): solo tiene sentido
+      // en take away, se fuerza al activarlo para que no quede mal configurado.
+      const forzarTakeaway = campo === 'activo' && valor === true && METODOS_SOLO_TAKEAWAY.includes(key)
+      const cambios = { [campo]: valor, ...(forzarTakeaway ? { disponibleEn: ['takeaway'] } : {}) }
+      return { ...c, metodosPago: { ...(c.metodosPago || {}), [key]: { ...existente, ...cambios } } }
     })
+
+  // Métodos de pago personalizados (además de los fijos): {key, label, icon}
+  const metodosPersonalizados = config.metodosPersonalizados || []
+  const agregarMetodoPersonalizado = () => {
+    const nombre = prompt('Nombre del método de pago (ej: "Cuenta DNI", "QR del banco")')
+    if (!nombre || !nombre.trim()) return
+    const key = 'custom_' + nombre.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') + '_' + Date.now().toString(36).slice(-4)
+    setConfig(c => ({ ...c, metodosPersonalizados: [...(c.metodosPersonalizados || []), { key, label: nombre.trim(), icon: '💳' }] }))
+    setExpandedMetodo(key)
+    setMetodoPagoKey(key, 'activo', true)
+  }
+  const eliminarMetodoPersonalizado = (key) => {
+    if (!confirm('¿Eliminar este método de pago?')) return
+    setConfig(c => {
+      const { [key]: _omit, ...restoMetodos } = c.metodosPago || {}
+      return { ...c, metodosPersonalizados: (c.metodosPersonalizados || []).filter(m => m.key !== key), metodosPago: restoMetodos }
+    })
+  }
 
   const agregarTurno = (diaIdx) => {
     setHorarios(h => h.map((d, i) => i === diaIdx
@@ -617,8 +686,6 @@ export default function Configuraciones() {
               {[
                 { key: 'recibirPedidos', label: 'Recibir pedidos.' },
                 { key: 'recibirWhatsapp', label: 'Recibir confirmación por WhatsApp.' },
-                { key: 'pedidosProgramados', label: 'Pedidos programados.' },
-                { key: 'aceptarResenas', label: 'Aceptar reseñas.' },
                 { key: 'aceptaPropinas', label: 'Aceptar propinas.' },
                 { key: 'datosClienteObligatorios', label: 'Datos del cliente obligatorios.' },
                 { key: 'venderSinStock', label: 'Vender sin stock (nunca frenar la venta aunque no haya stock).' },
@@ -721,10 +788,12 @@ export default function Configuraciones() {
           {/* Métodos de pago */}
           {tabActiva === 'Métodos de pago' && (
             <div className="space-y-1.5">
-              {METODOS_CONFIG.map(({ label, icon }) => {
-                const key = getMetodoKey(label)
+              {[...METODOS_CONFIG.map(m => ({ ...m, key: getMetodoKey(m.label), personalizado: false })),
+                ...metodosPersonalizados.map(m => ({ ...m, personalizado: true }))
+              ].map(({ label, icon, key, personalizado }) => {
                 const cfg = normalizeMetodoPago(config.metodosPago?.[key])
                 const abierto = expandedMetodo === key
+                const soloTakeaway = METODOS_SOLO_TAKEAWAY.includes(key)
                 return (
                   <div key={key} className={`border rounded-xl overflow-hidden transition-colors ${cfg.activo ? 'border-violet-200 dark:border-violet-700' : 'border-gray-200 dark:border-gray-700'}`}>
                     {/* Fila principal */}
@@ -742,6 +811,13 @@ export default function Configuraciones() {
                       <span className={`flex-1 text-sm font-medium ${cfg.activo ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'}`}>
                         {cfg.nombrePersonalizado || label}
                       </span>
+                      {personalizado && (
+                        <button type="button" onClick={() => eliminarMetodoPersonalizado(key)}
+                          title="Eliminar este método de pago"
+                          className="p-1 text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors flex-shrink-0">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      )}
                       {cfg.activo && (
                         <button type="button" onClick={() => setExpandedMetodo(abierto ? null : key)}
                           className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors flex-shrink-0">
@@ -810,26 +886,35 @@ export default function Configuraciones() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Método disponible en</label>
-                            <select
-                              value={
-                                !cfg.disponibleEn || cfg.disponibleEn.length === 3 ? 'todos'
-                                : cfg.disponibleEn.length === 1 ? cfg.disponibleEn[0]
-                                : cfg.disponibleEn.includes('delivery') && cfg.disponibleEn.includes('takeaway') && !cfg.disponibleEn.includes('salon') ? 'delivery,takeaway'
-                                : 'todos'
-                              }
-                              onChange={e => {
-                                const v = e.target.value
-                                const map = { todos: ['delivery', 'takeaway', 'salon'], delivery: ['delivery'], takeaway: ['takeaway'], salon: ['salon'], 'delivery,takeaway': ['delivery', 'takeaway'] }
-                                setMetodoPagoKey(key, 'disponibleEn', map[v] || ['delivery', 'takeaway', 'salon'])
-                              }}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-800"
-                            >
-                              <option value="todos">Todos</option>
-                              <option value="delivery">Solo Delivery</option>
-                              <option value="takeaway">Solo Take Away</option>
-                              <option value="salon">Solo Salón</option>
-                              <option value="delivery,takeaway">Delivery, Take Away</option>
-                            </select>
+                            {soloTakeaway ? (
+                              <>
+                                <div className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+                                  Solo Take Away
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-0.5">Se cobra en el local con posnet, no aplica a delivery ni salón.</p>
+                              </>
+                            ) : (
+                              <select
+                                value={
+                                  !cfg.disponibleEn || cfg.disponibleEn.length === 3 ? 'todos'
+                                  : cfg.disponibleEn.length === 1 ? cfg.disponibleEn[0]
+                                  : cfg.disponibleEn.includes('delivery') && cfg.disponibleEn.includes('takeaway') && !cfg.disponibleEn.includes('salon') ? 'delivery,takeaway'
+                                  : 'todos'
+                                }
+                                onChange={e => {
+                                  const v = e.target.value
+                                  const map = { todos: ['delivery', 'takeaway', 'salon'], delivery: ['delivery'], takeaway: ['takeaway'], salon: ['salon'], 'delivery,takeaway': ['delivery', 'takeaway'] }
+                                  setMetodoPagoKey(key, 'disponibleEn', map[v] || ['delivery', 'takeaway', 'salon'])
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white dark:bg-gray-800"
+                              >
+                                <option value="todos">Todos</option>
+                                <option value="delivery">Solo Delivery</option>
+                                <option value="takeaway">Solo Take Away</option>
+                                <option value="salon">Solo Salón</option>
+                                <option value="delivery,takeaway">Delivery, Take Away</option>
+                              </select>
+                            )}
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descuento / Recargo</label>
@@ -889,6 +974,11 @@ export default function Configuraciones() {
                   </div>
                 )
               })}
+              <button type="button" onClick={agregarMetodoPersonalizado}
+                className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded-xl hover:border-violet-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors text-sm font-medium w-full justify-center mt-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Crear método de pago
+              </button>
             </div>
           )}
 

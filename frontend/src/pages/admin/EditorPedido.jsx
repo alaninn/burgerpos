@@ -778,37 +778,27 @@ export default function EditorPedido({ negocioId, pedidoExistente, onClose, onGu
     const cfgMetodos = configProp.metodosPago || {}
     if (!Object.keys(cfgMetodos).length) return
 
-    const isActive = (key) => {
-      const v = cfgMetodos[key]
-      if (!v) return false
-      return typeof v === 'boolean' ? v : v.activo === true
+    // Iconos por defecto para claves conocidas; cualquier otra clave (metodo
+    // personalizado creado en Configuraciones) usa un icono generico.
+    const ICONOS = {
+      efectivo: '💵', mercado_pago: '💰', mercadopago: '💰',
+      transferencia: '📲', modo: '📲', nave: '📲',
+      tarjeta_de_crédito: '💳', tarjeta_credito: '💳', tarjeta_de_débito: '💳', tarjeta_debito: '💳',
+      efectivo_sin_descuento: '🏪'
     }
-    const getLabel = (key, def) => {
-      const v = cfgMetodos[key]
-      return (v && typeof v === 'object' && v.nombrePersonalizado) ? v.nombrePersonalizado : def
-    }
+    // Generico: cualquier metodo activo en config.metodosPago aparece como
+    // opcion (fijos o personalizados creados desde Configuraciones), sin
+    // depender de una lista fija hardcodeada.
+    const methods = Object.entries(cfgMetodos)
+      .filter(([, v]) => (typeof v === 'boolean' ? v : v?.activo === true))
+      .map(([key, v]) => ({
+        id: key,
+        cfgKey: key,
+        label: (typeof v === 'object' && v.nombrePersonalizado) || key.replace(/^custom_/, '').replace(/_[a-z0-9]{4}$/, '').replace(/_/g, ' '),
+        icon: ICONOS[key] || '💳'
+      }))
 
-    const methods = []
-    if (isActive('efectivo'))
-      methods.push({ id: 'efectivo', cfgKey: 'efectivo', label: getLabel('efectivo', 'Efectivo'), icon: '💵' })
-    // tarjeta: acepta tanto claves con acento como sin acento (retrocompatibilidad)
-    if (isActive('tarjeta_de_cr\u00e9dito') || isActive('tarjeta_credito') || isActive('tarjeta_de_d\u00e9bito') || isActive('tarjeta_debito')) {
-      const cfgKey = isActive('tarjeta_de_cr\u00e9dito') ? 'tarjeta_de_cr\u00e9dito' : 'tarjeta_credito'
-      methods.push({ id: 'tarjeta', cfgKey, label: getLabel('tarjeta_de_cr\u00e9dito', getLabel('tarjeta_credito', 'Tarjeta')), icon: '💳' })
-    }
-    if (isActive('transferencia'))
-      methods.push({ id: 'transferencia', cfgKey: 'transferencia', label: getLabel('transferencia', 'Transferencia'), icon: '📲' })
-    if (isActive('mercado_pago') || isActive('modo') || isActive('nave')) {
-      const cfgKey = isActive('mercado_pago') ? 'mercado_pago' : isActive('modo') ? 'modo' : 'nave'
-      methods.push({ id: 'transferencia', cfgKey, label: getLabel(cfgKey, 'Transferencia'), icon: '📲' })
-    }
-    if (isActive('efectivo_sin_descuento'))
-      methods.push({ id: 'efectivo_sin_descuento', cfgKey: 'efectivo_sin_descuento', label: getLabel('efectivo_sin_descuento', 'Salón efectivo'), icon: '🏪' })
-
-    // Deduplicar por id (ej. transferencia puede haberse agregado dos veces)
-    const seen = new Set()
-    const unique = methods.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
-    if (unique.length > 0) setMetodosPagoHabilitados(unique)
+    if (methods.length > 0) setMetodosPagoHabilitados(methods)
   }, [configProp, ciudadProp])
 
   // Si el metodo elegido quedo fuera de los habilitados, pasar al primero disponible

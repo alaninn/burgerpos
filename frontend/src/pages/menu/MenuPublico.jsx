@@ -756,30 +756,30 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
   const descuentoAutomaticoMonto = descuentosAutomaticos.reduce((sum, d) => sum + (d.monto || 0), 0)
   const descuentoMonto = (cuponAplicado?.montoDescuento || 0) + descuentoAutomaticoMonto
   const total = Math.max(0, subtotal + costoEnvio + propina - descuentoMonto)
-  const montoMinimo = Number(conf.montoMinimo) || 0
+  // Monto minimo: se configura globalmente en Configuraciones > Pedidos, pero
+  // cada zona de entrega tambien puede tener su propio minimo (mas exigente,
+  // ej. zonas lejanas). Antes se guardaba en la zona pero nunca se aplicaba.
+  const zonaActivaObj = modalidad === 'delivery'
+    ? (tieneZonasGeo ? zonaDetectada?.zona : (zonaSeleccionada !== null ? zonas[zonaSeleccionada] : null))
+    : null
+  const montoMinimo = Math.max(Number(conf.montoMinimo) || 0, Number(zonaActivaObj?.montoMinimo) || 0)
   const bajoMinimo = montoMinimo > 0 && subtotal < montoMinimo
 
-  const ALL_METODOS_MENU = [
-    { key: 'efectivo', label: 'Efectivo', icon: '💵' },
-    { key: 'tarjeta_de_crédito', label: 'Tarjeta de crédito', icon: '💳' },
-    { key: 'tarjeta_de_débito', label: 'Tarjeta de débito', icon: '💳' },
-    { key: 'transferencia', label: 'Transferencia', icon: '🏦' },
-    { key: 'mercado_pago', label: 'Mercado Pago', icon: '💰' },
-    { key: 'modo', label: 'MODO', icon: '📱' },
-    { key: 'nave', label: 'Nave', icon: '🚀' },
-    { key: 'bnaplus', label: 'BNA+', icon: '🏦' },
-    { key: 'cuenta_dni', label: 'Cuenta DNI', icon: '🪪' },
-    { key: 'dividir_pago', label: 'Dividir pago', icon: '✂️' },
-  ]
-  const metodos = ALL_METODOS_MENU.map(m => {
-    const cfg = conf.metodosPago?.[m.key]
-    if (!cfg) return null
-    const isActive = typeof cfg === 'boolean' ? cfg : cfg.activo === true
+  // Iconos por defecto para claves conocidas; cualquier otra clave (metodo
+  // personalizado creado en Configuraciones) usa un icono generico.
+  const ICONOS_METODO = {
+    efectivo: '💵', tarjeta_de_crédito: '💳', tarjeta_credito: '💳', tarjeta_de_débito: '💳', tarjeta_debito: '💳',
+    transferencia: '🏦', mercado_pago: '💰', mercadopago: '💰', modo: '📱', nave: '🚀'
+  }
+  // Generico: cualquier metodo activo en config.metodosPago aparece como
+  // opcion (fijos o personalizados creados desde Configuraciones).
+  const metodos = Object.entries(conf.metodosPago || {}).map(([key, cfg]) => {
+    const isActive = typeof cfg === 'boolean' ? cfg : cfg?.activo === true
     if (!isActive) return null
-    const label = (typeof cfg === 'object' && cfg.nombrePersonalizado) ? cfg.nombrePersonalizado : m.label
+    const label = (typeof cfg === 'object' && cfg.nombrePersonalizado) || key.replace(/^custom_/, '').replace(/_[a-z0-9]{4}$/, '').replace(/_/g, ' ')
     const disp = typeof cfg === 'object' ? cfg.disponibleEn : null
     if (disp && disp.length < 3 && modalidad && !disp.includes(modalidad)) return null
-    return { id: m.key, key: m.key, label, icon: m.icon }
+    return { id: key, key, label, icon: ICONOS_METODO[key] || '💳' }
   }).filter(Boolean)
 
   const modalidades = [

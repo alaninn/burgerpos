@@ -6,9 +6,24 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.21.0'
+export const VERSION_ACTUAL = '1.21.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.21.1',
+    fecha: '2026-07-13',
+    titulo: 'Configuraciones: métodos de pago, zonas y muchas más tipografías',
+    destacados: [
+      { titulo: 'Método de pago a tu medida', detalle: 'La lista de métodos de pago se simplificó (efectivo, Mercado Pago, tarjeta de crédito/débito y transferencia) y ahora podés crear tus propios métodos de pago personalizados con el botón "Crear método de pago".' },
+      { titulo: 'Tarjeta de crédito/débito solo en Take Away', detalle: 'Al activarlos, quedan disponibles automáticamente solo para pedidos que se retiran en el local (se cobran presencialmente con posnet).' },
+      { titulo: 'Fix: el monto mínimo por zona de entrega no se aplicaba', detalle: 'Podías configurar un monto mínimo especial para una zona de delivery, pero nunca se tenía en cuenta al pedir. Ya se corrigió.' },
+      { titulo: 'Muchas más tipografías para el menú', detalle: 'De 6 opciones se pasó a más de 30, agrupadas por estilo, con una vista previa en vivo para ver cómo se ve antes de guardar.' },
+    ],
+    cambios: [
+      { t: 'Se quitó el toggle "Aceptar reseñas" y "Pedidos programados" de Configuraciones → Pedidos: no tenían ninguna función real detrás.' },
+      { t: 'Se corrigió el toggle "Recibir confirmación por WhatsApp": antes se enviaba siempre sin importar si estaba activado o no.' },
+    ],
+  },
   {
     version: '1.21.0',
     fecha: '2026-07-13',
