@@ -49,6 +49,13 @@ const Receta = sequelize.define('Receta', {
   notas: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  // "Receta especial": si tiene valor, esta receta combina ingredientes para
+  // producir esta cantidad (en la unidad base del producto resultante, ej.
+  // 500 gramos de una salsa) en vez de "1 unidad" como una receta de menu.
+  cantidadProducida: {
+    type: DataTypes.DECIMAL(12, 3),
+    allowNull: true
   }
 }, {
   tableName: 'recetas',

@@ -87,33 +87,55 @@ async function cargarIngredientes(receta, transaction) {
 
 // Recalcula el costo de la receta y lo escribe en el precioCosto del destino:
 // la variante si la receta es de una variante, si no el producto del menu.
-async function persistirCostoReceta(receta, { transaction } = {}) {
+// Si la receta es "especial" (cantidadProducida > 0, ej. una salsa que rinde
+// 500 gramos), el costo se guarda POR UNIDAD BASE (costo total / cantidad
+// producida) para que el producto resultante sea usable como ingrediente de
+// otras recetas con el mismo motor de costos (costoPorUnidadBase).
+async function persistirCostoReceta(receta, { transaction, visitados } = {}) {
   await cargarIngredientes(receta, transaction);
-  const costo = costoDeReceta(receta);
+  const costoTotal = costoDeReceta(receta);
+  const cantidadProducida = parseFloat(receta.cantidadProducida) || 0;
+  const costo = cantidadProducida > 0 ? Number((costoTotal / cantidadProducida).toFixed(2)) : costoTotal;
 
+  let productoAfectadoId = null;
   if (receta.varianteId) {
     await ProductoVariante.update({ precioCosto: costo }, { where: { id: receta.varianteId }, transaction });
   } else if (receta.productoMenuId) {
     await Producto.update({ precioCosto: costo }, { where: { id: receta.productoMenuId }, transaction });
+    productoAfectadoId = receta.productoMenuId;
+  }
+
+  // Cascada: si este producto es una receta especial (ej. una salsa) y se
+  // usa como ingrediente en OTRAS recetas, su costo cambio y hay que
+  // recalcular esas tambien. `visitados` evita loops infinitos si alguna
+  // vez se forma un ciclo entre recetas especiales.
+  if (productoAfectadoId && receta.negocioId) {
+    const vistos = visitados || new Set();
+    if (!vistos.has(receta.id)) {
+      vistos.add(receta.id);
+      await recalcularPorIngrediente(productoAfectadoId, receta.negocioId, { transaction, visitados: vistos });
+    }
   }
   return costo;
 }
 
-// Cuando cambia el costo de un ingrediente (ej: por una compra), recalcula el
-// costo de todos los productos del menu cuyas recetas usan ese ingrediente.
-async function recalcularPorIngrediente(ingredienteId, negocioId, { transaction } = {}) {
+// Cuando cambia el costo de un ingrediente (ej: por una compra, o por una
+// receta especial que se recalculo), recalcula el costo de todas las
+// recetas (del menu o especiales) que lo usan.
+async function recalcularPorIngrediente(ingredienteId, negocioId, { transaction, visitados } = {}) {
   const usos = await RecetaIngrediente.findAll({
     where: { ingredienteId },
-    include: [{ model: Receta, as: 'receta', where: { negocioId }, required: true, attributes: ['id', 'productoMenuId', 'varianteId'] }],
+    include: [{ model: Receta, as: 'receta', where: { negocioId }, required: true, attributes: ['id', 'productoMenuId', 'varianteId', 'negocioId', 'cantidadProducida', 'extraCosto'] }],
     transaction
   });
   const recetaIds = [...new Set(usos.map(u => u.receta.id))];
   for (const recetaId of recetaIds) {
+    if (visitados && visitados.has(recetaId)) continue;
     const receta = await Receta.findByPk(recetaId, {
       include: [{ model: RecetaIngrediente, as: 'ingredientes', include: [{ model: Producto, as: 'ingrediente' }] }],
       transaction
     });
-    if (receta) await persistirCostoReceta(receta, { transaction });
+    if (receta) await persistirCostoReceta(receta, { transaction, visitados });
   }
   return recetaIds.length;
 }

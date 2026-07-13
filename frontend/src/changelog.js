@@ -6,9 +6,19 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.20.2'
+export const VERSION_ACTUAL = '1.21.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.21.0',
+    fecha: '2026-07-13',
+    titulo: 'Recetas especiales: combiná ingredientes para crear salsas y preparaciones',
+    destacados: [
+      { titulo: 'Nuevo botón "🧪 Receta especial" en Recetas', detalle: 'Combiná productos de stock para crear un nuevo producto (ej: salsa alioli). Decís cuánto rinde la receta (ej: "se preparan 500 gramos") y qué cantidad de cada ingrediente se necesita.' },
+      { titulo: 'Se puede usar en cualquier otra receta', detalle: 'El producto que creás (ej: el alioli) queda disponible para elegir como ingrediente en la receta de una hamburguesa o cualquier otro producto, con la unidad que necesites (gramos, kg, litros, unidades).' },
+      { titulo: 'Preparar lotes cuando haga falta', detalle: 'Con el botón "🧪 Preparar lote" indicás cuánto querés preparar (más o menos que la receta base) y el sistema descuenta los ingredientes usados y suma el stock del producto resultante, automáticamente.' },
+    ],
+  },
   {
     version: '1.20.2',
     fecha: '2026-07-13',

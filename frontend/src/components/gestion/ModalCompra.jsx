@@ -112,8 +112,10 @@ export default function ModalCompra({ compraId, onClose, onGuardado }) {
       ])
       setProveedores(provRes.data.proveedores || [])
       const todasCategorias = catRes.data?.categorias || []
+      // "Preparaciones" (recetas especiales, ej. salsas) no se compran: se
+      // preparan desde Recetas -> Preparar lote. Se excluyen del selector.
       const categoriasStockIds = new Set(
-        todasCategorias.filter(c => c.tipo === 'ingrediente' || c.tipo === 'producto').map(c => c.id)
+        todasCategorias.filter(c => (c.tipo === 'ingrediente' || c.tipo === 'producto') && c.nombre !== 'Preparaciones').map(c => c.id)
       )
       const productosStock = (prodRes.data?.productos || []).filter(p => p.categoriaId && categoriasStockIds.has(p.categoriaId))
       setTodosProductos(productosStock)

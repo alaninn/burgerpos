@@ -13,6 +13,16 @@ router.get('/', recetaController.listar);
 // POST /api/negocios/:negocioId/recetas - Crear nueva receta
 router.post('/', recetaController.crear);
 
+// Recetas especiales: combinan productos de stock para crear un nuevo
+// producto intermedio (ej: una salsa) que puede usarse como ingrediente de
+// otras recetas. Van antes de /:recetaId porque "especiales" no es un id.
+router.post('/especiales', recetaController.crearEspecial);
+router.put('/especiales/:recetaId', recetaController.actualizarEspecial);
+
+// POST /api/negocios/:negocioId/recetas/:recetaId/preparar - Preparar un lote
+// de una receta especial (consume ingredientes, suma stock del resultado)
+router.post('/:recetaId/preparar', recetaController.prepararLote);
+
 // GET /api/negocios/:negocioId/recetas/:recetaId - Obtener una receta específica
 router.get('/:recetaId', recetaController.obtener);
 

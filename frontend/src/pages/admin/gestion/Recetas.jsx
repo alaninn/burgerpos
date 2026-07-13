@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import ModalNuevaReceta from '../../../components/gestion/ModalNuevaReceta'
 import ModalEditarReceta from '../../../components/gestion/ModalEditarReceta'
 import ModalDetalleRecetas from '../../../components/gestion/ModalDetalleRecetas'
+import ModalRecetaEspecial from '../../../components/gestion/ModalRecetaEspecial'
+import ModalPrepararLote from '../../../components/gestion/ModalPrepararLote'
 import { costoDeIngredientes } from '../../../utils/unidades'
 
 export default function Recetas() {
@@ -16,6 +18,8 @@ export default function Recetas() {
   const [modalNueva, setModalNueva] = useState(false)
   const [modalEditar, setModalEditar] = useState(false)
   const [modalDetalle, setModalDetalle] = useState(false)
+  const [modalEspecial, setModalEspecial] = useState(false)
+  const [modalPreparar, setModalPreparar] = useState(false)
   const [recetaSeleccionada, setRecetaSeleccionada] = useState(null)
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null)
   const [busqueda, setBusqueda] = useState('')
@@ -130,6 +134,13 @@ export default function Recetas() {
               </button>
             </div>
             <button
+              onClick={() => { cargarDatos(false); setRecetaSeleccionada(null); setModalEspecial(true) }}
+              title="Combiná ingredientes para crear un nuevo producto (ej: una salsa) que después podés usar en otras recetas"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+            >
+              🧪 Receta especial
+            </button>
+            <button
               onClick={() => { cargarDatos(false); setModalNueva(true) }}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition"
             >
@@ -207,7 +218,12 @@ export default function Recetas() {
                     <tr key={grupo.productoId || grupo.recetas[0].id}
                       onClick={() => { setGrupoSeleccionado(grupo); setModalDetalle(true) }}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{grupo.producto?.nombre || grupo.recetas[0].nombre}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                        {grupo.producto?.nombre || grupo.recetas[0].nombre}
+                        {grupo.recetas[0].cantidadProducida && (
+                          <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full">🧪 Especial</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{tieneVariantes ? `${grupo.recetas.length} variantes` : 'Receta única'}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{grupo.recetas[0].ingredientes?.length || 0} ingredientes</td>
                       <td className="px-4 py-3 text-right font-bold text-green-700 dark:text-green-400">{costoTexto}</td>
@@ -252,6 +268,11 @@ export default function Recetas() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                           </svg>
                           {tieneVariantes ? `${grupo.recetas.length} variantes` : 'Receta única'}
+                        </div>
+                      )}
+                      {grupo.recetas[0].cantidadProducida && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-medium">
+                          🧪 Especial · rinde {parseFloat(grupo.recetas[0].cantidadProducida)} {grupo.producto?.unidadBase}
                         </div>
                       )}
                     </div>
@@ -346,13 +367,52 @@ export default function Recetas() {
           onEditar={(receta) => {
             setRecetaSeleccionada(receta)
             setModalDetalle(false)
-            setModalEditar(true)
+            // Las recetas especiales (cantidadProducida) se editan con su
+            // propio modal (nombre del producto, cuanto rinde, etc).
+            if (receta.cantidadProducida) setModalEspecial(true)
+            else setModalEditar(true)
+          }}
+          onPrepararLote={(receta) => {
+            setRecetaSeleccionada(receta)
+            setModalDetalle(false)
+            setModalPreparar(true)
           }}
           onEliminar={async (recetaId) => {
             // handleEliminar ya pide confirmación (evita el doble confirm)
             await handleEliminar(recetaId)
             setModalDetalle(false)
             setGrupoSeleccionado(null)
+          }}
+        />
+      )}
+
+      {modalEspecial && (
+        <ModalRecetaEspecial
+          receta={recetaSeleccionada}
+          ingredientes={ingredientes}
+          onClose={() => {
+            setModalEspecial(false)
+            setRecetaSeleccionada(null)
+          }}
+          onSave={() => {
+            cargarDatos()
+            setModalEspecial(false)
+            setRecetaSeleccionada(null)
+          }}
+        />
+      )}
+
+      {modalPreparar && recetaSeleccionada && (
+        <ModalPrepararLote
+          receta={recetaSeleccionada}
+          onClose={() => {
+            setModalPreparar(false)
+            setRecetaSeleccionada(null)
+          }}
+          onSave={() => {
+            cargarDatos()
+            setModalPreparar(false)
+            setRecetaSeleccionada(null)
           }}
         />
       )}

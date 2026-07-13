@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function ModalDetalleRecetas({ grupo, onClose, onEditar, onEliminar, calcularCosto }) {
+export default function ModalDetalleRecetas({ grupo, onClose, onEditar, onEliminar, onPrepararLote, calcularCosto }) {
   const [varianteActiva, setVarianteActiva] = useState(grupo.recetas[0].id)
   const recetaActiva = grupo.recetas.find(r => r.id === varianteActiva)
   const tieneVariantes = grupo.recetas.length > 1 && grupo.recetas.some(r => r.variante)
@@ -55,6 +55,18 @@ export default function ModalDetalleRecetas({ grupo, onClose, onEditar, onElimin
         {/* Contenido */}
         <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
           <div className="p-6">
+            {/* Info de receta especial: cuanto rinde y stock actual */}
+            {recetaActiva.cantidadProducida && (
+              <div className="mb-4 flex items-center gap-2 flex-wrap">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 rounded-lg text-sm font-medium">
+                  🧪 Receta especial: rinde {parseFloat(recetaActiva.cantidadProducida)} {grupo.producto?.unidadBase}
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-900/50 text-gray-700 dark:text-gray-300 rounded-lg text-sm">
+                  Stock actual: {parseFloat(grupo.producto?.stock ?? 0)} {grupo.producto?.unidadBase}
+                </div>
+              </div>
+            )}
+
             {/* Info de la variante */}
             {recetaActiva.variante && (
               <div className="mb-4 flex items-center gap-2">
@@ -146,6 +158,14 @@ export default function ModalDetalleRecetas({ grupo, onClose, onEditar, onElimin
             >
               Cerrar
             </button>
+            {recetaActiva.cantidadProducida && onPrepararLote && (
+              <button
+                onClick={() => onPrepararLote(recetaActiva)}
+                className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+              >
+                🧪 Preparar lote
+              </button>
+            )}
             <button
               onClick={() => onEditar(recetaActiva)}
               className="flex items-center gap-2 px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition"

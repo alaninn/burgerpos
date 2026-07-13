@@ -1,7 +1,46 @@
-const { Receta, RecetaIngrediente, Producto, Categoria, ProductoVariante } = require('../models');
+const { Receta, RecetaIngrediente, Producto, Categoria, ProductoVariante, StockMovimiento } = require('../models');
 const { sequelize } = require('../models');
 const { Op } = require('sequelize');
-const { costoPorUnidadBase, persistirCostoReceta, unidadesCompatibles } = require('../utils/costoReceta');
+const { costoPorUnidadBase, persistirCostoReceta, unidadesCompatibles, convertir } = require('../utils/costoReceta');
+
+// Nombre fijo de la categoria de stock donde viven los productos creados por
+// una "receta especial" (salsas, preparaciones combinadas). Se crea sola la
+// primera vez que el negocio usa esta funcion.
+const CATEGORIA_ESPECIALES = 'Preparaciones';
+
+async function categoriaEspeciales(negocioId, transaction) {
+  const [categoria] = await Categoria.findOrCreate({
+    where: { negocioId, nombre: CATEGORIA_ESPECIALES },
+    defaults: { negocioId, nombre: CATEGORIA_ESPECIALES, tipo: 'ingrediente' },
+    transaction
+  });
+  return categoria;
+}
+
+// Valida los ingredientes de una receta (especial o de menu): que existan,
+// que no sean un producto elaborado del menu, que la unidad sea compatible
+// y que la cantidad sea mayor a 0. excluirId evita que un producto se use
+// como ingrediente de si mismo (ciclo directo).
+async function validarIngredientes(ingredientes, negocioId, transaction, excluirId) {
+  for (const ing of ingredientes) {
+    if (excluirId && ing.ingredienteId === excluirId) {
+      throw new Error('Una receta no puede usarse a si misma como ingrediente');
+    }
+    const producto = await Producto.findOne({
+      where: { id: ing.ingredienteId, negocioId },
+      include: [{ model: Categoria, as: 'categoria' }],
+      transaction
+    });
+    if (!producto) throw new Error(`Ingrediente ${ing.ingredienteId} no encontrado`);
+    if (producto.categoria?.tipo === 'elaborado') {
+      throw new Error(`"${producto.nombre}" es un producto elaborado del menú y no puede usarse como ingrediente`);
+    }
+    if (!unidadesCompatibles(producto.unidadBase).includes(ing.unidad)) {
+      throw new Error(`La unidad "${ing.unidad}" no es compatible con la unidad base "${producto.unidadBase}" del ingrediente "${producto.nombre}"`);
+    }
+    if (parseFloat(ing.cantidad) <= 0) throw new Error('La cantidad debe ser mayor a 0');
+  }
+}
 
 exports.listar = async (req, res) => {
   try {
@@ -454,5 +493,220 @@ exports.calcularCosto = async (req, res) => {
   } catch (error) {
     console.error('Error al calcular costo:', error);
     res.status(500).json({ error: 'Error al calcular costo' });
+  }
+};
+
+const includeRecetaCompleta = [
+  {
+    model: RecetaIngrediente,
+    as: 'ingredientes',
+    include: [{ model: Producto, as: 'ingrediente', include: [{ model: Categoria, as: 'categoria' }] }]
+  },
+  { model: Producto, as: 'productoMenu', include: [{ model: Categoria, as: 'categoria' }] },
+  { model: ProductoVariante, as: 'variante' }
+];
+
+// Receta especial: combina productos de stock para crear un nuevo producto
+// intermedio (ej: una salsa) que rinde una cantidad declarada (cantidadProducida
+// en la unidad base del producto resultante) y que despues puede usarse como
+// ingrediente de otras recetas. Crea el Producto y la Receta en un solo paso.
+exports.crearEspecial = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { negocioId } = req.params;
+    const { nombre, unidadProducida, cantidadProducida, ingredientes, extraCosto, notas } = req.body;
+
+    if (!nombre?.trim()) { await transaction.rollback(); return res.status(400).json({ error: 'Ingresá el nombre del producto a preparar' }); }
+    if (!['kg', 'gramo', 'litro', 'ml', 'unidad'].includes(unidadProducida)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Unidad de producción inválida' });
+    }
+    const rinde = parseFloat(cantidadProducida);
+    if (!rinde || rinde <= 0) { await transaction.rollback(); return res.status(400).json({ error: 'Indicá cuánto rinde la receta (debe ser mayor a 0)' }); }
+    if (!ingredientes || ingredientes.length === 0) { await transaction.rollback(); return res.status(400).json({ error: 'Agregá al menos un ingrediente' }); }
+
+    try {
+      await validarIngredientes(ingredientes, negocioId, transaction);
+    } catch (e) {
+      await transaction.rollback();
+      return res.status(400).json({ error: e.message });
+    }
+
+    const categoria = await categoriaEspeciales(negocioId, transaction);
+
+    // El producto resultante no se "compra": se prepara. unidadCompra queda
+    // igual a la base y cantidadPorUnidadCompra en 1 para que el motor de
+    // costos lo trate como "precio directo por unidad base" sin conversion.
+    const producto = await Producto.create({
+      negocioId,
+      categoriaId: categoria.id,
+      nombre: nombre.trim(),
+      unidadBase: unidadProducida,
+      unidadCompra: unidadProducida,
+      unidadContenidoCaja: null,
+      cantidadPorUnidadCompra: 1,
+      precioVenta: 0,
+      precioCosto: 0,
+      stock: 0,
+      activo: true
+    }, { transaction });
+
+    const receta = await Receta.create({
+      negocioId,
+      nombre: nombre.trim(),
+      productoMenuId: producto.id,
+      varianteId: null,
+      cantidadProducida: rinde,
+      extraCosto: parseFloat(extraCosto) || 0,
+      notas: notas || null
+    }, { transaction });
+
+    for (const ing of ingredientes) {
+      await RecetaIngrediente.create({
+        recetaId: receta.id,
+        ingredienteId: ing.ingredienteId,
+        cantidad: ing.cantidad,
+        unidad: ing.unidad
+      }, { transaction });
+    }
+
+    await persistirCostoReceta(receta, { transaction });
+    await transaction.commit();
+
+    const recetaCompleta = await Receta.findByPk(receta.id, { include: includeRecetaCompleta });
+    res.status(201).json(recetaCompleta);
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error al crear receta especial:', error);
+    res.status(500).json({ error: 'Error al crear receta especial' });
+  }
+};
+
+exports.actualizarEspecial = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { negocioId, recetaId } = req.params;
+    const { nombre, unidadProducida, cantidadProducida, ingredientes, extraCosto, notas } = req.body;
+
+    const receta = await Receta.findOne({ where: { id: recetaId, negocioId }, transaction });
+    if (!receta || !receta.productoMenuId) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Receta especial no encontrada' });
+    }
+    const producto = await Producto.findOne({ where: { id: receta.productoMenuId, negocioId }, transaction });
+    if (!producto) { await transaction.rollback(); return res.status(404).json({ error: 'Producto no encontrado' }); }
+
+    if (unidadProducida && !['kg', 'gramo', 'litro', 'ml', 'unidad'].includes(unidadProducida)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Unidad de producción inválida' });
+    }
+    let rinde = receta.cantidadProducida;
+    if (cantidadProducida !== undefined) {
+      rinde = parseFloat(cantidadProducida);
+      if (!rinde || rinde <= 0) { await transaction.rollback(); return res.status(400).json({ error: 'Indicá cuánto rinde la receta (debe ser mayor a 0)' }); }
+    }
+
+    if (ingredientes) {
+      if (ingredientes.length === 0) { await transaction.rollback(); return res.status(400).json({ error: 'Agregá al menos un ingrediente' }); }
+      try {
+        await validarIngredientes(ingredientes, negocioId, transaction, producto.id);
+      } catch (e) {
+        await transaction.rollback();
+        return res.status(400).json({ error: e.message });
+      }
+    }
+
+    await producto.update({
+      nombre: nombre?.trim() || producto.nombre,
+      unidadBase: unidadProducida || producto.unidadBase,
+      unidadCompra: unidadProducida || producto.unidadCompra
+    }, { transaction });
+
+    await receta.update({
+      nombre: nombre?.trim() || receta.nombre,
+      cantidadProducida: rinde,
+      extraCosto: extraCosto !== undefined ? (parseFloat(extraCosto) || 0) : receta.extraCosto,
+      notas: notas !== undefined ? notas : receta.notas
+    }, { transaction });
+
+    if (ingredientes) {
+      await RecetaIngrediente.destroy({ where: { recetaId: receta.id }, transaction });
+      for (const ing of ingredientes) {
+        await RecetaIngrediente.create({
+          recetaId: receta.id,
+          ingredienteId: ing.ingredienteId,
+          cantidad: ing.cantidad,
+          unidad: ing.unidad
+        }, { transaction });
+      }
+    }
+
+    const recetaConIng = await Receta.findByPk(receta.id, {
+      include: [{ model: RecetaIngrediente, as: 'ingredientes', include: [{ model: Producto, as: 'ingrediente' }] }],
+      transaction
+    });
+    await persistirCostoReceta(recetaConIng, { transaction });
+
+    await transaction.commit();
+    const recetaCompleta = await Receta.findByPk(receta.id, { include: includeRecetaCompleta });
+    res.json(recetaCompleta);
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error al actualizar receta especial:', error);
+    res.status(500).json({ error: 'Error al actualizar receta especial' });
+  }
+};
+
+// Preparar un lote: consume el stock de los ingredientes (segun la receta,
+// escalados a la cantidad pedida) y suma esa cantidad al stock del producto
+// resultante. Ej: la receta rinde 500g, se piden 1000g -> multiplicador 2.
+exports.prepararLote = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { negocioId, recetaId } = req.params;
+    const cantidadPreparar = parseFloat(req.body.cantidad);
+    if (!cantidadPreparar || cantidadPreparar <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Indicá una cantidad válida a preparar' });
+    }
+
+    const receta = await Receta.findOne({
+      where: { id: recetaId, negocioId },
+      include: [
+        { model: RecetaIngrediente, as: 'ingredientes', include: [{ model: Producto, as: 'ingrediente' }] },
+        { model: Producto, as: 'productoMenu' }
+      ],
+      transaction
+    });
+    if (!receta || !receta.cantidadProducida || !receta.productoMenu) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Receta especial no encontrada' });
+    }
+
+    const multiplicador = cantidadPreparar / parseFloat(receta.cantidadProducida);
+
+    for (const item of receta.ingredientes) {
+      const ing = item.ingrediente;
+      if (!ing) continue;
+      const cantidadEnBase = convertir(item.cantidad, item.unidad, ing.unidadBase) * multiplicador;
+      await ing.update({ stock: (Number(ing.stock) || 0) - cantidadEnBase }, { transaction });
+      await StockMovimiento.create({
+        negocioId, productoId: ing.id, tipo: 'consumo_preparacion', cantidad: cantidadEnBase
+      }, { transaction });
+    }
+
+    const producto = receta.productoMenu;
+    await producto.update({ stock: (Number(producto.stock) || 0) + cantidadPreparar }, { transaction });
+    await StockMovimiento.create({
+      negocioId, productoId: producto.id, tipo: 'preparacion', cantidad: cantidadPreparar
+    }, { transaction });
+
+    await transaction.commit();
+    const productoActualizado = await Producto.findByPk(producto.id);
+    res.json({ success: true, producto: productoActualizado, message: `Lote preparado: +${cantidadPreparar} ${producto.unidadBase} de ${producto.nombre}` });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error al preparar lote:', error);
+    res.status(500).json({ error: 'Error al preparar el lote' });
   }
 };
