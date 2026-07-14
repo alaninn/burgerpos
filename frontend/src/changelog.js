@@ -6,9 +6,17 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.21.2'
+export const VERSION_ACTUAL = '1.21.3'
 
 export const CHANGELOG = [
+  {
+    version: '1.21.3',
+    fecha: '2026-07-14',
+    titulo: 'Pedidos programados: mínimo 1 hora de anticipación',
+    cambios: [
+      { t: 'Con el toggle activado, el cliente ya no puede elegir "lo antes posible": tiene que programar un horario específico, con al menos 1 hora de anticipación (hay tiempos de preparación y espera).' },
+    ],
+  },
   {
     version: '1.21.2',
     fecha: '2026-07-14',

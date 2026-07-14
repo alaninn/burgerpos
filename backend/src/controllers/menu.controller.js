@@ -133,11 +133,22 @@ exports.crearPedido = async (req, res) => {
     const negocioId = negocio.id;
     const { modalidad, items, clienteNombre, clienteTelefono, clienteDireccion, clienteLat, clienteLng, metodoPago, notas, codigoCupon, zonaEntrega, costoEnvioCustom, programadoPara } = req.body;
 
-    // Pedido programado: solo si el negocio lo tiene habilitado y la fecha es futura.
+    // Pedido programado: solo si el negocio lo tiene habilitado y la fecha
+    // cumple el minimo de 1 hora de anticipacion (no se confia en el cliente:
+    // se revalida en el server aunque el datetime-local ya lo restrinja).
+    const MINUTOS_MINIMO_PROGRAMADO = 60;
     let programadoParaVal = null;
-    if (programadoPara && negocio.configuracion?.pedidosProgramados === true) {
+    if (negocio.configuracion?.pedidosProgramados === true) {
+      if (!programadoPara) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Elegí para qué hora querés tu pedido' });
+      }
       const fecha = new Date(programadoPara);
-      if (!isNaN(fecha.getTime()) && fecha.getTime() > Date.now()) programadoParaVal = fecha;
+      if (isNaN(fecha.getTime()) || fecha.getTime() < Date.now() + MINUTOS_MINIMO_PROGRAMADO * 60000) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: 'Elegí un horario al menos 1 hora más tarde' });
+      }
+      programadoParaVal = fecha;
     }
 
     if (!items || items.length === 0) {

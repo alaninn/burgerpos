@@ -637,10 +637,11 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
   const [coordsCliente, setCoordsCliente] = useState(null)
   const [negocioCoordsLocal, setNegocioCoordsLocal] = useState(null)
   const [clienteReconocido, setClienteReconocido] = useState(null)
-  // Pedido programado: "ahora" (lo antes posible) o "programado" (el cliente
-  // elige fecha/hora). Solo se muestra si el negocio activo el toggle.
-  const [momentoEntrega, setMomentoEntrega] = useState('ahora')
+  // Pedido programado: si el negocio activo el toggle, el cliente tiene que
+  // elegir para que hora lo quiere (minimo 1 hora desde ahora: hay tiempos y
+  // esperas, no se puede programar "para ya" ni para dentro de 15 minutos).
   const [horaProgramada, setHoraProgramada] = useState('')
+  const MINUTOS_MINIMO_PROGRAMADO = 60
   const debounceClienteRef = useRef(null)
 
   // ✅ ✅ GUARDADO EN EL ESTADO, NUNCA MAS DESAPARECE
@@ -820,9 +821,10 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
     if (bajoMinimo) return toast.error(`Monto mínimo: $${montoMinimo.toLocaleString('es-AR')}`)
     if (modalidad === 'delivery' && tieneZonasGeo && coordsCliente && zonaDetectada === false)
       return toast.error('No realizamos envíos a esa dirección')
-    if (conf.pedidosProgramados && momentoEntrega === 'programado') {
+    if (conf.pedidosProgramados) {
       if (!horaProgramada) return toast.error('Elegí para qué hora querés tu pedido')
-      if (new Date(horaProgramada).getTime() <= Date.now()) return toast.error('Elegí una fecha y hora futura')
+      if (new Date(horaProgramada).getTime() < Date.now() + MINUTOS_MINIMO_PROGRAMADO * 60000)
+        return toast.error(`Elegí un horario al menos ${MINUTOS_MINIMO_PROGRAMADO / 60} hora más tarde`)
     }
 
     setLoading(true)
@@ -840,7 +842,7 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
         codigoCupon: cuponAplicado?.codigo || '',
         zonaEntrega: zonaInfo?.nombre || '',
         costoEnvioCustom: modalidad === 'delivery' && costoEnvio > 0 ? costoEnvio : undefined,
-        programadoPara: (conf.pedidosProgramados && momentoEntrega === 'programado' && horaProgramada) ? new Date(horaProgramada).toISOString() : undefined,
+        programadoPara: (conf.pedidosProgramados && horaProgramada) ? new Date(horaProgramada).toISOString() : undefined,
         items: carrito.map(i => ({
           productoId: i.id, cantidad: i.cantidad,
           varianteId: i.varianteId || null,
@@ -881,7 +883,7 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
         </div>
         <h2 className="text-3xl font-black text-white mb-2">¡Pedido enviado!</h2>
         <p className="text-sm mb-8" style={{ color: '#8e8e93' }}>El local recibió tu pedido.</p>
-        {conf.pedidosProgramados && momentoEntrega === 'programado' && horaProgramada && (
+        {conf.pedidosProgramados && horaProgramada && (
           <p className="text-sm font-bold mb-4" style={{ color }}>
             ⏰ Programado para el {new Date(horaProgramada).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
           </p>
@@ -1254,25 +1256,12 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
 
           {conf.pedidosProgramados && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8e8e93' }}>¿Cuándo lo querés?</p>
-              <div className="flex gap-2 mb-2">
-                <button type="button" onClick={() => setMomentoEntrega('ahora')}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all"
-                  style={momentoEntrega === 'ahora' ? { background: color, borderColor: color, color: '#fff' } : { borderColor: '#2c2c2e', color: '#8e8e93' }}>
-                  Lo antes posible
-                </button>
-                <button type="button" onClick={() => setMomentoEntrega('programado')}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all"
-                  style={momentoEntrega === 'programado' ? { background: color, borderColor: color, color: '#fff' } : { borderColor: '#2c2c2e', color: '#8e8e93' }}>
-                  Programar
-                </button>
-              </div>
-              {momentoEntrega === 'programado' && (
-                <input type="datetime-local" value={horaProgramada}
-                  min={new Date(Date.now() + 15 * 60000).toISOString().slice(0, 16)}
-                  onChange={e => setHoraProgramada(e.target.value)}
-                  className={inputCls} style={{ ...inputStyle, width: '100%' }} />
-              )}
+              <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8e8e93' }}>¿Para qué hora querés tu pedido?</p>
+              <input type="datetime-local" value={horaProgramada}
+                min={new Date(Date.now() + MINUTOS_MINIMO_PROGRAMADO * 60000).toISOString().slice(0, 16)}
+                onChange={e => setHoraProgramada(e.target.value)}
+                className={inputCls} style={{ ...inputStyle, width: '100%' }} />
+              <p className="text-xs mt-1" style={{ color: '#8e8e93' }}>Mínimo 1 hora de anticipación (hay tiempos de preparación y espera).</p>
             </div>
           )}
 
