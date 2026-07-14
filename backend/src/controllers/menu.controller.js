@@ -131,7 +131,14 @@ exports.crearPedido = async (req, res) => {
     }
 
     const negocioId = negocio.id;
-    const { modalidad, items, clienteNombre, clienteTelefono, clienteDireccion, clienteLat, clienteLng, metodoPago, notas, codigoCupon, zonaEntrega, costoEnvioCustom } = req.body;
+    const { modalidad, items, clienteNombre, clienteTelefono, clienteDireccion, clienteLat, clienteLng, metodoPago, notas, codigoCupon, zonaEntrega, costoEnvioCustom, programadoPara } = req.body;
+
+    // Pedido programado: solo si el negocio lo tiene habilitado y la fecha es futura.
+    let programadoParaVal = null;
+    if (programadoPara && negocio.configuracion?.pedidosProgramados === true) {
+      const fecha = new Date(programadoPara);
+      if (!isNaN(fecha.getTime()) && fecha.getTime() > Date.now()) programadoParaVal = fecha;
+    }
 
     if (!items || items.length === 0) {
       await t.rollback();
@@ -357,7 +364,8 @@ exports.crearPedido = async (req, res) => {
       descuentosDetalles: descuentosDetalles.length > 0 ? descuentosDetalles : null,
       propina: 0,
       subtotal,
-      total
+      total,
+      programadoPara: programadoParaVal
     }, { transaction: t });
 
     await ItemPedido.bulkCreate(itemsData.map(i => ({ ...i, pedidoId: pedido.id })), { transaction: t });

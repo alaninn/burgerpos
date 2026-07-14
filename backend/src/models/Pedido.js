@@ -32,6 +32,9 @@ module.exports = (sequelize, DataTypes) => {
     transaccionMPEstado: { type: DataTypes.STRING, allowNull: true },
     transaccionMPData: { type: DataTypes.JSONB, allowNull: true, defaultValue: {} },
     tiempoEstimado: { type: DataTypes.INTEGER, defaultValue: 30 },
+    // Pedido programado: el cliente eligio para que hora lo quiere (en vez de
+    // "lo antes posible"). Null = pedido normal, sin programar.
+    programadoPara: { type: DataTypes.DATE, allowNull: true },
     requiereFactura: { type: DataTypes.BOOLEAN, defaultValue: false },
     cuitFacturacion: { type: DataTypes.STRING, allowNull: true }
   }, {

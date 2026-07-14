@@ -6,9 +6,20 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.21.1'
+export const VERSION_ACTUAL = '1.21.2'
 
 export const CHANGELOG = [
+  {
+    version: '1.21.2',
+    fecha: '2026-07-14',
+    titulo: 'Fix: Configuraciones no abría + Pedidos programados ya funciona',
+    destacados: [
+      { titulo: 'Pedidos programados, de verdad', detalle: 'Al activar el toggle en Configuraciones → Pedidos, tus clientes ahora pueden elegir "Lo antes posible" o "Programar" con fecha y hora al hacer su pedido. Vos lo ves marcado con ⏰ en el panel de pedidos.' },
+    ],
+    cambios: [
+      { t: 'Se corrigió un error que impedía abrir Configuraciones.' },
+    ],
+  },
   {
     version: '1.21.1',
     fecha: '2026-07-13',

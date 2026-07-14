@@ -581,7 +581,7 @@ export default function Configuraciones() {
     })
 
   // Métodos de pago personalizados (además de los fijos): {key, label, icon}
-  const metodosPersonalizados = config.metodosPersonalizados || []
+  const metodosPersonalizados = config?.metodosPersonalizados || []
   const agregarMetodoPersonalizado = () => {
     const nombre = prompt('Nombre del método de pago (ej: "Cuenta DNI", "QR del banco")')
     if (!nombre || !nombre.trim()) return
@@ -686,6 +686,7 @@ export default function Configuraciones() {
               {[
                 { key: 'recibirPedidos', label: 'Recibir pedidos.' },
                 { key: 'recibirWhatsapp', label: 'Recibir confirmación por WhatsApp.' },
+                { key: 'pedidosProgramados', label: 'Pedidos programados (el cliente puede elegir para qué hora quiere su pedido).' },
                 { key: 'aceptaPropinas', label: 'Aceptar propinas.' },
                 { key: 'datosClienteObligatorios', label: 'Datos del cliente obligatorios.' },
                 { key: 'venderSinStock', label: 'Vender sin stock (nunca frenar la venta aunque no haya stock).' },

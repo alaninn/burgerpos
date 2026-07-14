@@ -637,6 +637,10 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
   const [coordsCliente, setCoordsCliente] = useState(null)
   const [negocioCoordsLocal, setNegocioCoordsLocal] = useState(null)
   const [clienteReconocido, setClienteReconocido] = useState(null)
+  // Pedido programado: "ahora" (lo antes posible) o "programado" (el cliente
+  // elige fecha/hora). Solo se muestra si el negocio activo el toggle.
+  const [momentoEntrega, setMomentoEntrega] = useState('ahora')
+  const [horaProgramada, setHoraProgramada] = useState('')
   const debounceClienteRef = useRef(null)
 
   // ✅ ✅ GUARDADO EN EL ESTADO, NUNCA MAS DESAPARECE
@@ -816,7 +820,11 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
     if (bajoMinimo) return toast.error(`Monto mínimo: $${montoMinimo.toLocaleString('es-AR')}`)
     if (modalidad === 'delivery' && tieneZonasGeo && coordsCliente && zonaDetectada === false)
       return toast.error('No realizamos envíos a esa dirección')
-    
+    if (conf.pedidosProgramados && momentoEntrega === 'programado') {
+      if (!horaProgramada) return toast.error('Elegí para qué hora querés tu pedido')
+      if (new Date(horaProgramada).getTime() <= Date.now()) return toast.error('Elegí una fecha y hora futura')
+    }
+
     setLoading(true)
     try {
       const zonaInfo = tieneZonasGeo
@@ -832,6 +840,7 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
         codigoCupon: cuponAplicado?.codigo || '',
         zonaEntrega: zonaInfo?.nombre || '',
         costoEnvioCustom: modalidad === 'delivery' && costoEnvio > 0 ? costoEnvio : undefined,
+        programadoPara: (conf.pedidosProgramados && momentoEntrega === 'programado' && horaProgramada) ? new Date(horaProgramada).toISOString() : undefined,
         items: carrito.map(i => ({
           productoId: i.id, cantidad: i.cantidad,
           varianteId: i.varianteId || null,
@@ -872,6 +881,11 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
         </div>
         <h2 className="text-3xl font-black text-white mb-2">¡Pedido enviado!</h2>
         <p className="text-sm mb-8" style={{ color: '#8e8e93' }}>El local recibió tu pedido.</p>
+        {conf.pedidosProgramados && momentoEntrega === 'programado' && horaProgramada && (
+          <p className="text-sm font-bold mb-4" style={{ color }}>
+            ⏰ Programado para el {new Date(horaProgramada).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
         <div className="rounded-2xl py-6 px-4 mb-6" style={{ background: '#1a1a1a', border: '1px solid #2c2c2e' }}>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#8e8e93' }}>Número de pedido</p>
           <p className="text-6xl font-black" style={{ color }}>#{numeroPedido}</p>
@@ -1237,6 +1251,30 @@ function ModalPedido({ negocio, carrito, setCarrito, modalidad, setModalidad, on
               </div>
             </div>
           </div>
+
+          {conf.pedidosProgramados && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8e8e93' }}>¿Cuándo lo querés?</p>
+              <div className="flex gap-2 mb-2">
+                <button type="button" onClick={() => setMomentoEntrega('ahora')}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all"
+                  style={momentoEntrega === 'ahora' ? { background: color, borderColor: color, color: '#fff' } : { borderColor: '#2c2c2e', color: '#8e8e93' }}>
+                  Lo antes posible
+                </button>
+                <button type="button" onClick={() => setMomentoEntrega('programado')}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all"
+                  style={momentoEntrega === 'programado' ? { background: color, borderColor: color, color: '#fff' } : { borderColor: '#2c2c2e', color: '#8e8e93' }}>
+                  Programar
+                </button>
+              </div>
+              {momentoEntrega === 'programado' && (
+                <input type="datetime-local" value={horaProgramada}
+                  min={new Date(Date.now() + 15 * 60000).toISOString().slice(0, 16)}
+                  onChange={e => setHoraProgramada(e.target.value)}
+                  className={inputCls} style={{ ...inputStyle, width: '100%' }} />
+              )}
+            </div>
+          )}
 
           <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2}
             placeholder="Comentarios del pedido (opcional)"

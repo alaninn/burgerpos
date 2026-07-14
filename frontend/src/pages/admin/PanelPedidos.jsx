@@ -144,6 +144,11 @@ function PedidoCard({ pedido, onUpdate, onClick }) {
               NUEVO
             </span>
           )}
+          {pedido.programadoPara && (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              ⏰ {new Date(pedido.programadoPara).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
