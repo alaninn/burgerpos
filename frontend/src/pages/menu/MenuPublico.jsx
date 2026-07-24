@@ -4,6 +4,7 @@ import axios from 'axios'
 import toast, { Toaster } from 'react-hot-toast'
 import ModalMapaGPS from '../../components/ModalMapaGPS'
 import DireccionAutocomplete from '../../components/DireccionAutocomplete'
+import MapaCobertura from '../../components/MapaCobertura'
 import { detectarZonaEntrega, calcularCostoZona } from '../../utils/zonas'
 
 const api = axios.create({ baseURL: '/api', headers: { 'Content-Type': 'application/json' } })
@@ -1639,6 +1640,21 @@ export default function MenuPublico() {
                 </div>
               )
             })
+          )}
+
+          {/* ── Cobertura de envíos ── */}
+          {!busqueda && conf.modalidades?.delivery && (conf.zonasEntrega || []).some(z => z && ((z.tipo === 'poligono' && z.coordenadas?.length >= 3) || (z.tipo === 'radio' && Number(z.radioKm) > 0))) && (
+            <div className="px-2 md:px-5 pt-4 md:pt-5">
+              <div className="rounded-2xl overflow-hidden" style={{ background: '#000', border: '1px solid rgba(255,255,255,0.12)' }}>
+                <div className="py-3 md:py-4 px-3 md:px-4 text-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <h2 className="text-xs sm:text-sm font-black text-white uppercase tracking-widest">Cobertura de envíos</h2>
+                  <p className="text-[10px] sm:text-xs mt-1" style={{ color: '#8e8e93' }}>Hasta acá llegamos con el delivery</p>
+                </div>
+                <div className="p-3 sm:p-4">
+                  <MapaCobertura negocio={negocio} color={color} />
+                </div>
+              </div>
+            </div>
           )}
         </div>
 

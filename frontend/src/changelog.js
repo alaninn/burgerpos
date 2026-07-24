@@ -6,9 +6,21 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.23.0'
+export const VERSION_ACTUAL = '1.24.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.24.0',
+    fecha: '2026-07-24',
+    titulo: 'Tus clientes ven hasta dónde llegás con el delivery',
+    destacados: [
+      { titulo: 'Mapa de cobertura en tu menú', detalle: 'Si tenés delivery con zonas de entrega configuradas, ahora aparece una sección "Cobertura de envíos" en tu menú online: un mapa que muestra hasta dónde llegás, con el costo de cada zona.' },
+    ],
+    cambios: [
+      { t: 'La cobertura sale de las zonas que cargaste en Configuraciones → Zonas de entrega (polígonos y radios), no hay que cargar nada nuevo.' },
+      { t: 'Usa el mismo estilo de mapa que el panel de pedidos, respetando el tema que tengas configurado.' },
+    ],
+  },
   {
     version: '1.23.0',
     fecha: '2026-07-24',
