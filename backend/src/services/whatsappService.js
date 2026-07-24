@@ -533,12 +533,11 @@ class WhatsAppMultiTenantService {
   }
 
   /**
-   * Arma el link público al menú del negocio
+   * Arma el link público al menú del negocio (misma lógica que usa el prompt
+   * de la IA, para que el cliente siempre reciba exactamente el mismo link)
    */
   construirLinkMenu(negocio) {
-    const base = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '');
-    if (!base) return '';
-    return negocio?.slug ? `${base}/menu/${negocio.slug}` : `${base}/menu`;
+    return geminiService.construirLinkMenu(negocio);
   }
 
   /**

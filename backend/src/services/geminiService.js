@@ -59,8 +59,17 @@ function formatearMetodosPago(metodosPago) {
   return nombres.length ? nombres.join(', ') : 'No informados';
 }
 
+/**
+ * Arma el link publico al menu del negocio.
+ *
+ * Usa PUBLIC_URL (el dominio que ven los clientes) y recien despues cae a
+ * FRONTEND_URL. Son cosas distintas: FRONTEND_URL puede apuntar al host interno
+ * del servidor, que no resuelve desde afuera. Este link lo abre un cliente
+ * desde su celular, asi que tiene que ser el dominio publico si o si.
+ */
 function construirLinkMenu(negocio) {
-  const base = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '');
+  const raiz = process.env.PUBLIC_URL || process.env.FRONTEND_URL || '';
+  const base = raiz.split(',')[0].trim().replace(/\/$/, '');
   if (!base) return '';
   return negocio?.slug ? `${base}/menu/${negocio.slug}` : `${base}/menu`;
 }
@@ -135,4 +144,4 @@ async function responderConsulta(negocio, mensajeCliente) {
   }
 }
 
-module.exports = { responderConsulta };
+module.exports = { responderConsulta, construirLinkMenu };
