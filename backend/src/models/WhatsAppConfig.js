@@ -45,8 +45,14 @@ module.exports = (sequelize, DataTypes) => {
         },
         bot: {
           activo: false,
+          nombre: '',
+          tono: 'amigable',
           saludoInicial: '¡Hola! 👋 Gracias por escribirnos.\n\nMirá nuestro menú y hacé tu pedido acá 👉 {{link_menu}}\n\n_{{nombre_negocio}}_',
-          enEspera: 'En breve te va a responder alguien de nuestro equipo. ¡Gracias por tu paciencia! 🙌'
+          enEspera: 'En breve te va a responder alguien de nuestro equipo. ¡Gracias por tu paciencia! 🙌',
+          reglas: '',
+          datosExtra: '',
+          conocerMenu: false,
+          faqs: []
         }
       }
     }

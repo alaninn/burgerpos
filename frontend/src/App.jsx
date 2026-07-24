@@ -20,6 +20,7 @@ import Reportes from './pages/admin/Reportes'
 import SoporteNegocio from './pages/admin/Soporte'
 import CentroControl from './pages/admin/CentroControl'
 import Configuraciones from './pages/admin/Configuraciones'
+import WhatsappBot from './pages/admin/WhatsappBot'
 import Fiscal from './pages/admin/Fiscal'
 import Descuentos from './pages/admin/Descuentos'
 // Gestión
@@ -100,6 +101,7 @@ function AppRoutes() {
         <Route path="soporte" element={<SoporteNegocio />} />
         <Route path="centro-control" element={<CentroControl />} />
         <Route path="configuraciones" element={<Configuraciones />} />
+        <Route path="whatsapp-bot" element={<WhatsappBot />} />
         <Route path="fiscal" element={<Fiscal />} />
         <Route path="gestion/gastos" element={<GastosDiarios />} />
         <Route path="gestion/stock" element={<Stock />} />

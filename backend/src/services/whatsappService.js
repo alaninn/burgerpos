@@ -3,7 +3,8 @@ const pino = require('pino');
 const qrcode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
-const { WhatsAppConfig, Negocio } = require('../models');
+const { Op } = require('sequelize');
+const { WhatsAppConfig, Negocio, Producto, Categoria } = require('../models');
 const geminiService = require('./geminiService');
 
 class WhatsAppMultiTenantService {
@@ -24,6 +25,11 @@ class WhatsAppMultiTenantService {
     this.mensajesPropios = new Map(); // messageId → timestamp
     this.CONVERSACION_WINDOW = 6 * 60 * 60 * 1000; // 6 horas
     this.MAX_RESPUESTAS_IA = 10; // tope por conversacion, evita loops y abuso
+
+    // Cache del resumen del menu por negocio (solo cuando el bot "conoce el
+    // menu"): evita pegarle a la DB en cada mensaje entrante.
+    this.menuCache = new Map(); // negocioId → { texto, expira }
+    this.MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
     // Barrido periodico: sin esto el Map crece indefinidamente
     this.limpiezaConversaciones = setInterval(
@@ -517,7 +523,9 @@ class WhatsAppMultiTenantService {
       // tiene que recibir el mensaje de espera y no quedarse sin respuesta.
       let respuesta = null;
       try {
-        respuesta = await geminiService.responderConsulta(negocio, texto);
+        // El menú solo se carga si el negocio activó "el bot conoce mi menú"
+        const menuTexto = botConfig.conocerMenu ? await this.obtenerMenuResumen(negocioId) : '';
+        respuesta = await geminiService.responderConsulta(negocio, texto, botConfig, menuTexto);
       } catch (error) {
         console.error(`Error inesperado de la IA (negocio ${negocioId}):`, error.message);
       }
@@ -538,6 +546,59 @@ class WhatsAppMultiTenantService {
    */
   construirLinkMenu(negocio) {
     return geminiService.construirLinkMenu(negocio);
+  }
+
+  /**
+   * Arma un resumen del menú (productos activos, SIN precios) para inyectar al
+   * prompt cuando el negocio activa "el bot conoce mi menú". Cacheado 5 min por
+   * negocio: un mensaje entrante no debe disparar una query pesada cada vez.
+   * Nunca lanza: si falla, devuelve '' y el bot sigue funcionando sin menú.
+   */
+  async obtenerMenuResumen(negocioId) {
+    const cacheado = this.menuCache.get(negocioId);
+    if (cacheado && Date.now() < cacheado.expira) return cacheado.texto;
+
+    let texto = '';
+    try {
+      // Mismo criterio que el menú público: solo productos vendibles. Las
+      // categorías de tipo 'ingrediente' son insumos de stock (carne, cebolla,
+      // mayonesa) y NO se venden; los productos sin categoría tampoco aparecen
+      // en la tienda. Así el bot no ofrece cosas que el cliente no puede pedir.
+      const productos = await Producto.findAll({
+        where: { negocioId, activo: true },
+        include: [{
+          model: Categoria,
+          as: 'categoria',
+          attributes: ['nombre'],
+          where: { activo: true, tipo: { [Op.ne]: 'ingrediente' } },
+          required: true
+        }],
+        order: [['orden', 'ASC'], ['nombre', 'ASC']],
+        attributes: ['nombre', 'descripcion'],
+        limit: 200 // tope defensivo: menús enormes no explotan el prompt
+      });
+
+      // Agrupar por categoría, sin precios (la fuente de verdad es el menú web)
+      const porCategoria = new Map();
+      for (const p of productos) {
+        const cat = p.categoria?.nombre || 'Otros';
+        if (!porCategoria.has(cat)) porCategoria.set(cat, []);
+        const desc = (p.descripcion || '').trim().slice(0, 80);
+        porCategoria.get(cat).push(desc ? `${p.nombre} (${desc})` : p.nombre);
+      }
+
+      const bloques = [];
+      for (const [cat, items] of porCategoria.entries()) {
+        bloques.push(`${cat}: ${items.join(', ')}`);
+      }
+      texto = bloques.join('\n');
+    } catch (error) {
+      console.error(`Error obteniendo menú para el bot (negocio ${negocioId}):`, error.message);
+      texto = '';
+    }
+
+    this.menuCache.set(negocioId, { texto, expira: Date.now() + this.MENU_CACHE_TTL });
+    return texto;
   }
 
   /**
@@ -580,8 +641,14 @@ class WhatsAppMultiTenantService {
   getDefaultBotConfig() {
     return {
       activo: false,
+      nombre: '',
+      tono: 'amigable',
       saludoInicial: '¡Hola! 👋 Gracias por escribirnos.\n\nMirá nuestro menú y hacé tu pedido acá 👉 {{link_menu}}\n\n_{{nombre_negocio}}_',
-      enEspera: 'En breve te va a responder alguien de nuestro equipo. ¡Gracias por tu paciencia! 🙌'
+      enEspera: 'En breve te va a responder alguien de nuestro equipo. ¡Gracias por tu paciencia! 🙌',
+      reglas: '',
+      datosExtra: '',
+      conocerMenu: false,
+      faqs: []
     };
   }
 

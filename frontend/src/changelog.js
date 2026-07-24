@@ -6,9 +6,23 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.22.0'
+export const VERSION_ACTUAL = '1.23.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.23.0',
+    fecha: '2026-07-24',
+    titulo: 'Armá tu asistente de WhatsApp a medida',
+    destacados: [
+      { titulo: 'Tu bot, con tu estilo', detalle: 'El asistente de WhatsApp ahora tiene su propia sección en el menú. Ponele nombre propio, elegí su tono (amigable, formal, breve o divertido) y hacé que hable como tu local.' },
+      { titulo: 'Enseñale lo que tiene que saber', detalle: 'Cargá reglas de comportamiento, preguntas frecuentes con sus respuestas y datos extra de tu negocio. También podés activar que conozca tu menú para decir qué productos tenés (los precios siempre los ve el cliente en la web).' },
+      { titulo: 'Probalo antes de activarlo', detalle: 'Hay un chat de prueba dentro de la página: escribís como si fueras un cliente y ves al instante qué respondería, sin mandar nada por WhatsApp y sin necesidad de guardar.' },
+    ],
+    cambios: [
+      { t: 'La configuración del asistente se movió de Configuraciones a su propia sección "Asistente WhatsApp" en el menú lateral.' },
+      { t: 'El asistente sigue sin tomar pedidos por mensaje y se calla cuando entra una persona del equipo, como antes.' },
+    ],
+  },
   {
     version: '1.22.0',
     fecha: '2026-07-23',
