@@ -109,4 +109,52 @@ router.get('/templates', protect, perteneceAlNegocio, async (req, res) => {
   }
 });
 
+/**
+ * GET /bot-config
+ * Obtiene la configuración del bot de atención automática
+ */
+router.get('/bot-config', protect, perteneceAlNegocio, async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const bot = await whatsappService.getBotConfig(negocioId);
+    res.json({ bot });
+  } catch (error) {
+    console.error('Error obteniendo config del bot WhatsApp:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PUT /bot-config
+ * Guarda la configuración del bot de atención automática
+ */
+router.put('/bot-config', protect, perteneceAlNegocio, async (req, res) => {
+  try {
+    const { negocioId } = req.params;
+    const { bot } = req.body;
+
+    if (!bot || typeof bot !== 'object') {
+      return res.status(400).json({ error: 'Configuración del bot requerida' });
+    }
+
+    const defaults = whatsappService.getDefaultBotConfig();
+    const limpio = {
+      activo: bot.activo === true,
+      saludoInicial: typeof bot.saludoInicial === 'string' ? bot.saludoInicial : defaults.saludoInicial,
+      enEspera: typeof bot.enEspera === 'string' ? bot.enEspera : defaults.enEspera
+    };
+
+    const success = await whatsappService.saveBotConfig(negocioId, limpio);
+
+    if (success) {
+      res.json({ success: true, message: 'Configuración del bot guardada correctamente' });
+    } else {
+      res.status(500).json({ success: false, error: 'Error guardando configuración del bot' });
+    }
+  } catch (error) {
+    console.error('Error guardando config del bot WhatsApp:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

@@ -3,7 +3,8 @@ const pino = require('pino');
 const qrcode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
-const { WhatsAppConfig } = require('../models');
+const { WhatsAppConfig, Negocio } = require('../models');
+const geminiService = require('./geminiService');
 
 class WhatsAppMultiTenantService {
   constructor() {
@@ -13,6 +14,19 @@ class WhatsAppMultiTenantService {
     this.idleTimers = new Map(); // negocioId → timeout
     this.sendQueues = new Map(); // negocioId → Promise (cola FIFO de envios)
     this.reconnectAttempts = new Map(); // negocioId → contador de reintentos
+
+    // Bot de atencion automatica: estado de conversacion por cliente.
+    // key `${negocioId}:${jid}` → { ultimoContacto, respuestasIA }
+    this.conversaciones = new Map();
+    this.CONVERSACION_WINDOW = 6 * 60 * 60 * 1000; // 6 horas
+    this.MAX_RESPUESTAS_IA = 10; // tope por conversacion, evita loops y abuso
+
+    // Barrido periodico: sin esto el Map crece indefinidamente
+    this.limpiezaConversaciones = setInterval(
+      () => this.limpiarConversacionesVencidas(),
+      60 * 60 * 1000
+    );
+    if (this.limpiezaConversaciones.unref) this.limpiezaConversaciones.unref();
 
     console.log('✅ WhatsApp Multi-Tenant Service inicializado (Baileys)');
   }
@@ -159,9 +173,20 @@ class WhatsAppMultiTenantService {
         }
       });
 
-      // Resetear idle timer en cada actividad
-      sock.ev.on('messages.upsert', () => {
+      // Resetear idle timer en cada actividad + atender mensajes entrantes
+      sock.ev.on('messages.upsert', (payload) => {
         this.resetIdleTimer(negocioId);
+
+        // 'notify' = mensajes nuevos en vivo. 'append' es historial sincronizado
+        // al conectar: responder eso inundaria de mensajes a clientes viejos.
+        if (payload?.type !== 'notify') return;
+
+        for (const msg of payload.messages || []) {
+          // Un error acá no puede tirar el socket de WhatsApp
+          this.procesarMensajeEntrante(negocioId, msg).catch((err) => {
+            console.error(`Error procesando mensaje entrante (negocio ${negocioId}):`, err.message);
+          });
+        }
       });
 
       return instance;
@@ -346,6 +371,170 @@ class WhatsAppMultiTenantService {
       console.error(`❌ Error enviando WhatsApp (negocio ${negocioId}):`, error.message);
       return false;
     }
+  }
+
+  // ── Bot de atención automática ────────────────────────────
+
+  /**
+   * Extrae el texto plano de un mensaje de Baileys, sin importar en qué tipo
+   * de bloque venga (texto suelto, respuesta citada, pie de foto).
+   */
+  extraerTexto(msg) {
+    const m = msg?.message;
+    if (!m) return '';
+    return (
+      m.conversation ||
+      m.extendedTextMessage?.text ||
+      m.imageMessage?.caption ||
+      m.videoMessage?.caption ||
+      m.documentMessage?.caption ||
+      m.buttonsResponseMessage?.selectedDisplayText ||
+      m.listResponseMessage?.title ||
+      ''
+    ).trim();
+  }
+
+  /**
+   * Decide qué responderle a un cliente según el estado de su conversación.
+   * Devuelve 'saludo' (conversación nueva), 'ia' (consulta a responder con
+   * IA) o 'espera' (se agotó el tope de respuestas con IA).
+   */
+  decidirAccion(clave) {
+    const ahora = Date.now();
+    const estado = this.conversaciones.get(clave);
+
+    // Sin registro o ventana vencida: arranca conversación nueva
+    if (!estado || ahora - estado.ultimoContacto >= this.CONVERSACION_WINDOW) {
+      this.conversaciones.set(clave, { ultimoContacto: ahora, respuestasIA: 0 });
+      return 'saludo';
+    }
+
+    estado.ultimoContacto = ahora;
+
+    if (estado.respuestasIA >= this.MAX_RESPUESTAS_IA) return 'espera';
+
+    estado.respuestasIA += 1;
+    return 'ia';
+  }
+
+  /**
+   * Borra del Map las conversaciones cuya ventana ya venció.
+   */
+  limpiarConversacionesVencidas() {
+    const ahora = Date.now();
+    for (const [clave, estado] of this.conversaciones.entries()) {
+      if (ahora - estado.ultimoContacto >= this.CONVERSACION_WINDOW) {
+        this.conversaciones.delete(clave);
+      }
+    }
+  }
+
+  /**
+   * Atiende un mensaje entrante de un cliente: saluda y deriva al menú web,
+   * responde consultas del negocio con IA, o avisa que en breve lo atiende
+   * una persona. Nunca toma pedidos por texto.
+   */
+  async procesarMensajeEntrante(negocioId, msg) {
+    // Descartar lo que no es un mensaje de un cliente
+    if (msg?.key?.fromMe) return;
+    const jid = msg?.key?.remoteJid;
+    if (!jid || !jid.endsWith('@s.whatsapp.net')) return; // grupos, broadcast, status
+
+    const texto = this.extraerTexto(msg);
+    if (!texto) return; // stickers, audios, ubicaciones: no hay nada que responder
+
+    // El bot arranca apagado: solo responde si el negocio lo activó
+    const botConfig = await this.getBotConfig(negocioId);
+    if (!botConfig?.activo) return;
+
+    const negocio = await Negocio.findByPk(negocioId);
+    if (!negocio) return;
+
+    const clave = `${negocioId}:${jid}`;
+    const accion = this.decidirAccion(clave);
+    const numero = jid.split('@')[0].split(':')[0];
+
+    if (accion === 'saludo') {
+      const saludo = (botConfig.saludoInicial || '')
+        .replace(/{{nombre_negocio}}/g, negocio.nombre || '')
+        .replace(/{{link_menu}}/g, this.construirLinkMenu(negocio));
+      if (saludo.trim()) await this.sendMessage(negocioId, numero, saludo);
+      return;
+    }
+
+    if (accion === 'ia') {
+      // Si Gemini falla, no contesta o la consulta se va de tema, devuelve null.
+      // El try extra es a propósito: pase lo que pase con la IA, el cliente
+      // tiene que recibir el mensaje de espera y no quedarse sin respuesta.
+      let respuesta = null;
+      try {
+        respuesta = await geminiService.responderConsulta(negocio, texto);
+      } catch (error) {
+        console.error(`Error inesperado de la IA (negocio ${negocioId}):`, error.message);
+      }
+      if (respuesta) {
+        await this.sendMessage(negocioId, numero, respuesta);
+        return;
+      }
+    }
+
+    // 'espera', o la IA no pudo resolverlo: mensaje fijo del negocio
+    const enEspera = (botConfig.enEspera || '').trim();
+    if (enEspera) await this.sendMessage(negocioId, numero, enEspera);
+  }
+
+  /**
+   * Arma el link público al menú del negocio
+   */
+  construirLinkMenu(negocio) {
+    const base = (process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/$/, '');
+    if (!base) return '';
+    return negocio?.slug ? `${base}/menu/${negocio.slug}` : `${base}/menu`;
+  }
+
+  /**
+   * Obtiene la configuración del bot de un negocio (con defaults)
+   */
+  async getBotConfig(negocioId) {
+    try {
+      const config = await WhatsAppConfig.findOne({ where: { negocioId } });
+      return { ...this.getDefaultBotConfig(), ...(config?.config?.bot || {}) };
+    } catch (error) {
+      console.error(`Error obteniendo config del bot (negocio ${negocioId}):`, error.message);
+      return this.getDefaultBotConfig();
+    }
+  }
+
+  /**
+   * Guarda la configuración del bot de un negocio
+   */
+  async saveBotConfig(negocioId, bot) {
+    try {
+      let config = await WhatsAppConfig.findOne({ where: { negocioId } });
+
+      if (!config) {
+        await WhatsAppConfig.create({ negocioId, config: { bot } });
+      } else {
+        await config.update({ config: { ...config.config, bot } });
+      }
+
+      console.log(`💾 Configuración del bot guardada para negocio: ${negocioId}`);
+      return true;
+    } catch (error) {
+      console.error(`Error guardando config del bot (negocio ${negocioId}):`, error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Configuración por defecto del bot (apagado)
+   */
+  getDefaultBotConfig() {
+    return {
+      activo: false,
+      saludoInicial: '¡Hola! 👋 Gracias por escribirnos.\n\nMirá nuestro menú y hacé tu pedido acá 👉 {{link_menu}}\n\n_{{nombre_negocio}}_',
+      enEspera: 'En breve te va a responder alguien de nuestro equipo. ¡Gracias por tu paciencia! 🙌'
+    };
   }
 
   /**

@@ -6,9 +6,23 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.21.3'
+export const VERSION_ACTUAL = '1.22.0'
 
 export const CHANGELOG = [
+  {
+    version: '1.22.0',
+    fecha: '2026-07-23',
+    titulo: 'Tu WhatsApp ahora responde solo',
+    destacados: [
+      { titulo: 'Nadie más se queda esperando', detalle: 'Cuando un cliente te escribe por WhatsApp, el bot lo recibe al instante y le manda el link de tu menú para que arme el pedido, aunque no haya nadie atendiendo en ese momento.' },
+      { titulo: 'Contesta las dudas de siempre', detalle: 'Si el cliente pregunta por horarios, dirección o formas de pago, el bot le responde solo, usando los datos que ya tenés cargados en Configuraciones. Si le preguntan algo que no sabe, avisa que en breve lo atiende alguien de tu equipo.' },
+    ],
+    cambios: [
+      { t: 'Se activa desde Configuraciones → Integraciones → "Respuestas automáticas a clientes". Viene apagado: lo prendés cuando quieras.' },
+      { t: 'Podés editar el saludo de bienvenida y el mensaje de espera con tus propias palabras.' },
+      { t: 'El bot nunca toma pedidos por mensaje: siempre invita a pedir desde el menú web, así no se pierde ni se confunde ningún pedido.' },
+    ],
+  },
   {
     version: '1.21.3',
     fecha: '2026-07-14',

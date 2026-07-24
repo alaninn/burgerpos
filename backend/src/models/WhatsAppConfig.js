@@ -42,6 +42,11 @@ module.exports = (sequelize, DataTypes) => {
             preparacion_a_listo: 'Tu pedido ya está listo para retirar. Podes venir cuando quieras!',
             cualquier_a_cancelado: 'Tu pedido ha sido cancelado.'
           }
+        },
+        bot: {
+          activo: false,
+          saludoInicial: '¡Hola! 👋 Gracias por escribirnos.\n\nMirá nuestro menú y hacé tu pedido acá 👉 {{link_menu}}\n\n_{{nombre_negocio}}_',
+          enEspera: 'En breve te va a responder alguien de nuestro equipo. ¡Gracias por tu paciencia! 🙌'
         }
       }
     }

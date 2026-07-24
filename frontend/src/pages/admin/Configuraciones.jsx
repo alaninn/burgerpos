@@ -462,6 +462,8 @@ export default function Configuraciones() {
   const [whatsappQr, setWhatsappQr] = useState(null)
   const [whatsappTemplates, setWhatsappTemplates] = useState({})
   const [savingWhatsapp, setSavingWhatsapp] = useState(false)
+  const [whatsappBot, setWhatsappBot] = useState({ activo: false, saludoInicial: '', enEspera: '' })
+  const [savingBot, setSavingBot] = useState(false)
 
   useEffect(() => {
     if (!negocioId) return
@@ -494,6 +496,8 @@ export default function Configuraciones() {
         setWhatsappStatus(resStatus.data)
         const resTemplates = await api.get(`/negocios/${negocioId}/whatsapp/templates`)
         setWhatsappTemplates(resTemplates.data.templates || {})
+        const resBot = await api.get(`/negocios/${negocioId}/whatsapp/bot-config`)
+        if (resBot.data.bot) setWhatsappBot(resBot.data.bot)
       } catch {}
     }
     cargarEstadoWhatsapp()
@@ -553,6 +557,18 @@ export default function Configuraciones() {
       toast.error('Error al guardar plantillas')
     } finally {
       setSavingWhatsapp(false)
+    }
+  }
+
+  const guardarBotWhatsapp = async () => {
+    setSavingBot(true)
+    try {
+      await api.put(`/negocios/${negocioId}/whatsapp/bot-config`, { bot: whatsappBot })
+      toast.success('Respuestas automáticas guardadas')
+    } catch {
+      toast.error('Error al guardar las respuestas automáticas')
+    } finally {
+      setSavingBot(false)
     }
   }
 
@@ -1136,6 +1152,72 @@ export default function Configuraciones() {
                     Desconectar WhatsApp
                   </button>
                 )}
+              </div>
+
+              {/* Respuestas automáticas a clientes */}
+              <div className="mt-6 border border-gray-200 dark:border-gray-700 rounded-xl p-5 bg-gray-50 dark:bg-gray-900/20">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Respuestas automáticas a clientes</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Cuando un cliente te escribe, el bot lo recibe, le pasa el link del menú y le contesta las dudas más comunes.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer flex-shrink-0 pt-0.5">
+                    <input type="checkbox" checked={!!whatsappBot.activo}
+                      onChange={e => setWhatsappBot({ ...whatsappBot, activo: e.target.checked })}
+                      className="w-4 h-4 accent-violet-600"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Activar</span>
+                  </label>
+                </div>
+
+                <div className="mb-4 p-3 rounded-lg bg-violet-50 dark:bg-violet-950 border border-violet-100 dark:border-violet-900">
+                  <p className="text-xs text-violet-800 dark:text-violet-300 leading-relaxed">
+                    El bot responde consultas de horarios, dirección y formas de pago usando los datos que ya
+                    tenés cargados en esta misma pantalla, así que no hace falta configurar nada más.
+                    Nunca toma pedidos por mensaje: siempre invita a pedir desde el menú web. Si le preguntan
+                    algo que no sabe, responde con el mensaje de espera de abajo.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Saludo inicial <span className="text-gray-400 dark:text-gray-500 font-normal">— se envía al primer mensaje del cliente</span>
+                    </label>
+                    <textarea
+                      value={whatsappBot.saludoInicial || ''}
+                      onChange={e => setWhatsappBot({ ...whatsappBot, saludoInicial: e.target.value })}
+                      rows={4}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none resize-y"
+                      placeholder="¡Hola! Gracias por escribirnos..."
+                    />
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                      Variables disponibles: <code className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">{'{{link_menu}}'}</code> y <code className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">{'{{nombre_negocio}}'}</code>
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Mensaje de espera <span className="text-gray-400 dark:text-gray-500 font-normal">— cuando el bot no puede resolver la consulta</span>
+                    </label>
+                    <textarea
+                      value={whatsappBot.enEspera || ''}
+                      onChange={e => setWhatsappBot({ ...whatsappBot, enEspera: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none resize-y"
+                      placeholder="En breve te va a responder alguien de nuestro equipo..."
+                    />
+                  </div>
+
+                  <button
+                    onClick={guardarBotWhatsapp}
+                    disabled={savingBot}
+                    className="w-full py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                    {savingBot ? 'Guardando...' : 'Guardar respuestas automáticas'}
+                  </button>
+                </div>
               </div>
 
               <div className="mt-6">
