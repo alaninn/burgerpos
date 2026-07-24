@@ -1178,6 +1178,8 @@ export default function Configuraciones() {
                     tenés cargados en esta misma pantalla, así que no hace falta configurar nada más.
                     Nunca toma pedidos por mensaje: siempre invita a pedir desde el menú web. Si le preguntan
                     algo que no sabe, responde con el mensaje de espera de abajo.
+                    <strong className="font-semibold"> Apenas alguien de tu equipo le contesta a un cliente,
+                    el bot se calla en esa conversación</strong> y no vuelve a meterse por unas horas.
                   </p>
                 </div>
 

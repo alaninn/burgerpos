@@ -5,7 +5,10 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 // para que el texto final que ve el cliente lo controle siempre el negocio.
 const FALLBACK_SENTINEL = '[[FALLBACK_HUMANO]]';
 const TIMEOUT_MS = 8000;
-const MODELO = 'gemini-2.0-flash';
+// Version fija a proposito: los alias tipo "-latest" cambian de modelo solos y
+// pueden alterar el comportamiento del bot sin aviso. Se puede sobreescribir
+// por env si en algun momento cambia la cuota disponible de la cuenta.
+const MODELO = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 const DIAS_ORDEN = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 

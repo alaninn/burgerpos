@@ -16,6 +16,7 @@ export const CHANGELOG = [
     destacados: [
       { titulo: 'Nadie más se queda esperando', detalle: 'Cuando un cliente te escribe por WhatsApp, el bot lo recibe al instante y le manda el link de tu menú para que arme el pedido, aunque no haya nadie atendiendo en ese momento.' },
       { titulo: 'Contesta las dudas de siempre', detalle: 'Si el cliente pregunta por horarios, dirección o formas de pago, el bot le responde solo, usando los datos que ya tenés cargados en Configuraciones. Si le preguntan algo que no sabe, avisa que en breve lo atiende alguien de tu equipo.' },
+      { titulo: 'Cuando atendés vos, se corre a un costado', detalle: 'Apenas alguien de tu equipo le responde a un cliente desde el celular, el bot se calla en esa conversación y no vuelve a interrumpir. Cuando vos atendés, atendés vos.' },
     ],
     cambios: [
       { t: 'Se activa desde Configuraciones → Integraciones → "Respuestas automáticas a clientes". Viene apagado: lo prendés cuando quieras.' },

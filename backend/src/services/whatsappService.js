@@ -16,8 +16,12 @@ class WhatsAppMultiTenantService {
     this.reconnectAttempts = new Map(); // negocioId → contador de reintentos
 
     // Bot de atencion automatica: estado de conversacion por cliente.
-    // key `${negocioId}:${jid}` → { ultimoContacto, respuestasIA }
+    // key `${negocioId}:${jid}` → { ultimoContacto, respuestasIA, pausadoHasta }
     this.conversaciones = new Map();
+    // IDs de los mensajes que mando el propio bot. WhatsApp los devuelve como
+    // salientes igual que los que escribe una persona: sin esto, el bot leeria
+    // su propia respuesta como "entro un humano" y se apagaria solo.
+    this.mensajesPropios = new Map(); // messageId → timestamp
     this.CONVERSACION_WINDOW = 6 * 60 * 60 * 1000; // 6 horas
     this.MAX_RESPUESTAS_IA = 10; // tope por conversacion, evita loops y abuso
 
@@ -360,7 +364,10 @@ class WhatsAppMultiTenantService {
         return false;
       }
 
-      await instance.sock.sendMessage(jid, { text: message });
+      const enviado = await instance.sock.sendMessage(jid, { text: message });
+      // Registrar el ID para reconocer el eco de este mismo mensaje y no
+      // confundirlo con la intervencion de una persona del equipo
+      if (enviado?.key?.id) this.mensajesPropios.set(enviado.key.id, Date.now());
       console.log(`✅ WhatsApp enviado (negocio ${negocioId} → ${num})`);
 
       instance.lastActivity = Date.now();
@@ -418,7 +425,25 @@ class WhatsAppMultiTenantService {
   }
 
   /**
-   * Borra del Map las conversaciones cuya ventana ya venció.
+   * Marca que una persona del equipo entró a atender la conversación: a partir
+   * de acá el bot se calla y no interrumpe. La pausa se renueva con cada
+   * mensaje que escribe la persona y vence sola tras la ventana de conversación.
+   */
+  registrarTomaDeControlHumana(negocioId, jid) {
+    const clave = `${negocioId}:${jid}`;
+    const ahora = Date.now();
+    const estado = this.conversaciones.get(clave) || { respuestasIA: 0 };
+
+    estado.ultimoContacto = ahora;
+    estado.pausadoHasta = ahora + this.CONVERSACION_WINDOW;
+    this.conversaciones.set(clave, estado);
+
+    console.log(`🤝 Atención manual detectada (negocio ${negocioId}) — bot en pausa para ese cliente`);
+  }
+
+  /**
+   * Borra del Map las conversaciones cuya ventana ya venció y los IDs de
+   * mensajes propios que nunca llegaron a confirmarse.
    */
   limpiarConversacionesVencidas() {
     const ahora = Date.now();
@@ -426,6 +451,11 @@ class WhatsAppMultiTenantService {
       if (ahora - estado.ultimoContacto >= this.CONVERSACION_WINDOW) {
         this.conversaciones.delete(clave);
       }
+    }
+    // El eco de un mensaje propio llega en segundos; lo que quede después de
+    // 10 minutos es basura de un envío que falló
+    for (const [id, ts] of this.mensajesPropios.entries()) {
+      if (ahora - ts >= 10 * 60 * 1000) this.mensajesPropios.delete(id);
     }
   }
 
@@ -435,10 +465,20 @@ class WhatsAppMultiTenantService {
    * una persona. Nunca toma pedidos por texto.
    */
   async procesarMensajeEntrante(negocioId, msg) {
-    // Descartar lo que no es un mensaje de un cliente
-    if (msg?.key?.fromMe) return;
     const jid = msg?.key?.remoteJid;
     if (!jid || !jid.endsWith('@s.whatsapp.net')) return; // grupos, broadcast, status
+
+    // Mensajes salientes: puede ser el eco del propio bot o una persona
+    // del equipo escribiéndole al cliente desde el celular
+    if (msg.key.fromMe) {
+      const id = msg.key.id;
+      if (id && this.mensajesPropios.has(id)) {
+        this.mensajesPropios.delete(id); // era el bot: no hay nada que hacer
+        return;
+      }
+      this.registrarTomaDeControlHumana(negocioId, jid);
+      return;
+    }
 
     const texto = this.extraerTexto(msg);
     if (!texto) return; // stickers, audios, ubicaciones: no hay nada que responder
@@ -447,10 +487,19 @@ class WhatsAppMultiTenantService {
     const botConfig = await this.getBotConfig(negocioId);
     if (!botConfig?.activo) return;
 
+    const clave = `${negocioId}:${jid}`;
+
+    // Si alguien del equipo ya está atendiendo esta conversación, el bot no
+    // interrumpe: solo mantiene viva la conversación en memoria
+    const estadoActual = this.conversaciones.get(clave);
+    if (estadoActual?.pausadoHasta && Date.now() < estadoActual.pausadoHasta) {
+      estadoActual.ultimoContacto = Date.now();
+      return;
+    }
+
     const negocio = await Negocio.findByPk(negocioId);
     if (!negocio) return;
 
-    const clave = `${negocioId}:${jid}`;
     const accion = this.decidirAccion(clave);
     const numero = jid.split('@')[0].split(':')[0];
 
