@@ -6,9 +6,18 @@
 // - `super: true` en un cambio = solo lo ve el superadmin.
 // =============================================
 
-export const VERSION_ACTUAL = '1.24.0'
+export const VERSION_ACTUAL = '1.24.1'
 
 export const CHANGELOG = [
+  {
+    version: '1.24.1',
+    fecha: '2026-07-24',
+    titulo: 'El menú online muestra solo lo que vendés',
+    cambios: [
+      { t: 'Los insumos de stock cargados a $0 (packaging, salsas fijas, etc.) ya no aparecen en tu menú online ni los toma el asistente: solo se muestran los productos con precio de venta.' },
+      { t: 'El mapa de Zonas de entrega ahora usa el mismo estilo que el mapa de pedidos, más claro y con nombres de calles.' },
+    ],
+  },
   {
     version: '1.24.0',
     fecha: '2026-07-24',

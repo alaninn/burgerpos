@@ -63,11 +63,13 @@ const defaultZona = () => ({
 // ─── Control de dibujo ───────────────────────────────────
 function DrawControl({ onPolygonComplete }) {
   const map = useMap()
-  const drawRef = useRef(null)
+  // El callback vive en un ref para que el control se cree una sola vez y no se
+  // destruya/recree cada vez que cambian las zonas (antes parpadeaba y perdía
+  // el estado de dibujo en cada cambio).
+  const cbRef = useRef(onPolygonComplete)
+  cbRef.current = onPolygonComplete
 
   useEffect(() => {
-    if (drawRef.current) return
-
     const drawnItems = new L.FeatureGroup()
     map.addLayer(drawnItems)
 
@@ -83,24 +85,24 @@ function DrawControl({ onPolygonComplete }) {
       edit: { featureGroup: drawnItems, remove: true }
     })
     map.addControl(drawControl)
-    drawRef.current = { drawControl, drawnItems }
 
-    map.on(L.Draw.Event.CREATED, (e) => {
+    const onCreated = (e) => {
       drawnItems.clearLayers()
       drawnItems.addLayer(e.layer)
       const latLngs = e.layer.getLatLngs()[0]
-      onPolygonComplete(latLngs.map(ll => ({ lat: ll.lat, lng: ll.lng })))
-    })
-    map.on(L.Draw.Event.DELETED, () => onPolygonComplete([]))
+      cbRef.current(latLngs.map(ll => ({ lat: ll.lat, lng: ll.lng })))
+    }
+    const onDeleted = () => cbRef.current([])
+    map.on(L.Draw.Event.CREATED, onCreated)
+    map.on(L.Draw.Event.DELETED, onDeleted)
 
     return () => {
       map.removeControl(drawControl)
       map.removeLayer(drawnItems)
-      map.off(L.Draw.Event.CREATED)
-      map.off(L.Draw.Event.DELETED)
-      drawRef.current = null
+      map.off(L.Draw.Event.CREATED, onCreated)
+      map.off(L.Draw.Event.DELETED, onDeleted)
     }
-  }, [map, onPolygonComplete])
+  }, [map])
 
   return null
 }
@@ -429,9 +431,10 @@ export default function EditorZonasMapa({ zonas, onChange, negocio = null }) {
           <MapContainer center={centroDefault} zoom={12} style={{ height: '100%', width: '100%' }}>
             <MapCenterUpdater coords={negocioCoords} />
             <TileLayer
-              attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              subdomains="abcd"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              subdomains="abc"
+              maxZoom={19}
             />
 
             {/* Zonas */}

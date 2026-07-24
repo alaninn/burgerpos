@@ -4,8 +4,9 @@ const qrcode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 const { Op } = require('sequelize');
-const { WhatsAppConfig, Negocio, Producto, Categoria } = require('../models');
+const { WhatsAppConfig, Negocio, Producto, Categoria, ProductoVariante } = require('../models');
 const geminiService = require('./geminiService');
+const { esProductoVendible } = require('../utils/menuVendible');
 
 class WhatsAppMultiTenantService {
   constructor() {
@@ -566,21 +567,31 @@ class WhatsAppMultiTenantService {
       // en la tienda. Así el bot no ofrece cosas que el cliente no puede pedir.
       const productos = await Producto.findAll({
         where: { negocioId, activo: true },
-        include: [{
-          model: Categoria,
-          as: 'categoria',
-          attributes: ['nombre'],
-          where: { activo: true, tipo: { [Op.ne]: 'ingrediente' } },
-          required: true
-        }],
+        include: [
+          {
+            model: Categoria,
+            as: 'categoria',
+            attributes: ['nombre'],
+            where: { activo: true, tipo: { [Op.ne]: 'ingrediente' } },
+            required: true
+          },
+          {
+            // Necesario para saber si un producto a $0 se vende por variante
+            model: ProductoVariante,
+            as: 'variantes',
+            attributes: ['precioVenta', 'activo', 'visible'],
+            required: false
+          }
+        ],
         order: [['orden', 'ASC'], ['nombre', 'ASC']],
-        attributes: ['nombre', 'descripcion'],
-        limit: 200 // tope defensivo: menús enormes no explotan el prompt
+        attributes: ['nombre', 'descripcion', 'precioVenta'],
+        limit: 300
       });
 
-      // Agrupar por categoría, sin precios (la fuente de verdad es el menú web)
+      // Agrupar por categoría, sin precios (la fuente de verdad es el menú web).
+      // Se excluyen los insumos de stock a $0, igual que en el menú público.
       const porCategoria = new Map();
-      for (const p of productos) {
+      for (const p of productos.filter(esProductoVendible)) {
         const cat = p.categoria?.nombre || 'Otros';
         if (!porCategoria.has(cat)) porCategoria.set(cat, []);
         const desc = (p.descripcion || '').trim().slice(0, 80);

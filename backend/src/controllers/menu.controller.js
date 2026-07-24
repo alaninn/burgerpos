@@ -1,5 +1,6 @@
 const { Negocio, Categoria, Producto, ProductoVariante, GrupoAdicional, Adicional, Pedido, ItemPedido, Descuento, Cliente, sequelize } = require('../models');
 const { descontarStockPedido } = require('../utils/descuentoStock');
+const { filtrarCategoriasVendibles } = require('../utils/menuVendible');
 const { Op } = require('sequelize');
 
 exports.obtenerMenuDefault = async (req, res) => {
@@ -53,7 +54,7 @@ exports.obtenerMenuDefault = async (req, res) => {
       order: [['orden', 'ASC']]
     });
 
-    res.json({ success: true, negocio, categorias });
+    res.json({ success: true, negocio, categorias: filtrarCategoriasVendibles(categorias) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -109,7 +110,7 @@ exports.obtenerMenu = async (req, res) => {
       order: [['orden', 'ASC']]
     });
 
-    res.json({ success: true, negocio, categorias });
+    res.json({ success: true, negocio, categorias: filtrarCategoriasVendibles(categorias) });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
